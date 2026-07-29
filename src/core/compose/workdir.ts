@@ -6,7 +6,7 @@ import {FORMATS, referenceFormat, type FormatFamily} from "../plan/formats.ts";
 import {languageName} from "../plan/language.ts";
 import {ENERGY_MOTION} from "../tts/energy.ts";
 import {intentPreset} from "../intents/index.ts";
-import {planDurationMs, type Energy, type Intent, type VideoPlan} from "../plan/schema.ts";
+import {planDurationMs, type DataSeries, type Energy, type Intent, type ScreenSpec, type VideoPlan} from "../plan/schema.ts";
 import {ROOT} from "../paths.ts";
 import {buildCaptions, writeCaptionData} from "../tts/captions.ts";
 
@@ -22,6 +22,7 @@ export const BLOCK_FILES = [
   "editorial.css",
   "cta-lockup.css",
   "presenter-slot.css",
+  "screen.css",
   "caption-layer.css",
 ] as const;
 
@@ -142,6 +143,58 @@ Keep the sustained motion of §6 in every scene regardless of energy, and scale 
 speed the same way — but how far and how fast is your call, not a number in this brief.`;
 }
 
+/**
+ * A screenshot section, as instructions.
+ *
+ * Focus rects are given as percentages of the image because that is what they are in the
+ * plan — the composer computes a scale and an origin from them, and the same arithmetic
+ * holds at every output size. Times are relative to the section for the same reason the
+ * schema stores them that way: an edit to an earlier section must not move these.
+ */
+export function screenBrief(screen: ScreenSpec): string {
+  const chrome = {
+    contain: "on a bare `.screen-stage`",
+    "device-frame": "inside `.screen-frame` wrapping a `.screen-stage`",
+    "browser-chrome": "inside `.screen-window` — put the real URL in `.window-url`",
+  }[screen.fit];
+
+  const moves = screen.focus.length
+    ? screen.focus.map((focus) => {
+      const [x, y, w, h] = focus.rect;
+      const pct = (value: number) => `${(value * 100).toFixed(1)}%`;
+      return `  - at **+${(focus.atMs / 1000).toFixed(2)}s** into the section, frame `
+        + `x ${pct(x)}, y ${pct(y)}, w ${pct(w)}, h ${pct(h)}`
+        + (focus.label ? ` — label it \`${focus.label}\`` : "");
+    }).join("\n")
+    : "  - none: hold the whole shot, and keep it moving with a slow drift";
+
+  return `- screen: \`media/${screen.mediaId}.png\` ${chrome}\n`
+    + `- focus (scale \`.screen-shot\` and set \`transform-origin\` to each rect's centre):\n${moves}`;
+}
+
+/**
+ * A sourced figure, as instructions.
+ *
+ * The shape is offered and then explicitly withdrawn as a requirement, because the point
+ * of not making this a section kind was to keep the composer deciding. What is not
+ * negotiable is the attribution: the values arrive with a fact behind each one, and a
+ * figure on screen without its source is the defect this whole path exists to avoid.
+ */
+export function dataBrief(data: DataSeries): string {
+  // "62%" not "62 %": a symbol unit sits against the figure, a word unit takes a space.
+  // The composer types this string verbatim, so the spacing here is the spacing on screen.
+  const unit = data.unit ? (/^[%°$€£]$/.test(data.unit) ? data.unit : ` ${data.unit}`) : "";
+  const points = data.points
+    .map((point) => `  - ${point.label}: **${point.value}${unit}**`)
+    .join("\n");
+
+  return `- data (${data.points.length} figures, suggested as \`${data.shape}\` — `
+    + `choose another form if the scene reads better for it):\n${points}\n`
+    + `- source note (render it, in \`.data-source\`): \`${data.caption || "source required"}\`\n`
+    + "- animate the figures in: `.data-bar > span` grows by tweening `--fill` 0 → 1, and a"
+    + " `.data-figure` counts up rather than appearing at its final value";
+}
+
 /** The per-composition brief: everything specific to THIS video, in one file. */
 function renderBrief(options: {
   plan: VideoPlan;
@@ -162,7 +215,9 @@ function renderBrief(options: {
       `- on-screen copy (**verbatim**): ${section.onScreen ? `\`${section.onScreen}\`` : "_none — visual only_"}`,
       `- must accomplish: ${section.intentNote || "—"}`,
       `- energy: **${section.energy}** — ${ENERGY_MOTION[section.energy].note}`,
-      section.mediaId ? `- media: \`media/${section.mediaId}.png\`` : null,
+      section.mediaId && !section.screen ? `- media: \`media/${section.mediaId}.png\`` : null,
+      section.screen ? screenBrief(section.screen) : null,
+      section.data ? dataBrief(section.data) : null,
       section.slot ? `- presenter slot: style \`${section.slot.style}\`, ${seconds(section.durationMs)}s` : null,
       `- narration underneath: "${spoken || "(silent)"}"`,
       "",

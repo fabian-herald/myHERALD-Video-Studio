@@ -140,6 +140,7 @@ Linked before your `styles.css`. Use them; do not reimplement them.
 | `cta-lockup.css` | `.cta-lockup`, `.cta-seal`, `.cta-url` | **mandatory when the plan has a `cta` section** |
 | `editorial.css` | `.kicker`, `.section-number`, `.folio`, `.editorial-grid`, `.signal-spine`, `.rule`, `.paper-card`, `.tag` | mostly optional — but see below |
 | `presenter-slot.css` | `.presenter-slot` | required when a section has a slot |
+| `screen.css` | `.screen-stage`, `.screen-shot`, `.screen-frame`, `.screen-window`, `.focus-label`, `.data-bar`, `.data-figure`, `.data-source` | required when a section has a `screen` or `data` block |
 
 **One continuous element is mandatory.** Include `.signal-spine` — or an equivalent of
 your own design — as a full-duration clip on a low track, animated across the entire
@@ -149,6 +150,53 @@ identical to the one before it.
 
 Add `.on-light` to `.brand-rail`, `.kicker`, `.section-number` and `.rule` when they sit
 on a light field; `.on-dark` to `.cta-lockup` when it sits on the dark field.
+
+### 5a. Screenshots, and moving through them
+
+When a section carries a `screen` block, the brief gives you the file, the chrome and a
+list of focus rects with times. The shot is real product evidence — never redraw it, never
+fake a UI, never crop it to hide something.
+
+```html
+<div class="screen-stage">
+  <img class="screen-shot" src="media/<mediaId>.png" alt="">
+</div>
+```
+
+To move to a focus rect whose fraction of the image is `x, y, w, h`:
+
+```js
+gsap.to("#scene-x .screen-shot", {
+  transformOrigin: `${(x + w / 2) * 100}% ${(y + h / 2) * 100}%`,
+  scale: 1 / Math.max(w, h),   // the rect fills the stage's shorter axis
+  duration: 0.9, ease: "power3.inOut",
+});
+```
+
+Set `transformOrigin` on the same tween, not before it. Left at its default the frame
+drifts toward the middle of the image no matter which detail it was aimed at, which is the
+one failure that looks deliberate and is not.
+
+**A full-page screenshot at stage size teaches nothing.** If a section talks about a
+control, the frame has to arrive at that control. A shot held whole for eight seconds while
+the narration describes a detail inside it is a failed scene even though every check passes.
+
+### 5b. Figures on screen
+
+When a section carries a `data` block, the brief gives you labels, values, a unit and a
+suggested shape. **The shape is a suggestion.** Four values might be bars, or one enormous
+figure with three small ones under it, or a single count-up — pick what suits the scene you
+are building, and do not let a chart become the only thing in the frame.
+
+Two things are not negotiable:
+
+- **Animate the arrival.** `.data-bar > span` grows by tweening `--fill` from 0 to 1; a
+  `.data-figure` counts up. A chart that cuts in at its final value has no reason to be a
+  video.
+- **Render the source note** in `.data-source`. The brief gives you the text. A figure on
+  screen with no attribution is not something anyone can cite, and you cannot invent one.
+
+Never state a figure the brief did not give you, and never round one to look neater.
 
 ## 6. The rule that actually decides whether this is any good
 

@@ -57,6 +57,17 @@ export interface PlanSection {
   durationMs: number;
   phrases: PlanPhrase[];
   mediaId?: string;
+  screen?: {
+    mediaId: string;
+    fit: "contain" | "device-frame" | "browser-chrome";
+    focus: {atMs: number; rect: [number, number, number, number]; label: string}[];
+  };
+  data?: {
+    shape: "bars" | "line" | "counter" | "share";
+    unit: string;
+    caption: string;
+    points: {label: string; value: number; factId: string}[];
+  };
   slot?: {kind: string; style: string};
 }
 
@@ -119,6 +130,8 @@ export const api = {
     request<Thread>("/api/threads", {method: "POST", body: JSON.stringify({title, brief, videoId})}),
   videos: () => request<LedgerEntry[]>("/api/videos"),
   video: (id: string) => request<VideoDetail>(`/api/videos/${id}`),
+  revealVideo: (id: string) =>
+    request<{ok: boolean; path?: string; error?: string}>(`/api/videos/${id}/reveal`, {method: "POST"}),
   applyEdits: (id: string, edits: unknown[]) =>
     request<{durationChanged: boolean; needsCompose: string[]; outputs: {format: string; qcPassed: boolean}[]}>(
       `/api/videos/${id}/apply`,

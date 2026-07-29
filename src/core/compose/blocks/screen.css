@@ -1,0 +1,198 @@
+/*
+ * The stage a real screenshot sits on, and the frame it sits in.
+ *
+ * A primitive, not a scene. It gives the composer somewhere to put an image that can be
+ * moved through — the zoom is a transform on `.screen-shot` inside a clipping stage — and
+ * two chrome treatments so a product screenshot reads as a product rather than as an
+ * attachment. Which chrome, and whether the scene is a screenshot at all, is the plan's
+ * decision; how the scene is composed around it stays the composer's.
+ *
+ * Both frames are drawn here in CSS from brand tokens. They are never supplied as image
+ * assets, because a bitmap device frame is one more thing to keep at four resolutions and
+ * would go soft on the 1920-wide landscape render.
+ */
+
+.screen-stage {
+  position: relative;
+  overflow: hidden;
+  /* The clip that makes a zoom a zoom: the shot scales inside this, not past it. */
+  isolation: isolate;
+  background: var(--brand-surface, #fff);
+  border-radius: calc(var(--stage-h) * 0.008);
+}
+
+/*
+ * Transform target for the focus animation.
+ *
+ * `transform-origin` is set per keyframe by the animation, so the origin is the middle of
+ * whichever rect is being moved to. Leaving it at the default centre makes every zoom
+ * drift toward the middle of the image regardless of what it was pointed at.
+ */
+.screen-stage .screen-shot {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: top center;
+  will-change: transform;
+}
+
+/* Fills rather than letterboxes — for a shot cropped to the stage's own aspect. */
+.screen-stage[data-fit="cover"] .screen-shot {
+  object-fit: cover;
+}
+
+/*
+ * The label for a detail the picture has moved to. Positioned by the composition, because
+ * where it can sit without covering the thing it names depends on the shot.
+ */
+.screen-stage .focus-label {
+  position: absolute;
+  z-index: 2;
+  font-family: var(--brand-font-mono);
+  font-size: var(--brand-size-label);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 0.5em 0.75em;
+  color: var(--brand-ink-inverse, #fff);
+  background: var(--brand-ink, #1c1425);
+  border-radius: 3px;
+}
+
+/* — device frame ————————————————————————————————————————————
+   A phone. The bezel is the frame's own padding, so the shot never has to be composited
+   into a picture of a device. */
+
+.screen-frame {
+  position: relative;
+  background: var(--brand-ink, #1c1425);
+  border-radius: calc(var(--stage-w) * 0.035);
+  padding: calc(var(--stage-w) * 0.012);
+}
+
+.screen-frame > .screen-stage {
+  border-radius: calc(var(--stage-w) * 0.025);
+}
+
+/* The speaker slot. Decoration, and the one cue that says "phone" at thumbnail size. */
+.screen-frame::before {
+  content: "";
+  position: absolute;
+  top: calc(var(--stage-w) * 0.022);
+  left: 50%;
+  transform: translateX(-50%);
+  width: calc(var(--stage-w) * 0.07);
+  height: calc(var(--stage-w) * 0.008);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--brand-ink, #1c1425) 60%, #fff);
+  z-index: 3;
+}
+
+.screen-frame[data-notch="none"]::before {
+  display: none;
+}
+
+/* — browser chrome ——————————————————————————————————————————
+   A window, for anything that lives at a URL. The address bar carries the real URL as
+   text, which is worth more than the frame: it is evidence of where the shot is from. */
+
+.screen-window {
+  background: color-mix(in srgb, var(--brand-ink, #1c1425) 8%, #fff);
+  border-radius: calc(var(--stage-h) * 0.008);
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--brand-ink, #1c1425) 15%, #fff);
+}
+
+.screen-window > .window-bar {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--stage-w) * 0.008);
+  padding: calc(var(--stage-h) * 0.006) calc(var(--stage-w) * 0.012);
+}
+
+.screen-window .window-dots {
+  display: flex;
+  gap: calc(var(--stage-w) * 0.005);
+  flex: none;
+}
+
+.screen-window .window-dots i {
+  width: calc(var(--stage-w) * 0.009);
+  height: calc(var(--stage-w) * 0.009);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--brand-ink, #1c1425) 25%, #fff);
+}
+
+.screen-window .window-url {
+  flex: 1;
+  min-width: 0;
+  font-family: var(--brand-font-mono);
+  font-size: var(--brand-size-label);
+  color: color-mix(in srgb, var(--brand-ink, #1c1425) 65%, #fff);
+  background: var(--brand-surface, #fff);
+  border-radius: 999px;
+  padding: 0.35em 0.9em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* — data ————————————————————————————————————————————————————
+   Bars and figures, sized in stage units so one composition reads at every format. No
+   layout here on purpose: where the chart sits and what it sits next to is the scene's
+   business, and a grid in this file would become the template this architecture avoids. */
+
+.data-figure {
+  font-family: var(--brand-font-display);
+  font-variant-numeric: tabular-nums;
+  line-height: 0.9;
+}
+
+.data-bar {
+  position: relative;
+  height: calc(var(--stage-h) * 0.018);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--brand-ink, #1c1425) 10%, #fff);
+  overflow: hidden;
+}
+
+/*
+ * Grown by animating `--fill` from 0, not by animating `width`.
+ *
+ * A width tween lays out on every frame; a transform on a full-width child composites.
+ * Over a 4-second bar chart at 30fps that is the difference between a smooth grow and a
+ * render that misses frames.
+ */
+.data-bar > span {
+  position: absolute;
+  inset: 0;
+  transform-origin: left center;
+  transform: scaleX(var(--fill, 0));
+  background: var(--brand-accent, #ffd400);
+  border-radius: inherit;
+}
+
+.data-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: calc(var(--stage-w) * 0.02);
+  font-family: var(--brand-font-mono);
+  font-size: var(--brand-size-label);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+/*
+ * The source note. Small, always present when a figure is.
+ *
+ * Not decoration and not optional: a number on screen with no attribution is the single
+ * fastest way for a video to become unciteable. The plan carries a factId per value, so
+ * the composer always has something true to write here.
+ */
+.data-source {
+  font-family: var(--brand-font-mono);
+  font-size: var(--brand-size-label);
+  opacity: 0.65;
+  letter-spacing: 0.04em;
+}

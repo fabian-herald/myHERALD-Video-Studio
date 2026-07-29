@@ -14,9 +14,10 @@ import {readLedger} from "../core/ledger.ts";
 import {INTENT_PRESETS} from "../core/intents/index.ts";
 import {loadPlan, ENERGIES} from "../core/plan/schema.ts";
 import {languageName} from "../core/plan/language.ts";
-import {OUT_DIR, ROOT, videoDir} from "../core/paths.ts";
+import {OUT_DIR, ROOT, safeVideoOutDir, videoDir} from "../core/paths.ts";
 import {applyPlanEdits} from "../core/pipeline/apply.ts";
 import {createVideoThread, listThreads, loadThread, studioThread} from "../core/threads.ts";
+import {run} from "../core/util/exec.ts";
 import {runAgentTurn, recordTurn, type AgentEvent} from "./agent.ts";
 import {z} from "zod";
 
@@ -77,6 +78,11 @@ async function route(request: http.IncomingMessage, response: http.ServerRespons
   const videoMatch = pathname.match(/^\/api\/videos\/([\w-]+)$/);
   if (videoMatch?.[1] && method === "GET") {
     return json(response, 200, await videoDetail(videoMatch[1]));
+  }
+
+  const revealMatch = pathname.match(/^\/api\/videos\/([\w-]+)\/reveal$/);
+  if (revealMatch?.[1] && method === "POST") {
+    return json(response, 200, await revealOutputDir(revealMatch[1]));
   }
 
   const applyMatch = pathname.match(/^\/api\/videos\/([\w-]+)\/apply$/);
@@ -199,6 +205,36 @@ async function route(request: http.IncomingMessage, response: http.ServerRespons
   }
 
   return json(response, 404, {error: `No route for ${method} ${pathname}.`});
+}
+
+/**
+ * Show a finished video's folder in the desktop file manager.
+ *
+ * Two deliberate choices. The path is built here from `OUT_DIR` and checked for
+ * containment rather than accepted from the caller — the route's `[\w-]+` already
+ * excludes a traversal, and this makes that a property of the code instead of a property
+ * of one regex. And the file manager is spawned through `execFile` with an argument
+ * array, never a shell string, so a directory name is data and cannot become a command.
+ */
+async function revealOutputDir(videoId: string) {
+  const dir = safeVideoOutDir(videoId);
+  if (!dir) return {ok: false, error: "That is not an output directory."};
+
+  const stat = await fs.stat(dir).catch(() => null);
+  if (!stat?.isDirectory()) {
+    return {ok: false, error: "Nothing rendered yet — there is no folder to open."};
+  }
+
+  // `open -R` selects the folder in Finder rather than opening it as a window.
+  const [command, args] = process.platform === "darwin"
+    ? ["open", ["-R", dir]]
+    : process.platform === "win32"
+      ? ["explorer", [dir]]
+      : ["xdg-open", [dir]];
+
+  return run(command as string, args as string[])
+    .then(() => ({ok: true, path: dir}))
+    .catch((cause: unknown) => ({ok: false, error: (cause as Error).message, path: dir}));
 }
 
 async function videoDetail(videoId: string) {

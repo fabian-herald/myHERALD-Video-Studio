@@ -46,6 +46,16 @@ export async function approvedStatements(): Promise<string[]> {
 }
 
 /**
+ * A bare four-digit year, which is prose rather than a statistic.
+ *
+ * Carved out deliberately. "Since 2019 the tooling changed" is a claim, but it is not the
+ * kind this gate exists for, and a gate that rejects every date is a gate that gets
+ * switched off — which costs more than the exemption. Anything carrying a unit, a percent,
+ * a multiplier or a currency is still caught, including a year with one attached.
+ */
+const BARE_YEAR = /^(19|20)\d{2}$/;
+
+/**
  * Rejects generated copy that states a number no approved fact backs. Applied after
  * generation as well as before, because a model can invent a figure mid-sentence.
  */
@@ -54,6 +64,7 @@ export function assertNoUnverifiedNumericClaims(copy: string, approved: readonly
   const backing = approved.join(" ");
   const unverified = numbers
     .map((value) => value.trim())
+    .filter((value) => !BARE_YEAR.test(value))
     .filter((value) => value.length > 1 && !backing.includes(value.replace(/\s+/g, "")));
   if (unverified.length) {
     throw new Error(

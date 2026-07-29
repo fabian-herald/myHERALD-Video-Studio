@@ -126,6 +126,19 @@ function ScenesTab({detail}: {detail: VideoDetail}) {
           <div className="onscreen">{section.onScreen || <em style={{opacity: 0.5}}>no on-screen copy</em>}</div>
           {section.intentNote ? <p className="pane-sub" style={{margin: "8px 0 0"}}>{section.intentNote}</p> : null}
           {section.slot ? <span className="chip active">Presenter · {section.slot.style}</span> : null}
+          {/* A screenshot binding and a chart are the two things that can be wrong in a way
+              you would only notice in the finished video, so they get named here. */}
+          {section.screen ? (
+            <span className="chip">
+              Screen · {section.screen.mediaId} · {section.screen.fit}
+              {section.screen.focus.length ? ` · ${section.screen.focus.length} zooms` : " · no zooms"}
+            </span>
+          ) : null}
+          {section.data ? (
+            <span className="chip" title={section.data.caption}>
+              Data · {section.data.points.length} figures · {section.data.shape}
+            </span>
+          ) : null}
         </div>
       ))}
     </>
@@ -245,10 +258,27 @@ function ChecksTab({detail}: {detail: VideoDetail}) {
 }
 
 function FilesTab({detail}: {detail: VideoDetail}) {
+  const [note, setNote] = useState<string | null>(null);
+
+  async function reveal() {
+    setNote(null);
+    const result = await api.revealVideo(detail.videoId).catch((cause: Error) => ({ok: false, error: cause.message}));
+    // Only ever say something when it did NOT work. A Finder window coming to the front
+    // is its own confirmation, and a "done!" line under it is noise.
+    if (!result.ok) setNote(("error" in result && result.error) || "Could not open the folder.");
+  }
+
   return (
     <>
       <h2 className="pane-title">Files</h2>
       <p className="pane-sub">{detail.videoId}</p>
+
+      <div className="apply-bar" style={{marginBottom: 16}}>
+        <button onClick={() => void reveal()} disabled={!detail.files.length}>Show in Finder</button>
+        <span>{detail.files.length ? `${detail.files.length} files` : "nothing rendered yet"}</span>
+      </div>
+      {note ? <p className="pane-sub">{note}</p> : null}
+
       {detail.files.map((file) => (
         <div className="file-row" key={file.name}>
           <span>{file.name}</span>

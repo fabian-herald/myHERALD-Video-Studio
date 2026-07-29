@@ -7,8 +7,10 @@ import {FPS, prepareAuthoringDir, sectionSnapshotTimes} from "../compose/workdir
 import {composerFor, type ComposeResult} from "../gen/composer.ts";
 import {CostLedger, formatCost, type CostSummary} from "../cost.ts";
 import {planVideo} from "../gen/planner.ts";
-import {approvedStatements} from "../knowledge/facts.ts";
+import {approvedStatements, readFacts} from "../knowledge/facts.ts";
 import {upsertLedgerEntry, similarTheses} from "../ledger.ts";
+import {aspectOf, mediaForFormat, mediaForPlan} from "../media/library.ts";
+import {assertPlanClaimsAreSourced} from "../plan/claims.ts";
 import {byFamily, FORMATS, type OutputFormat} from "../plan/formats.ts";
 import type {ContentLanguage} from "../plan/language.ts";
 import {planDurationMs, savePlan, type Intent, type VideoPlan} from "../plan/schema.ts";
@@ -63,6 +65,7 @@ export async function runPipeline(options: RunOptions): Promise<RunResult> {
   let usedBaseline = Boolean(options.baselineOnly);
 
   // 1 — plan, informed by approved facts and what already exists.
+  const facts = await readFacts();
   const knowledge = await approvedStatements();
   const prior = await similarTheses(options.brief);
   if (prior.length) {
@@ -80,6 +83,18 @@ export async function runPipeline(options: RunOptions): Promise<RunResult> {
       kit,
       priorTheses: prior.map((entry) => ({id: entry.id, thesis: entry.thesis})),
       knowledge,
+      // Ids as well as sentences: a chart cites a fact, and citing needs an id. Filtered
+      // to approved-with-evidence here so the planner is never shown a figure it would
+      // then be refused for using.
+      citableFacts: facts
+        .filter((fact) => fact.state === "approved" && fact.evidence.trim().length > 0)
+        .map((fact) => ({id: fact.id, statement: fact.statement, source: fact.source})),
+      media: (await mediaForFormat(options.formats[0] ?? "9x16")).map((item) => ({
+        id: item.id,
+        aspect: aspectOf(item),
+        caption: item.caption,
+        tags: item.tags,
+      })),
     },
     log,
     options.signal,
@@ -88,6 +103,11 @@ export async function runPipeline(options: RunOptions): Promise<RunResult> {
   log(`plan          "${planned.plan.thesis}"`);
   log(`plan          ${planned.plan.sections.length} sections · ${planned.plan.sections.reduce((sum, section) => sum + section.phrases.length, 0)} phrases`);
   await savePlan(planned.plan, path.join(dir, "plan.draft.json"));
+
+  // Fail here, before a narration take and a twenty-minute compose, if the plan states a
+  // figure nothing approved backs. The draft is already on disk, so the rejected plan is
+  // readable rather than lost — the fix is usually to approve a fact, not to re-plan.
+  assertPlanClaimsAreSourced(planned.plan, facts, knowledge);
 
   // 2 — narrate, then rebuild every timestamp from the audio that actually exists.
   const narration = await narrate(planned.plan, dir, log, options.signal);
@@ -114,6 +134,16 @@ export async function runPipeline(options: RunOptions): Promise<RunResult> {
   let contactSheet: string | null = null;
   let cover: string | null = null;
 
+  // Resolve every screenshot the plan asked for once, before any family. A missing one is
+  // reported rather than ignored: the composer would write an `<img>` at a path with no
+  // file behind it, which renders as an empty panel and passes every check we have.
+  const media = await mediaForPlan(plan.sections);
+  if (media.files.length) log(`media         ${media.files.length} item(s) bound: ${media.files.map((file) => file.id).join(", ")}`);
+  if (media.missing.length) {
+    log(`media         MISSING ${media.missing.join(", ")} — no approved library item with that id;`
+      + " those sections will have no image");
+  }
+
   for (const [family, formats] of byFamily(plan.formats)) {
     const authoringDir = path.join(dir, "work", family);
     await fs.mkdir(authoringDir, {recursive: true});
@@ -123,6 +153,7 @@ export async function runPipeline(options: RunOptions): Promise<RunResult> {
       family,
       dir: authoringDir,
       narrationPath: narration.masterPath,
+      mediaFiles: media.files,
     });
 
     const composed = await composeWithRepair({

@@ -19,4 +19,18 @@ export function videoOutDir(videoId: string) {
   return path.join(OUT_DIR, videoId);
 }
 
+/**
+ * `videoOutDir`, but `null` when the id would take the path outside `out/`.
+ *
+ * For anywhere a video id arrives from outside the process — an HTTP route, a CLI
+ * argument — and is about to be handed to something with reach, like a file manager.
+ * Callers have their own input filters; this makes containment a property of the path
+ * layer rather than a property of whichever regex happened to guard the caller.
+ */
+export function safeVideoOutDir(videoId: string): string | null {
+  const resolved = path.resolve(OUT_DIR, videoId);
+  const contained = resolved !== OUT_DIR && resolved.startsWith(`${OUT_DIR}${path.sep}`);
+  return contained ? resolved : null;
+}
+
 export const rel = (absolute: string) => path.relative(ROOT, absolute);

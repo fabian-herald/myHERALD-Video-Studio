@@ -165,6 +165,44 @@ export const mediaBrief = (item: MediaItem) => ({
 export const mediaPath = (item: MediaItem) => path.join(ROOT, "data", "media", item.file);
 
 /**
+ * The real files a plan's `mediaId` and `screen.mediaId` references point at.
+ *
+ * Resolution is a lookup by id against the index — never a path taken from the plan. That
+ * is the whole reason the plan carries ids: the composer is shown `media/<id>.png` and the
+ * file is copied into the workdir under exactly that name, so a model cannot name a file
+ * outside the library and cannot invent a screenshot that does not exist. An id with no
+ * approved, safe-to-show entry behind it is returned as missing rather than substituted,
+ * because a silently dropped `<img>` is how a video ships with an empty panel where the
+ * evidence was supposed to be.
+ */
+export function bindMedia(
+  sections: readonly {mediaId?: string; screen?: {mediaId: string}}[],
+  items: readonly MediaItem[],
+): {files: {id: string; path: string}[]; missing: string[]} {
+  const wanted = [...new Set(
+    sections.flatMap((section) => [section.screen?.mediaId, section.mediaId].filter(Boolean) as string[]),
+  )];
+  if (!wanted.length) return {files: [], missing: []};
+
+  const usable = new Map(
+    items.filter((item) => item.safeToShow && item.state !== "stale").map((item) => [item.id, item]),
+  );
+
+  const files: {id: string; path: string}[] = [];
+  const missing: string[] = [];
+  for (const id of wanted) {
+    const item = usable.get(id);
+    if (item) files.push({id, path: mediaPath(item)});
+    else missing.push(id);
+  }
+  return {files, missing};
+}
+
+/** `bindMedia` against the library on disk. */
+export const mediaForPlan = async (sections: Parameters<typeof bindMedia>[0]) =>
+  bindMedia(sections, await readMedia());
+
+/**
  * Reject a binding whose shape does not fit the delivery format. This runs in the
  * pre-render gate, so a mismatch never reaches a rendered file.
  */

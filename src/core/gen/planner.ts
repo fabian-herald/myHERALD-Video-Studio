@@ -17,12 +17,53 @@ export interface PlanRequest {
   /** Theses already covered, so the planner sharpens rather than repeats. */
   priorTheses: readonly {id: string; thesis: string}[];
   knowledge: readonly string[];
+  /**
+   * Approved facts that carry a number, with their ids, so a `data` block can cite one.
+   * Separate from `knowledge` because citing needs an id and reading needs a sentence.
+   */
+  citableFacts?: readonly {id: string; statement: string; source: string}[];
+  /**
+   * The library, as the planner may see it: an id, a shape and a caption. Never a path —
+   * the planner binds by id and the assembler copies the real file under that name, so a
+   * screenshot cannot be invented or pointed somewhere it should not go.
+   */
+  media?: readonly {id: string; aspect: string; caption: string; tags: string[]}[];
 }
 
 export interface PlanResult {
   plan: VideoPlan;
   costUsd: number;
   model: string;
+}
+
+/**
+ * The facts a chart may cite, by id.
+ *
+ * Only facts that already carry a number are offered. Inviting a `data` block against a
+ * qualitative fact produces a chart of made-up values with a real id attached to them,
+ * which is worse than no chart — it looks sourced.
+ */
+function citableBlock(request: PlanRequest): string {
+  const citable = (request.citableFacts ?? []).filter((fact) => /\d/.test(fact.statement));
+  if (!citable.length) return "";
+  return `# Figures you may chart\n\n`
+    + "Only these. A `data` block cites one of these ids per value, and the run is refused "
+    + "if it cites anything else.\n\n"
+    + citable.map((fact) => `- \`${fact.id}\` — ${fact.statement}${fact.source ? ` [${fact.source}]` : ""}`).join("\n")
+    + "\n";
+}
+
+/** The screenshots available to bind, by id. Never a path — see `PlanRequest.media`. */
+function mediaBlock(request: PlanRequest): string {
+  const media = request.media ?? [];
+  if (!media.length) return "";
+  return `# Screenshots available\n\n`
+    + "Bind one with a `screen` block. Only these ids exist; anything else renders as an "
+    + "empty panel.\n\n"
+    + media.map((item) =>
+      `- \`${item.id}\` — ${item.aspect}${item.caption ? `, ${item.caption}` : ""}`
+      + (item.tags.length ? ` (${item.tags.join(", ")})` : "")).join("\n")
+    + "\n";
 }
 
 const SYSTEM_PROMPT = `You are a video strategist and scriptwriter. You produce a strict
@@ -152,6 +193,8 @@ ${request.kit.voice.bannedWords.join(", ")}
 
 ${request.knowledge.length ? `# Approved product facts\n\nThese are the only product claims you may make. Do not invent others, and never state a number that is not here.\n\n${request.knowledge.map((fact) => `- ${fact}`).join("\n")}` : "# Product facts\n\nNone are approved yet. Make no factual or numeric claims about the product at all — stay at the level of the idea."}
 
+${citableBlock(request)}
+${mediaBlock(request)}
 ${request.priorTheses.length ? `# Already covered\n\nThese videos exist. Do not repeat a thesis; either sharpen it into something new or take a different angle, and say which in your \`alternates\`.\n\n${request.priorTheses.map((prior) => `- ${prior.id}: ${prior.thesis}`).join("\n")}` : ""}
 
 # Output
@@ -177,6 +220,11 @@ Return JSON matching this shape exactly:
       "energy": "quiet|settled|lift|edge",
       "onScreen": "<the display copy, rendered verbatim on screen>",
       "phrases": [{"id": "<kebab-case, unique within the section>", "text": "<one spoken sentence>"}]
+      // optional, only where they earn their place — see rules 7 and 8:
+      // "screen": {"mediaId": "<an id listed above>", "fit": "contain|device-frame|browser-chrome",
+      //            "focus": [{"atMs": <ms into THIS section>, "rect": [x, y, w, h], "label": "<short>"}]}
+      // "data": {"shape": "bars|line|counter|share", "unit": "<e.g. %>", "caption": "<source note, rendered>",
+      //          "points": [{"label": "<short>", "value": <number>, "factId": "<an id listed above>"}]}
     }
   ],
   ${preset.requiresCta ? `"cta": {"label": "<benefit-led action>", "url": "${request.kit.website}"},` : ""}
@@ -212,7 +260,21 @@ Rules:
    It drives both the voice and the motion. Do not mark everything \`settled\`; a curve
    with no shape is the problem this field exists to solve. Equally, do not mark
    everything \`lift\` — a lift only reads as one against a settled line before it. Use
-   \`quiet\` at least once and end on \`lift\` unless there is a reason not to.`;
+   \`quiet\` at least once and end on \`lift\` unless there is a reason not to.
+9. **A \`screen\` block only where a real screenshot proves something.** ${preset.mediaPolicy === "required"
+    ? "This intent needs them: show the actual product where it makes a point, and give each one focus rects so the frame arrives at the detail the narration is describing."
+    : preset.mediaPolicy === "rare"
+      ? "This intent rarely wants one. Prefer staying at the level of the idea."
+      : "Optional. Use one only where seeing the thing beats describing it."}
+   Bind by \`mediaId\` from the list above and nothing else. \`focus\` rects are fractions of
+   the image, \`atMs\` is measured from the start of that section, and the times should track
+   the narration line that talks about each detail. A screenshot with no focus rects is a
+   still picture held for eight seconds; two or three rects is usually right.
+10. **A \`data\` block only where a number carries the argument.** Every \`value\` must cite a
+   \`factId\` from the figures listed above — the run is refused otherwise, so do not invent
+   an id, do not reuse one for a value it does not state, and do not round a figure to look
+   neater. \`caption\` is the source note and is rendered on screen, so it must say where
+   the number is from. If no figures are listed above, omit \`data\` entirely.${preset.mediaPolicy === "required" ? "" : "\n   Most videos need no chart at all; one good number beats four."}`;
 }
 
 function parseJson(text: string): unknown {

@@ -47,6 +47,71 @@ export const presenterSlotZ = z.object({
 export const ENERGIES = ["quiet", "settled", "lift", "edge"] as const;
 export type Energy = (typeof ENERGIES)[number];
 
+/**
+ * A rectangle in the source image's own pixels, and when to be looking at it.
+ *
+ * Fractions of the image rather than stage coordinates, because the same composition is
+ * re-emitted at four sizes and a pixel offset that framed a button in 9:16 frames
+ * whitespace in 16:9. `atMs` is relative to the section, not the video, so editing an
+ * earlier section's length does not silently push every zoom out of sync.
+ */
+export const focusRectZ = z.object({
+  atMs: z.number().min(0),
+  /** x, y, width, height as fractions of the image, 0–1. */
+  rect: z.tuple([
+    z.number().min(0).max(1),
+    z.number().min(0).max(1),
+    z.number().min(0).max(1),
+    z.number().min(0).max(1),
+  ]),
+  /** Optional caption for the detail being pointed at. Rendered if present. */
+  label: z.string().default(""),
+});
+
+/**
+ * A real screenshot on a stage, with the moments the picture should move in on.
+ *
+ * This is the core of long-form explainer: talking about a button while the button is
+ * a 12-pixel smudge in a full-page screenshot teaches nothing. `focus` drives a GSAP
+ * transform onto each rect so the frame arrives at the detail as the narration reaches it.
+ */
+export const screenZ = z.object({
+  mediaId: z.string(),
+  /**
+   * `contain` sits the image on the stage untouched. `device-frame` and `browser-chrome`
+   * wrap it, which reads as a product rather than an attachment — and both are drawn in
+   * CSS from brand tokens, never as a supplied image asset.
+   */
+  fit: z.enum(["contain", "device-frame", "browser-chrome"]).default("contain"),
+  focus: z.array(focusRectZ).default([]),
+});
+
+/**
+ * Numbers a section puts on screen, each tied to the fact that sources it.
+ *
+ * Deliberately data and not a `diagram` section kind. A kind would hand the composer a
+ * scene template to fill, which is the failure this whole architecture exists to escape —
+ * the previous studio chose from twelve hardcoded layouts by regex and produced one
+ * layout six times. Given values and a shape hint, the composer decides whether this is
+ * bars, a line, a counter or a single enormous figure, and lays it out to suit the scene.
+ *
+ * `factId` is what makes it publishable: every value traces to an approved fact carrying
+ * an evidence note, and `assertPlanClaimsAreSourced` refuses the plan otherwise. A chart
+ * is the easiest place in a video to state a number nobody can stand behind.
+ */
+export const dataSeriesZ = z.object({
+  /** A hint, not an instruction. The composer may choose a better form. */
+  shape: z.enum(["bars", "line", "counter", "share"]).default("bars"),
+  unit: z.string().default(""),
+  caption: z.string().default(""),
+  points: z.array(z.object({
+    label: z.string().min(1),
+    value: z.number(),
+    /** The approved fact this number came from. Required — no fact, no figure. */
+    factId: z.string().min(1),
+  })).min(1),
+});
+
 export const sectionZ = z.object({
   id: slug,
   kind: z.enum(SECTION_KINDS),
@@ -60,8 +125,16 @@ export const sectionZ = z.object({
   startMs: z.number().min(0).default(0),
   durationMs: z.number().min(0).default(0),
   mediaId: z.string().optional(),
+  /** A screenshot to hold and move through. Supersedes `mediaId` when both are set. */
+  screen: screenZ.optional(),
+  /** Figures to put on screen, each sourced. See `dataSeriesZ`. */
+  data: dataSeriesZ.optional(),
   slot: presenterSlotZ.optional(),
 });
+
+export type FocusRect = z.infer<typeof focusRectZ>;
+export type ScreenSpec = z.infer<typeof screenZ>;
+export type DataSeries = z.infer<typeof dataSeriesZ>;
 
 export const videoPlanZ = z.object({
   schemaVersion: z.literal(1),
