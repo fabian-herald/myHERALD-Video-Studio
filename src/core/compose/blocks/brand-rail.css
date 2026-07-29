@@ -1,0 +1,83 @@
+/*
+ * brand-rail — the persistent identity strip. MANDATORY in every composition.
+ * Present for the full duration on a high track index so it survives scene changes.
+ */
+
+.brand-rail {
+  z-index: 70;
+  top: var(--rail-top);
+  left: var(--gutter);
+  right: var(--gutter);
+  height: calc(var(--stage-h) * 0.031);
+  display: flex;
+  align-items: center;
+  gap: calc(var(--gutter) * 0.24);
+}
+
+.brand-seal {
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: calc(var(--stage-h) * 0.024);
+  height: calc(var(--stage-h) * 0.024);
+  border-radius: 50%;
+  color: var(--brand-aubergine);
+  background: var(--brand-yellow);
+  font: 950 calc(var(--stage-h) * 0.010) / 1 var(--brand-font-body);
+}
+
+.brand-seal img {
+  width: 78%;
+  height: 78%;
+  object-fit: contain;
+}
+
+/*
+ * A real mark brings its own shape and its own transparency.
+ *
+ * The disc above exists only for the letterform fallback. Left painted behind a
+ * transparent PNG it shows through the mark's rounded corners as four dark wedges,
+ * which is exactly what a "transparent" logo is not supposed to do.
+ */
+.brand-seal:has(img) {
+  background: none;
+  border-radius: 0;
+}
+.brand-seal:has(img) img { width: 100%; height: 100%; }
+
+.brand-rail strong {
+  font-size: calc(var(--brand-size-kicker) * 1.32);
+  letter-spacing: -0.02em;
+}
+
+/*
+ * A mark in the rail has a floor, whatever a composition sets on it.
+ *
+ * One shipped at 1.6% of frame height. Inside a lockup that gives its tagline 45 of
+ * 192 pixels, that rendered the tagline at about seven pixels — a logo that is present
+ * but cannot be read. Choosing the right asset for the size is guidance in the brief;
+ * this is the guarantee that holds when the guidance is not followed.
+ */
+.brand-rail img,
+.brand-rail .rail-mark {
+  min-height: calc(var(--stage-h) * 0.030);
+}
+
+.rail-rule {
+  flex: 1;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.22);
+}
+
+.brand-rail small {
+  color: rgba(255, 255, 255, 0.68);
+  font: 700 var(--brand-size-label) var(--brand-font-mono);
+  letter-spacing: 0.16em;
+}
+
+/* On a light field the rail inverts rather than disappearing. */
+.brand-rail.on-light strong,
+.brand-rail.on-light small { color: var(--brand-ink); }
+.brand-rail.on-light .rail-rule { background: rgba(0, 0, 0, 0.2); }
+.brand-rail.on-light .brand-seal { color: var(--brand-paper); background: var(--brand-aubergine); }
+.brand-rail.on-light .brand-seal:has(img) { background: none; }

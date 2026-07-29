@@ -1,0 +1,49 @@
+/*
+ * presenter-slot — the same element in both tiers.
+ *
+ * Unbound it styles itself as a labelled placeholder, so the free local render
+ * IS the approval artefact: the owner watches the finished video with real audio
+ * and a marked hole, then decides whether to spend money filling it. Bound, the
+ * assembler injects a <video> and sets data-bound. One code path, no preview mode.
+ */
+
+.presenter-slot {
+  position: relative;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+}
+
+.presenter-slot:not([data-bound]) {
+  border: 3px dashed var(--brand-yellow);
+  background: rgba(0, 0, 0, 0.35);
+}
+
+.presenter-slot:not([data-bound])::after {
+  content: attr(data-placeholder-label);
+  color: var(--brand-yellow);
+  font: 800 var(--brand-size-kicker) var(--brand-font-mono);
+  letter-spacing: 0.18em;
+  text-align: center;
+}
+
+.presenter-slot video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* Freestanding cutout — needs an alpha-capable avatar. */
+.presenter-slot.style-cutout { background: none; }
+.presenter-slot.style-cutout video { object-fit: contain; }
+
+/* Framed inset — the fallback whenever transparency is unavailable. */
+.presenter-slot.style-inset {
+  border-radius: 0;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.42);
+}
+.presenter-slot.style-inset[data-bound] { border: 6px solid var(--brand-yellow); }
+
+/* Full-frame presenter — the scene is the person. */
+.presenter-slot.style-full { position: absolute; inset: 0; }

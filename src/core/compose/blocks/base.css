@@ -1,0 +1,104 @@
+/*
+ * base — the stage, the clip contract, and the scene shell.
+ * Primitive only. It defines WHERE a scene may live, never WHAT it looks like.
+ */
+
+* { box-sizing: border-box; }
+
+html, body {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+}
+
+body {
+  background: var(--brand-deep);
+  font-family: var(--brand-font-body);
+}
+
+#stage {
+  position: relative;
+  width: var(--stage-w);
+  height: var(--stage-h);
+  overflow: hidden;
+  color: var(--brand-paper);
+  background: var(--brand-deep);
+
+  /* Layout rhythm, all derived so a shorter canvas stays composed. */
+
+  /*
+   * Where a full-height edge thread runs, and how much room it owns.
+   *
+   * The spine is the one element that crosses every scene, so it cannot share the
+   * gutter with content — it was previously placed at 0.95 of the gutter while scenes
+   * padded by a full gutter, leaving labels and the logo half a pixel off a moving
+   * yellow line. The lane is declared first and the content inset is derived from it,
+   * so nothing can be positioned into the thread by accident.
+   */
+  --spine-x: calc(var(--stage-w) * 0.034);
+  --spine-lane: calc(var(--stage-w) * 0.028);
+  --gutter: calc(var(--spine-x) + var(--spine-lane));
+  --rail-top: calc(var(--stage-h) * 0.032);
+  --scene-top: calc(var(--stage-h) * 0.095);
+  /* Reserved for captions. Sized for a three-line page, which is the worst case. */
+  --caption-band: calc(var(--stage-h) * 0.30);
+}
+
+/* Every timed element carries class="clip" — the runtime drives visibility from it. */
+.clip { position: absolute; }
+
+/*
+ * A scene is a three-row shell: masthead, body, footer. Authoring against flow
+ * rather than absolute top offsets is what lets one composition serve 9:16, 4:5
+ * and 1:1 without being re-authored.
+ */
+.scene {
+  inset: 0;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  gap: calc(var(--gutter) * 0.5);
+  padding:
+    var(--scene-top)
+    calc(var(--gutter) * 0.9)
+    var(--caption-band)
+    var(--gutter);
+  overflow: hidden;
+}
+
+/* Opt out when a scene genuinely owns the full canvas (a colour field, a wipe). */
+.scene.bleed { padding: 0; }
+
+.scene > .scene-body {
+  display: grid;
+  align-content: center;
+  gap: calc(var(--gutter) * 0.55);
+  min-height: 0;
+}
+
+/* Full-bleed colour fields sit behind everything else inside their scene. */
+.field {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+}
+.scene > *:not(.field) { position: relative; z-index: 1; }
+
+h1, h2, p { margin: 0; }
+
+h1 {
+  font: 500 var(--brand-size-h1) / 0.91 var(--brand-font-display);
+  letter-spacing: -0.048em;
+}
+h2 {
+  font: 500 var(--brand-size-h2) / 0.96 var(--brand-font-display);
+  letter-spacing: -0.04em;
+}
+h1 em, h2 em {
+  color: var(--brand-lilac);
+  font-style: italic;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { animation: none !important; }
+}

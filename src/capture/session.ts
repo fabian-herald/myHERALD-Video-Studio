@@ -1,0 +1,139 @@
+import fs from "node:fs/promises";
+import path from "node:path";
+import {chromium, type Browser, type BrowserContext, type Page} from "playwright";
+import {DEVICE_PRESETS, type DevicePreset} from "../core/media/library.ts";
+import {DATA_DIR, ROOT} from "../core/paths.ts";
+import {FREEZE_CSS, HIDE_DEV_OVERLAYS_CSS, REMOVE_DEV_OVERLAYS_JS} from "./freeze.ts";
+
+export const AUTH_DIR = path.join(ROOT, ".auth");
+export const AUTH_STATE = path.join(AUTH_DIR, "capture.json");
+export const HAR_DIR = path.join(DATA_DIR, "capture", "har");
+
+/** Time is frozen so a clock, a relative timestamp or a countdown never drifts. */
+export const FROZEN_TIME = "2026-04-17T09:24:00.000Z";
+
+export type CaptureMode = "live" | "record" | "replay";
+
+export interface CaptureConfig {
+  /** Where the app runs, e.g. http://localhost:3000 */
+  baseUrl: string;
+  /**
+   * The one workspace captures may touch. Required in live and record mode: a
+   * screenshot of the wrong workspace is a data leak that ships in a video.
+   */
+  workspaceId?: string;
+  preset: DevicePreset;
+  mode: CaptureMode;
+  /** Bundle name under data/capture/har. One bundle per capture session. */
+  bundle: string;
+}
+
+export interface CaptureSession {
+  browser: Browser;
+  context: BrowserContext;
+  page: Page;
+  config: CaptureConfig;
+  close(): Promise<void>;
+}
+
+export function presetOrThrow(id: string): DevicePreset {
+  const preset = DEVICE_PRESETS[id];
+  if (!preset) {
+    throw new Error(`Unknown device preset "${id}". Known: ${Object.keys(DEVICE_PRESETS).join(", ")}.`);
+  }
+  return preset;
+}
+
+/**
+ * Open a browser prepared for deterministic capture.
+ *
+ * `record` drives the real app once and writes a HAR bundle; `replay` serves every
+ * request from that bundle, so later captures need no running app, no database and
+ * no seeded workspace. That is the answer to "how do I fill these workspaces": you
+ * fill them once by using the product, we freeze the result, and the screenshots
+ * stop changing underneath the videos that use them.
+ */
+export async function openCaptureSession(config: CaptureConfig): Promise<CaptureSession> {
+  if (config.mode !== "replay" && !config.workspaceId) {
+    throw new Error(
+      "Live capture needs an explicit workspace id. Refusing to photograph whatever "
+      + "workspace happens to be signed in.",
+    );
+  }
+
+  const harPath = path.join(HAR_DIR, `${config.bundle}.har`);
+  if (config.mode === "replay" && !await exists(harPath)) {
+    throw new Error(
+      `No recording at ${path.relative(ROOT, harPath)}. Run \`npm run capture -- record\` once `
+      + "against the live app first.",
+    );
+  }
+
+  const browser = await chromium.launch();
+  const context = await browser.newContext({
+    viewport: {width: config.preset.width, height: config.preset.height},
+    deviceScaleFactor: config.preset.deviceScaleFactor,
+    isMobile: config.preset.isMobile,
+    hasTouch: config.preset.isMobile,
+    colorScheme: "light",
+    reducedMotion: "reduce",
+    locale: "de-DE",
+    timezoneId: "Europe/Berlin",
+    storageState: await exists(AUTH_STATE) ? AUTH_STATE : undefined,
+    ...(config.mode === "record"
+      ? {recordHar: {path: harPath, mode: "full" as const, content: "embed" as const}}
+      : {}),
+  });
+
+  if (config.mode === "replay") {
+    // Serve every request, including the top-level document, from the bundle.
+    // Next.js renders most of this on the server, so intercepting only /api would
+    // leave the page blank.
+    await context.routeFromHAR(harPath, {notFound: "abort", update: false});
+  }
+
+  await context.addInitScript(`
+    Date.now = () => new Date(${JSON.stringify(FROZEN_TIME)}).getTime();
+    const FixedDate = Date;
+    globalThis.Date = class extends FixedDate {
+      constructor(...args) {
+        super(...(args.length ? args : [${JSON.stringify(FROZEN_TIME)}]));
+      }
+      static now() { return new FixedDate(${JSON.stringify(FROZEN_TIME)}).getTime(); }
+    };
+    Math.random = () => 0.42;
+  `);
+
+  const page = await context.newPage();
+  return {
+    browser,
+    context,
+    page,
+    config,
+    async close() {
+      await context.close();
+      await browser.close();
+    },
+  };
+}
+
+/** Navigate, settle, then strip everything that only exists because this is a dev build. */
+export async function gotoAndSettle(session: CaptureSession, route: string): Promise<void> {
+  const url = new URL(route, session.config.baseUrl);
+  if (session.config.workspaceId) url.searchParams.set("workspace", session.config.workspaceId);
+
+  await session.page.goto(url.toString(), {waitUntil: "networkidle", timeout: 45_000});
+  await session.page.addStyleTag({content: `${FREEZE_CSS}\n${HIDE_DEV_OVERLAYS_CSS}`});
+  await session.page.evaluate(REMOVE_DEV_OVERLAYS_JS);
+  await session.page.evaluate(() => document.fonts.ready);
+  // One frame for the injected styles to take effect before the shutter.
+  await session.page.waitForTimeout(120);
+}
+
+export async function saveAuthState(context: BrowserContext): Promise<string> {
+  await fs.mkdir(AUTH_DIR, {recursive: true});
+  await context.storageState({path: AUTH_STATE});
+  return AUTH_STATE;
+}
+
+const exists = (target: string) => fs.access(target).then(() => true).catch(() => false);

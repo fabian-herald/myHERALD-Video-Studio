@@ -1,0 +1,56 @@
+/*
+ * cta-lockup — the closing identity frame. MANDATORY whenever the plan has a cta
+ * section. It is the last thing a viewer sees, so it is a block, not an invention.
+ */
+
+.cta-lockup {
+  display: grid;
+  justify-items: start;
+  gap: calc(var(--gutter) * 0.35);
+  color: var(--brand-ink);
+}
+
+.cta-seal {
+  display: grid;
+  place-items: center;
+  width: calc(var(--stage-h) * 0.052);
+  height: calc(var(--stage-h) * 0.052);
+  border-radius: 50%;
+  color: var(--brand-aubergine);
+  background: var(--brand-yellow);
+  font: 950 calc(var(--stage-h) * 0.022) / 1 var(--brand-font-body);
+}
+.cta-seal img { width: 76%; height: 76%; object-fit: contain; }
+
+/* Same rule as the rail seal: never paint a field behind a supplied mark. */
+.cta-seal:has(img) {
+  background: none;
+  border-radius: 0;
+}
+.cta-seal:has(img) img { width: 100%; height: 100%; }
+
+.cta-lockup .wordmark {
+  font-size: calc(var(--brand-size-kicker) * 1.8);
+  font-weight: 900;
+  letter-spacing: -0.01em;
+}
+
+.cta-lockup h1 em { color: var(--brand-aubergine); }
+
+.cta-url {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6em;
+  margin-top: calc(var(--gutter) * 0.3);
+  padding: 0.5em 0.66em;
+  color: var(--brand-paper);
+  background: var(--brand-aubergine);
+  font: 900 calc(var(--brand-size-lead) * 0.74) var(--brand-font-body);
+}
+.cta-url b { color: var(--brand-yellow); }
+
+/* On the dark field the lockup inverts. */
+.cta-lockup.on-dark { color: var(--brand-paper); }
+.cta-lockup.on-dark h1 em { color: var(--brand-lilac); }
+.cta-lockup.on-dark .cta-url { color: var(--brand-ink); background: var(--brand-yellow); }
+.cta-lockup.on-dark .cta-url b { color: var(--brand-aubergine); }

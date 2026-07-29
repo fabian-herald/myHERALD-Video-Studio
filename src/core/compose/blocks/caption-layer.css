@@ -1,0 +1,41 @@
+/*
+ * caption-layer — MANDATORY. animation.js fills it from window.__captionData.
+ * The band it occupies is reserved by .scene's bottom padding, so scene copy
+ * can never collide with a caption.
+ */
+
+/*
+ * Anchored to the bottom of its band so a page that wraps to three lines grows
+ * downward into reserved space rather than upward into the scene.
+ */
+.caption-layer {
+  z-index: 90;
+  left: calc(var(--gutter) * 0.85);
+  right: calc(var(--gutter) * 0.85);
+  bottom: calc(var(--stage-h) * 0.11);
+  height: calc(var(--stage-h) * 0.17);
+  display: grid;
+  place-items: end center;
+  pointer-events: none;
+}
+
+.caption-page {
+  position: absolute;
+  bottom: 0;
+  max-width: 92%;
+  margin: 0;
+  padding: 0.3em 0.42em 0.34em;
+  border-radius: 0.31em;
+  color: var(--brand-paper);
+  /* A tinted brand scrim, not flat black. color-mix keeps this a token, so it
+     satisfies the palette lint while still reading as the brand's dark. */
+  background: color-mix(in srgb, var(--brand-deep) 92%, transparent);
+  text-align: center;
+  text-wrap: balance;
+  font: 850 var(--brand-size-caption) / 0.98 var(--brand-font-body);
+  letter-spacing: -0.039em;
+}
+
+.caption-page .word { display: inline; color: var(--brand-paper); }
+.caption-page .word + .word::before { content: " "; }
+/* The active word is recoloured by the timeline, not by CSS state. */

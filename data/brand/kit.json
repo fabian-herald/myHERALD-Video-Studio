@@ -1,0 +1,232 @@
+{
+  "schemaVersion": 1,
+  "name": "myHERALD",
+  "tagline": "Autonomous AI Content Engine",
+  "website": "myherald.io",
+  "logos": [
+    {
+      "id": "seal",
+      "role": "seal",
+      "theme": "any",
+      "file": "logos/seal.png",
+      "safeAreaPct": 0.3,
+      "width": 1024,
+      "height": 1024,
+      "label": "The mark alone: yellow square, serif H."
+    },
+    {
+      "id": "wordmark-light",
+      "role": "wordmark",
+      "theme": "light",
+      "file": "logos/wordmark-light.png",
+      "safeAreaPct": 0.25,
+      "width": 1964,
+      "height": 588,
+      "label": "myHERALD in ink, for light fields."
+    },
+    {
+      "id": "wordmark-dark",
+      "role": "wordmark",
+      "theme": "dark",
+      "file": "logos/wordmark-dark.png",
+      "safeAreaPct": 0.25,
+      "width": 1964,
+      "height": 588,
+      "label": "myHERALD in cream, for the deep purple field."
+    },
+    {
+      "id": "lockup-light",
+      "role": "lockup",
+      "theme": "light",
+      "file": "logos/lockup-light.png",
+      "safeAreaPct": 0.25,
+      "width": 1040,
+      "height": 192,
+      "label": "Seal, wordmark and tagline, for light fields."
+    },
+    {
+      "id": "lockup-dark",
+      "role": "lockup",
+      "theme": "dark",
+      "file": "logos/lockup-dark.png",
+      "safeAreaPct": 0.25,
+      "width": 1040,
+      "height": 192,
+      "label": "Seal, wordmark and tagline, for dark fields."
+    },
+    {
+      "id": "lockup-plate",
+      "role": "lockup",
+      "theme": "any",
+      "file": "logos/lockup-plate.png",
+      "safeAreaPct": 0.25,
+      "width": 1013,
+      "height": 280,
+      "label": "Lockup on its own white plate. Carries its own background, so it reads on any field."
+    }
+  ],
+  "color": {
+    "tokens": {
+      "purple": "#2a1646",
+      "purpleHover": "#3d2460",
+      "yellow": "#fcd20c",
+      "lightYellow": "#faf0b5",
+      "lightPurple": "#bc8dd9",
+      "nearBlack": "#1c1425",
+      "background": "#fafaf8",
+      "surfaceWarm": "#f8f7f4",
+      "card": "#ffffff",
+      "purpleTint": "#f8f5fc",
+      "purple50": "#f3eef8",
+      "purple100": "#e8ddf2",
+      "purple200": "#d4bfe6",
+      "border": "#e8e0f0",
+      "borderStrong": "#d0c4dc",
+      "muted": "#8a7a96"
+    },
+    "pairs": [
+      {
+        "fg": "purple",
+        "bg": "background",
+        "minRatio": 7,
+        "usage": "headline type on the default paper ground"
+      },
+      {
+        "fg": "nearBlack",
+        "bg": "background",
+        "minRatio": 7,
+        "usage": "body copy on paper"
+      },
+      {
+        "fg": "muted",
+        "bg": "background",
+        "minRatio": 3,
+        "usage": "large labels only — this pair is 3.79:1 and does not meet AA for body-size text"
+      },
+      {
+        "fg": "purple",
+        "bg": "card",
+        "minRatio": 7,
+        "usage": "headline type on an elevated white card"
+      },
+      {
+        "fg": "nearBlack",
+        "bg": "yellow",
+        "minRatio": 7,
+        "usage": "type on the attention field"
+      },
+      {
+        "fg": "purple",
+        "bg": "yellow",
+        "minRatio": 4.5,
+        "usage": "logo lockup and labels on yellow"
+      },
+      {
+        "fg": "purple",
+        "bg": "purple50",
+        "minRatio": 7,
+        "usage": "the soft secondary tier"
+      },
+      {
+        "fg": "card",
+        "bg": "purple",
+        "minRatio": 7,
+        "usage": "inverse ground — use sparingly, as punctuation"
+      },
+      {
+        "fg": "yellow",
+        "bg": "purple",
+        "minRatio": 4.5,
+        "usage": "accent on the inverse field"
+      },
+      {
+        "fg": "lightPurple",
+        "bg": "purple",
+        "minRatio": 4.5,
+        "usage": "italic emphasis on the inverse field"
+      }
+    ]
+  },
+  "type": {
+    "stacks": {
+      "display": "\"DM Serif Display\", Georgia, serif",
+      "body": "\"DM Sans\", system-ui, sans-serif",
+      "mono": "\"JetBrains Mono\", ui-monospace, monospace"
+    },
+    "scale": {
+      "display": 112,
+      "h1": 92,
+      "h2": 62,
+      "lead": 44,
+      "body": 33,
+      "caption": 74,
+      "kicker": 30,
+      "label": 24,
+      "sectionNumber": 70
+    }
+  },
+  "motion": {
+    "easeIn": "power2.in",
+    "easeOut": "power3.out",
+    "sceneEnterMs": 440,
+    "staggerMs": 45,
+    "maxSimultaneous": 6,
+    "forbidden": [
+      "bounce",
+      "spin",
+      "elastic overshoot",
+      "typewriter reveals",
+      "confetti"
+    ]
+  },
+  "voice": {
+    "toneRules": [
+      "Editorial, not salesy. Write like a thoughtful editor: short sentences, real examples, no jargon soup.",
+      "Confident, not cocky. No superlatives. The product does the work, so quiet confidence reads stronger than 'world-class'.",
+      "Precise, not vague. 'Writes three posts a week' beats 'boosts productivity'. Concrete always wins.",
+      "Show receipts rather than claims. Name the actual thing that happened.",
+      "Stay human. Write for a person, not a persona. Admitting what is still rough is on-brand.",
+      "Never use an em-dash (—) in copy. In 2026 it reads as machine-written. Use a comma, a parenthesis, or a full stop. A spaced en-dash as a German Gedankenstrich is fine.",
+      "Light and warm, not corporate. Paper is the ground; deep purple is a detail colour, not a field."
+    ],
+    "bannedWords": [
+      "leverage",
+      "revolutionize",
+      "revolutionieren",
+      "cutting-edge",
+      "world-class",
+      "enterprise-grade",
+      "seamless",
+      "nahtlos",
+      "game-changer",
+      "unlock",
+      "supercharge",
+      "empower",
+      "innovativ",
+      "bahnbrechend"
+    ],
+    "addressAs": "you",
+    "narrationStyle": "Warm, credible, founder-to-founder. Conversational and restrained, crisp articulation, natural micro-pauses. No hype, no radio-announcer tone, no rising sell.",
+    "narratorRegister": "one man, low-to-mid register, speaking pitch around 140 hertz"
+  },
+  "doDont": {
+    "do": [
+      "Let paper carry the frame. Cream and white do the heavy lifting; yellow is the one thing the eye lands on.",
+      "Use deep purple for headline type, structure and detail, and only rarely as a full field.",
+      "Set headlines in DM Serif Display and labels in JetBrains Mono. The contrast between them is the identity.",
+      "Reserve the yellow highlight for one phrase per frame. It is earned, not given.",
+      "Carry one continuous element through the whole piece so it reads as one thought.",
+      "Set the brand as lowercase 'my' in the sans and 'HERALD' in the serif.",
+      "Show the real product where it proves a point."
+    ],
+    "dont": [
+      "Never invent a product interface. With no real screenshot, stay conceptual.",
+      "Never make deep purple the default ground for every scene. Since v1.1 the inverse field is punctuation, not layout: roughly one scene in six, not five in six.",
+      "Never centre every scene, and never repeat a layout in adjacent scenes.",
+      "Never use a colour outside the palette, and never introduce a second accent.",
+      "Never stretch, rotate, outline or recolour the logo.",
+      "Never state a number that no approved fact backs.",
+      "Never imply anything publishes without a human approving it."
+    ]
+  }
+}

@@ -1,0 +1,19 @@
+node_modules/
+.DS_Store
+
+# Every env file is secret by default; the template is the one exception. Listing
+# .env and .env.local individually let a .env.production or .env.staging through.
+.env
+.env.*
+!.env.example
+
+# Runtime state and generated media.
+data/videos/
+data/media/screenshots/
+data/media/recordings/
+data/media/uploads/
+data/knowledge/sources.json
+data/capture/
+data/brand/tokens.css
+out/
+.auth/

@@ -1,0 +1,157 @@
+import fs from "node:fs/promises";
+import path from "node:path";
+import {addMedia, aspectOf, type MediaItem} from "../core/media/library.ts";
+import {MEDIA_DIR} from "../core/paths.ts";
+import {hash} from "../core/util/exec.ts";
+import {gotoAndSettle, type CaptureSession} from "./session.ts";
+
+export interface ShotSpec {
+  /** Route inside the app, e.g. "/kanban". */
+  route: string;
+  /** Short slug used in the media id. */
+  name: string;
+  /** What this screenshot is evidence of. Shown to the composer. */
+  caption: string;
+  /** Wait for this selector before shooting, so the shot is never of a spinner. */
+  waitFor?: string;
+  /** Photograph one element instead of the whole viewport. */
+  clipTo?: string;
+  tags?: string[];
+}
+
+export interface ShotResult {
+  item: MediaItem;
+  skipped?: string;
+}
+
+/**
+ * A library recorder, not a beat recorder.
+ *
+ * Screenshots are captured once into a reusable library and bound to sections later,
+ * which is what lets a single capture session serve many videos. Shots are stills by
+ * choice: a live screen recording of a real app is fragile in ways a still never is.
+ */
+export async function captureShots(
+  session: CaptureSession,
+  shots: readonly ShotSpec[],
+  onLog: (line: string) => void = () => {},
+): Promise<ShotResult[]> {
+  const screenshotDir = path.join(MEDIA_DIR, "screenshots");
+  await fs.mkdir(screenshotDir, {recursive: true});
+
+  const results: ShotResult[] = [];
+  for (const shot of shots) {
+    const id = `${shot.name}-${session.config.preset.id}`;
+    try {
+      await gotoAndSettle(session, shot.route);
+
+      if (shot.waitFor) {
+        await session.page.waitForSelector(shot.waitFor, {state: "visible", timeout: 15_000});
+      }
+
+      const target = shot.clipTo ? session.page.locator(shot.clipTo).first() : session.page;
+      const file = path.join("screenshots", `${id}.png`);
+      await target.screenshot({path: path.join(MEDIA_DIR, file), scale: "device"});
+
+      const {width, height} = await session.page.evaluate(() => ({
+        width: window.innerWidth,
+        height: window.innerHeight,
+      }));
+
+      const item: MediaItem = {
+        id,
+        kind: "screenshot",
+        file,
+        width: shot.clipTo ? await measure(session, shot.clipTo, "width") : width,
+        height: shot.clipTo ? await measure(session, shot.clipTo, "height") : height,
+        caption: shot.caption,
+        tags: [...(shot.tags ?? []), session.config.preset.id],
+        safeToShow: true,
+        state: "approved",
+        source: {
+          type: "playwright",
+          url: shot.route,
+          preset: session.config.preset.id,
+          capturedAt: new Date().toISOString(),
+        },
+      };
+
+      await addMedia(item);
+      onLog(`  shot        ${id} · ${item.width}×${item.height} · ${aspectOf(item)}`);
+      results.push({item});
+    } catch (error) {
+      // Fail loudly per shot but keep going: one missing selector should not cost
+      // the whole session, and a silently substituted placeholder would be worse.
+      const reason = (error as Error).message.split("\n")[0] ?? "unknown";
+      onLog(`  shot        ${id} FAILED · ${reason}`);
+      results.push({
+        skipped: reason,
+        item: {
+          id,
+          kind: "screenshot",
+          file: "",
+          width: 0,
+          height: 0,
+          caption: shot.caption,
+          tags: [],
+          safeToShow: false,
+          state: "stale",
+          source: {type: "playwright", url: shot.route, preset: session.config.preset.id, capturedAt: new Date().toISOString()},
+        },
+      });
+    }
+  }
+  return results;
+}
+
+async function measure(session: CaptureSession, selector: string, side: "width" | "height"): Promise<number> {
+  const box = await session.page.locator(selector).first().boundingBox();
+  return Math.round((box?.[side] ?? 0) * session.config.preset.deviceScaleFactor);
+}
+
+/**
+ * The myHERALD surfaces worth showing. Deliberately a small, curated list: a video
+ * needs three or four pieces of real evidence, not a tour of every screen.
+ */
+export const MYHERALD_SHOTS: ShotSpec[] = [
+  {
+    route: "/dashboard",
+    name: "dashboard",
+    caption: "The dashboard: what is running and what is waiting on a decision.",
+    tags: ["overview"],
+  },
+  {
+    route: "/kanban",
+    name: "kanban",
+    caption: "The content board, from idea to scheduled.",
+    tags: ["workflow"],
+  },
+  {
+    route: "/review",
+    name: "review",
+    caption: "The review queue, where a draft waits for a human yes.",
+    tags: ["approval", "proof"],
+  },
+  {
+    route: "/calendar",
+    name: "calendar",
+    caption: "A connected week rather than seven empty slots.",
+    tags: ["planning"],
+  },
+  {
+    route: "/knowledge",
+    name: "knowledge",
+    caption: "The knowledge base the writing is grounded in.",
+    tags: ["context"],
+  },
+  {
+    route: "/chat",
+    name: "chat",
+    caption: "Handing over one rough thought.",
+    tags: ["input"],
+  },
+];
+
+/** Deterministic id for a capture bundle, so a re-record overwrites the same file. */
+export const bundleName = (baseUrl: string, presetId: string) =>
+  `${presetId}-${hash({baseUrl}, 6)}`;

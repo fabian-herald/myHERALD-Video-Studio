@@ -1,0 +1,64 @@
+{
+  "schemaVersion": 1,
+  "id": "studio",
+  "kind": "studio",
+  "title": "Studio",
+  "createdAt": "2026-07-28T15:12:57.761Z",
+  "updatedAt": "2026-07-28T15:24:18.880Z",
+  "sessionId": "9b24e9ce-106e-46a2-bd63-f435ac26b835",
+  "messages": [
+    {
+      "id": "cd75a16ebc",
+      "role": "user",
+      "text": "Was habe ich zum Thema Content-Kalender schon gemacht? Nur nachschauen und antworten, kein neues Video bauen.",
+      "at": "2026-07-28T15:24:18.880Z"
+    },
+    {
+      "id": "3221814254",
+      "role": "assistant",
+      "text": "I'll search the video archive.",
+      "at": "2026-07-28T15:24:18.880Z"
+    },
+    {
+      "id": "ec64505733",
+      "role": "event",
+      "text": "ToolSearch",
+      "at": "2026-07-28T15:24:18.880Z",
+      "tool": "ToolSearch"
+    },
+    {
+      "id": "ff5d4763d1",
+      "role": "event",
+      "text": "checking what already exists",
+      "at": "2026-07-28T15:24:18.880Z",
+      "tool": "mcp__studio__search_videos"
+    },
+    {
+      "id": "96105a81a0",
+      "role": "event",
+      "text": "ledger — 3 related of 4 videos",
+      "at": "2026-07-28T15:24:18.880Z",
+      "tool": "search_videos"
+    },
+    {
+      "id": "fe96134363",
+      "role": "event",
+      "text": "checking what already exists",
+      "at": "2026-07-28T15:24:18.880Z",
+      "tool": "mcp__studio__search_videos"
+    },
+    {
+      "id": "45bb24a4f3",
+      "role": "event",
+      "text": "ledger — 3 related of 4 videos",
+      "at": "2026-07-28T15:24:18.880Z",
+      "tool": "search_videos"
+    },
+    {
+      "id": "17ba8cefb5",
+      "role": "assistant",
+      "text": "Zum Kalender-Thema gibt es genau ein Video: **„Eine Content-Woche ist kein Kalenderproblem mit sieben Slots, sondern ein Gedanke, der sieben Winkel braucht, bis er sitzt.\"** (Thought Leadership, heute 13:04).\n\nDrumherum liegen zwei nah verwandte Stücke, beide ebenfalls von heute: „Content ist kein Mengenproblem, sondern ein Denkproblem\" (12:35) und fast deckungsgleich „Content scheitert nicht an zu wenig Output, sondern daran, dass der eine gute Gedanke nie den Weg aus dem Kopf findet\" (12:41). Die beiden sagen praktisch dasselbe — falls du weiter in die Richtung willst, wäre ein neuer Winkel nötig, nicht eine dritte Variante.",
+      "at": "2026-07-28T15:24:18.880Z"
+    }
+  ]
+}

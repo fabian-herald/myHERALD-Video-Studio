@@ -1,0 +1,113 @@
+/*
+ * editorial — the typographic furniture that makes a frame read as a printed
+ * page rather than a slide. All optional; use what the scene needs.
+ */
+
+.kicker {
+  color: var(--brand-yellow);
+  font: 800 var(--brand-size-kicker) var(--brand-font-mono);
+  letter-spacing: 0.19em;
+  text-transform: uppercase;
+}
+.kicker.on-light { color: var(--brand-aubergine); }
+
+.section-number {
+  position: absolute;
+  top: var(--scene-top);
+  right: calc(var(--gutter) * 0.9);
+  color: rgba(255, 255, 255, 0.48);
+  font: 700 var(--brand-size-section-number) / 1 var(--brand-font-display);
+}
+.section-number.on-light { color: rgba(0, 0, 0, 0.5); }
+
+/* Corner slugs. Purely atmospheric — never put meaning here. */
+.folio {
+  position: absolute;
+  bottom: calc(var(--stage-h) * 0.04);
+  color: rgba(255, 255, 255, 0.46);
+  font: 700 var(--brand-size-label) var(--brand-font-mono);
+  letter-spacing: 0.2em;
+}
+.folio.left { left: var(--gutter); }
+.folio.right { right: calc(var(--gutter) * 0.85); }
+
+.editorial-grid {
+  position: absolute;
+  inset: 0;
+  opacity: 0.16;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.16) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.16) 1px, transparent 1px);
+  background-size: 10% 10%;
+}
+
+/*
+ * One continuous accent that carries through the whole piece — the brand's signature.
+ *
+ * It runs in its own lane at --spine-x, never as a fraction of the content inset.
+ * Placed at 0.95 of the gutter it landed half a pixel from the text it was meant to
+ * sit beside, so every label and the logo read as touching a moving yellow line.
+ */
+.signal-spine {
+  position: absolute;
+  top: 0;
+  left: var(--spine-x);
+  width: 3px;
+  height: 100%;
+  background: rgba(255, 255, 255, 0.12);
+}
+.signal-spine .spine-line {
+  position: absolute;
+  inset: 0;
+  display: block;
+  transform-origin: top;
+  background: var(--brand-yellow);
+}
+.signal-spine .spine-node {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: 21px;
+  height: 21px;
+  border: 5px solid var(--brand-deep);
+  border-radius: 50%;
+  background: var(--brand-yellow);
+  transform: translate(-50%, -50%);
+}
+
+/* A labelled hairline. Good for stating a before → after relationship. */
+.rule {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--gutter) * 0.2);
+  color: rgba(255, 255, 255, 0.68);
+  font: 700 var(--brand-size-label) var(--brand-font-mono);
+  letter-spacing: 0.14em;
+}
+.rule i { width: 9px; height: 9px; border-radius: 50%; background: var(--brand-yellow); flex: 0 0 auto; }
+.rule b { height: 1px; flex: 1; background: rgba(255, 255, 255, 0.28); }
+.rule.on-light { color: var(--brand-muted); }
+.rule.on-light b { background: var(--brand-rule); }
+
+/* Paper card — for quoted, captured or otherwise "real" material. */
+.paper-card {
+  padding: calc(var(--gutter) * 0.5) calc(var(--gutter) * 0.55);
+  color: var(--brand-ink);
+  background: var(--brand-paper);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.28);
+}
+.paper-card .label {
+  color: var(--brand-muted);
+  font: 800 var(--brand-size-label) var(--brand-font-mono);
+  letter-spacing: 0.16em;
+}
+
+/* A hard accent tab, used to flag one word or one status. */
+.tag {
+  display: inline-block;
+  padding: 0.35em 0.55em 0.3em;
+  color: var(--brand-ink);
+  background: var(--brand-yellow);
+  font: 900 var(--brand-size-kicker) var(--brand-font-mono);
+  letter-spacing: 0.13em;
+}
