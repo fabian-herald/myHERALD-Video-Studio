@@ -3,7 +3,8 @@ import {assembleNarration, masterNarration, AUDIO_MASTERING_VERSION, type Narrat
 import {retimeFromTake, retimePlan, SILENT_SECTION_MIN_MS, type MeasuredPhrase} from "../plan/retime.ts";
 import {allPhrases, type VideoPlan} from "../plan/schema.ts";
 import {alignPhrases, verifyAlignment} from "./align.ts";
-import {arcDirection, deliveryFor, SAY_DIRECTION} from "./energy.ts";
+import {arcDirection, deliveryFor} from "./energy.ts";
+import {fadedOut, measureFade, MAX_FADE_DB} from "./level.ts";
 import {centreHz, closestToCentre, medianF0, pitchOutlier, semitones} from "./pitch.ts";
 import {implausibleClip} from "./plausible.ts";
 import {ttsProvider, type SynthesisRequest, type TtsProvider} from "./provider.ts";
@@ -33,6 +34,13 @@ export interface NarrationResult {
   model: string;
   clipCount: number;
   cachedCount: number;
+}
+
+/** What a provider hands back for one continuous take, before it has been located. */
+interface Take {
+  outputPath: string;
+  durationMs: number;
+  model: string;
 }
 
 interface Clip {
@@ -174,14 +182,25 @@ async function narrateAsTake(
   const arc = arcDirection(
     plan.sections.filter((section) => section.phrases.length).map((section) => section.energy),
   );
-  // One block per section, so a direction is stated exactly where the energy changes
-  // rather than once for the whole piece or once per line.
-  const blocks = plan.sections
-    .filter((section) => section.phrases.length)
-    .map((section) => ({
-      direction: SAY_DIRECTION[section.energy],
-      lines: section.phrases.map((phrase) => phrase.text),
-    }));
+  // One block, undirected. The arc above is the only delivery instruction in the prompt.
+  //
+  // A direction per section was tried and measured worse across twenty takes. Nothing
+  // separated on duration — the medians were a tie — but per-section directions read as
+  // less continuous: pauses at a section boundary ran 1.26 times the pauses inside a
+  // section, against 1.09 undirected, and a listener said the undirected take was the
+  // only one that sounded recorded in one pass. Grouping sections into movements was
+  // worse still, and phrasing a direction as a transition ("Now say it quieter") was a
+  // disaster — the model performs it instead of applying it, ballooning boundary pauses
+  // to five times the internal ones.
+  //
+  // This is the same result the rest of this file keeps arriving at: every instruction
+  // added to this prompt has cost more than it bought.
+  const blocks = [{
+    direction: "",
+    lines: plan.sections
+      .filter((section) => section.phrases.length)
+      .flatMap((section) => section.phrases.map((phrase) => phrase.text)),
+  }];
 
   const request = {
     text: script,
@@ -195,12 +214,20 @@ async function narrateAsTake(
   };
 
   let costUsd = 0;
-  let take: {outputPath: string; durationMs: number; model: string} | null = null;
+  let take: Take | null = null;
 
   // Two attempts. The second exists because the whole take can come back in the wrong
   // voice, which is the one failure that survives reading the script in a single pass,
   // and because the pace varies by roughly 15% between identical requests. A third buys
   // little: this is a lottery rather than a correction, so the odds do not improve.
+  //
+  // Three things are checked, all on the result rather than in the prompt. Wrong voice
+  // disqualifies a take outright; slow and faded are faults it can carry, because a
+  // flawed take in the right voice still beats no take at all. Between candidates the
+  // one with fewer faults wins, and a tie goes to the shorter — which is also usually
+  // the flatter, since the takes that ran longest faded worst.
+  let best: {result: Take; faults: number; durationMs: number} | null = null;
+
   for (let attempt = 1; attempt <= 2; attempt++) {
     const key = hash({...request, outputPath: undefined, attempt, mastering: AUDIO_MASTERING_VERSION});
     const outputPath = path.join(workDir, "narration", `take-${key}.wav`);
@@ -208,23 +235,37 @@ async function narrateAsTake(
     costUsd += result.costUsd;
 
     const off = await registerMiss(result.outputPath, plan.narration.register);
-    const slow = tooSlow(script, result.durationMs);
-    if (!off && !slow) {
-      take = result;
-      break;
+    if (off) {
+      onLog(
+        `narration    take came back at ${off.hz.toFixed(0)} Hz against the brand's `
+        + `${off.targetHz.toFixed(0)} Hz${attempt === 1 ? "; asking again" : ""}`,
+      );
+      continue;
     }
-    // Wrong voice disqualifies a take outright. Merely slow does not — it stays as a
-    // candidate, because a slow take in the right voice still beats no take at all.
-    if (!off && (!take || result.durationMs < take.durationMs)) take = result;
+
+    const slow = tooSlow(script, result.durationMs);
+    const fade = await measureFade(result.outputPath);
+    const faults = (slow ? 1 : 0) + (fadedOut(fade) ? 1 : 0);
+
+    if (!best || faults < best.faults
+      || (faults === best.faults && result.durationMs < best.durationMs)) {
+      best = {result, faults, durationMs: result.durationMs};
+    }
+    if (!faults) break;
 
     onLog(
-      `narration    take came back ${off
-        ? `at ${off.hz.toFixed(0)} Hz against the brand's ${off.targetHz.toFixed(0)} Hz`
-        : `at ${slow!.wordsPerSecond.toFixed(2)} words per second`}`
-      + `${attempt === 1 ? "; asking again" : ""}`,
+      `narration    take came back ${[
+        slow ? `at ${slow.wordsPerSecond.toFixed(2)} words per second` : "",
+        fadedOut(fade) ? `${fade!.fadeDb.toFixed(1)} dB quieter by the end` : "",
+      ].filter(Boolean).join(" and ")}${attempt === 1 ? "; asking again" : ""}`,
     );
   }
+
+  take = best?.result ?? null;
   if (!take) return null;
+  if (best!.faults) {
+    onLog(`narration    keeping the better of two takes; ${best!.faults} check(s) still unmet`);
+  }
 
   const {words, billedSeconds, model: asrModel} = await transcribeWords(
     take.outputPath, plan.language, path.join(workDir, "narration"), onLog, signal,

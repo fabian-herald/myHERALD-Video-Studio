@@ -71,29 +71,30 @@ const ARC_LANDING: Record<Energy, string> = {
   edge: "the last lines land flat and exact, with no softening on the way out",
 };
 
-/**
- * Per-section direction, in the form the model actually honours.
+/*
+ * There was a per-section direction table here — "Say plainly and evenly", one line
+ * stated above each section's copy. It is gone, and the arc below is now the only
+ * delivery instruction a take receives.
  *
- * Bracket labels barely registered: `[edge]` and `[settled]` are this repo's private
- * vocabulary and mean nothing, and even descriptive ones like `[sharper and flatter]`
- * were hard to hear. What works is the shape the model's own playground uses — a plain
- * instruction line ending in a colon, immediately before a quoted line. The quotes are
- * doing the work the fence does elsewhere: they mark what is speech, so the instruction
- * above them is unmistakably not.
+ * Twenty takes across four schemes decided it. Nothing separated on duration; the
+ * medians were a tie and the run-to-run spread was larger than any difference between
+ * schemes. What did separate was continuity, measured as the pause at a section boundary
+ * against the pause between phrases inside one: 1.26 with a direction per section, 1.09
+ * with none. A listener picked the undirected take unprompted as the only one that
+ * sounded recorded in a single pass, and judged its pace better too.
  *
- * Written the way the documented examples are written, because that is what was tested
- * and found to work, rather than the way this codebase would otherwise phrase it.
+ * The two attempts to keep some structure both failed. Grouping sections into three
+ * movements cut across the curve — it handed the section that pulls back a direction
+ * saying "flatly and precisely, no warmth" — and threw a 143-second take. Phrasing a
+ * direction as a transition ("Now say it quieter") was worse still: the model performs
+ * the instruction rather than applying it, and boundary pauses reached five times the
+ * internal ones.
  *
- * One direction is missing on purpose. There is no "say faster": asking for speed has
- * produced a slower reading every single time it was tried, while asking for slow works
- * exactly as intended — so `quiet` may say it and nothing else may.
+ * This is the fourth time this file has reached the same conclusion, after bracket
+ * labels, after asking for speed, and after "momentum over polish". Every instruction
+ * added to this prompt has cost more than it bought. What is left is one arc, and
+ * checks on the audio that comes back.
  */
-export const SAY_DIRECTION: Record<Energy, string> = {
-  quiet: "Say slowly, quietly, with weight",
-  settled: "Say plainly and evenly",
-  lift: "Say with motivation, warmer, convinced",
-  edge: "Say flatly and precisely, no warmth",
-};
 
 /** Directs a whole take from the curve the plan already carries. */
 export function arcDirection(energies: readonly Energy[]): string {
