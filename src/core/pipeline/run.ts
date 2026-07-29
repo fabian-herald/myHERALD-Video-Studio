@@ -9,7 +9,7 @@ import {CostLedger, formatCost, type CostSummary} from "../cost.ts";
 import {planVideo} from "../gen/planner.ts";
 import {approvedStatements, readFacts} from "../knowledge/facts.ts";
 import {upsertLedgerEntry, similarTheses} from "../ledger.ts";
-import {aspectOf, mediaForFormat, mediaForPlan} from "../media/library.ts";
+import {aspectOf, DEVICE_PRESETS, mediaForFormat, mediaForPlan} from "../media/library.ts";
 import {assertPlanClaimsAreSourced} from "../plan/claims.ts";
 import {byFamily, FORMATS, type OutputFormat} from "../plan/formats.ts";
 import type {ContentLanguage} from "../plan/language.ts";
@@ -92,6 +92,12 @@ export async function runPipeline(options: RunOptions): Promise<RunResult> {
       media: (await mediaForFormat(options.formats[0] ?? "9x16")).map((item) => ({
         id: item.id,
         aspect: aspectOf(item),
+        // The device it was captured on, not just the shape. "Phone, portrait" and
+        // "Tablet, portrait" are both portrait and are not interchangeable — a section
+        // about a mobile flow needs the phone shot specifically.
+        device: item.source.type === "playwright"
+          ? DEVICE_PRESETS[item.source.preset]?.label ?? item.source.preset
+          : "uploaded",
         caption: item.caption,
         tags: item.tags,
       })),

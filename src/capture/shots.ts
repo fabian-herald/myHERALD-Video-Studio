@@ -1,6 +1,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import {addMedia, aspectOf, type MediaItem} from "../core/media/library.ts";
+import {labelScreenshot} from "../core/media/label.ts";
 import {MEDIA_DIR} from "../core/paths.ts";
 import {hash} from "../core/util/exec.ts";
 import {gotoAndSettle, type CaptureSession} from "./session.ts";
@@ -35,6 +36,16 @@ export async function captureShots(
   session: CaptureSession,
   shots: readonly ShotSpec[],
   onLog: (line: string) => void = () => {},
+  /**
+   * Describe each shot with a small model after taking it.
+   *
+   * Off by default because it costs money and a curated `ShotSpec` list already carries
+   * good captions written by hand. It earns its keep on volume — uploads, a long route
+   * list, anything where nobody is going to write forty captions — and an unlabelled
+   * library is one the planner cannot pick from: `shot-3 — Phone, portrait` says nothing
+   * about whether that screenshot proves the point a section is making.
+   */
+  options: {label?: boolean} = {},
 ): Promise<ShotResult[]> {
   const screenshotDir = path.join(MEDIA_DIR, "screenshots");
   await fs.mkdir(screenshotDir, {recursive: true});
@@ -76,8 +87,26 @@ export async function captureShots(
         },
       };
 
-      await addMedia(item);
       onLog(`  shot        ${id} · ${item.width}×${item.height} · ${aspectOf(item)}`);
+
+      if (options.label) {
+        const labelled = await labelScreenshot(file, onLog).catch(() => null);
+        if (labelled) {
+          // The hand-written caption wins if there is one: a curated ShotSpec knows what
+          // the shot is *for*, which is a judgement about the video, not about the picture.
+          item.caption = shot.caption || labelled.label.caption;
+          item.tags = [...new Set([...item.tags, ...labelled.label.tags])];
+          onLog(`  label       ${id} · ${labelled.label.tags.join(", ")} · $${labelled.costUsd.toFixed(4)}`);
+          if (labelled.label.sensitive.length) {
+            // Reported, never acted on. Whether this is publishable is the owner's call —
+            // a mock name on a marketing page is fine, a real customer's is not, and only
+            // they know which this is.
+            onLog(`  label       ${id} POSSIBLY SENSITIVE: ${labelled.label.sensitive.join("; ")}`);
+          }
+        }
+      }
+
+      await addMedia(item);
       results.push({item});
     } catch (error) {
       // Fail loudly per shot but keep going: one missing selector should not cost

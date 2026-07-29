@@ -27,7 +27,7 @@ export interface PlanRequest {
    * the planner binds by id and the assembler copies the real file under that name, so a
    * screenshot cannot be invented or pointed somewhere it should not go.
    */
-  media?: readonly {id: string; aspect: string; caption: string; tags: string[]}[];
+  media?: readonly {id: string; aspect: string; device: string; caption: string; tags: string[]}[];
 }
 
 export interface PlanResult {
@@ -61,7 +61,7 @@ function mediaBlock(request: PlanRequest): string {
     + "Bind one with a `screen` block. Only these ids exist; anything else renders as an "
     + "empty panel.\n\n"
     + media.map((item) =>
-      `- \`${item.id}\` — ${item.aspect}${item.caption ? `, ${item.caption}` : ""}`
+      `- \`${item.id}\` — ${item.device}, ${item.aspect}${item.caption ? ` — ${item.caption}` : ""}`
       + (item.tags.length ? ` (${item.tags.join(", ")})` : "")).join("\n")
     + "\n";
 }

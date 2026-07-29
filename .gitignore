@@ -9,6 +9,7 @@ node_modules/
 
 # Runtime state and generated media.
 data/videos/
+data/media/index.json
 data/media/screenshots/
 data/media/recordings/
 data/media/uploads/

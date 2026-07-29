@@ -123,11 +123,63 @@ export async function gotoAndSettle(session: CaptureSession, route: string): Pro
   if (session.config.workspaceId) url.searchParams.set("workspace", session.config.workspaceId);
 
   await session.page.goto(url.toString(), {waitUntil: "networkidle", timeout: 45_000});
+  await dismissConsent(session.page);
   await session.page.addStyleTag({content: `${FREEZE_CSS}\n${HIDE_DEV_OVERLAYS_CSS}`});
   await session.page.evaluate(REMOVE_DEV_OVERLAYS_JS);
   await session.page.evaluate(() => document.fonts.ready);
   // One frame for the injected styles to take effect before the shutter.
   await session.page.waitForTimeout(120);
+}
+
+/**
+ * Buttons that decline non-essential cookies, in the order we would rather click them.
+ *
+ * Reject only. "Accept all" is never in this list and must never be added: the capture
+ * browser is acting on the owner's behalf, and consenting to tracking on their behalf is
+ * not a decision a screenshot tool gets to make. If only an accept button exists, the
+ * banner stays in the shot and that is the correct outcome — a visible banner is a problem
+ * you can see, where a silent opt-in is not.
+ */
+const CONSENT_REJECT = [
+  "button:has-text('Reject All')",
+  "button:has-text('Reject all')",
+  "button:has-text('Decline')",
+  "button:has-text('Only essential')",
+  "button:has-text('Necessary only')",
+  "button:has-text('Alle ablehnen')",
+  "button:has-text('Ablehnen')",
+  "[aria-label*='reject' i]",
+];
+
+/**
+ * Dismiss a cookie banner before the shutter, declining non-essential cookies.
+ *
+ * Worth the trouble because a consent modal does not merely sit in the corner: it dims the
+ * page behind it. The first capture of the marketing site came back as a full-height
+ * overlay over a greyed hero, and the labeller dutifully described the cookie dialogue —
+ * a screenshot that proves nothing about the product.
+ */
+export async function dismissConsent(page: Page): Promise<string | null> {
+  // The banner is usually injected after load rather than served with the document.
+  await page.waitForTimeout(1200);
+
+  for (const selector of CONSENT_REJECT) {
+    const matches = page.locator(selector);
+    const count = await matches.count().catch(() => 0);
+    // Every match, not just the first. These widgets ship the same button twice — once in
+    // the visible banner and once inside a collapsed preferences panel — and taking
+    // `.first()` lands on the hidden copy, reads it as absent, and skips a selector that
+    // would have worked. That is exactly how the first version of this silently did nothing.
+    for (let index = 0; index < count; index++) {
+      const button = matches.nth(index);
+      if (!await button.isVisible({timeout: 300}).catch(() => false)) continue;
+      await button.click({timeout: 2000}).catch(() => {});
+      // The overlay animates out; shooting mid-fade is its own defect.
+      await page.waitForTimeout(700);
+      return selector;
+    }
+  }
+  return null;
 }
 
 export async function saveAuthState(context: BrowserContext): Promise<string> {
