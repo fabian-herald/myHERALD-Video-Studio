@@ -13,6 +13,8 @@ export function App() {
   const [thread, setThread] = useState<Thread | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  /** Which pane is showing when the window is too narrow to hold both. */
+  const [pane, setPane] = useState<"chat" | "canvas">("chat");
 
   const reload = useCallback(async () => {
     try {
@@ -57,7 +59,20 @@ export function App() {
   const showCanvas = view.kind === "thread" && Boolean(thread?.videoId);
 
   return (
-    <div className={`shell${showCanvas ? "" : " no-canvas"}`}>
+    <div className={`shell${showCanvas ? "" : " no-canvas"} pane-${pane}`}>
+      {/*
+        Below the two-column breakpoint the panes stack behind this switch. The canvas
+        used to be `display: none` there, which did not shrink it — it removed the video,
+        the script, the scenes and the checks with nothing to bring them back, so a
+        narrow window silently lost half the application.
+      */}
+      {showCanvas ? (
+        <div className="pane-switch">
+          <button className={pane === "chat" ? "active" : ""} onClick={() => setPane("chat")}>Chat</button>
+          <button className={pane === "canvas" ? "active" : ""} onClick={() => setPane("canvas")}>Video</button>
+        </div>
+      ) : null}
+
       <nav className="rail">
         {/* The real marks, for the same reason a composition has to use them: the
             wordmark is two faces at two sizes, and setting it in CSS is a near miss. */}

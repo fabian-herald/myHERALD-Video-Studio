@@ -7,12 +7,45 @@ interface Props {
   onTurnComplete: (videoId?: string) => void;
 }
 
+/**
+ * Seconds since the turn started, or 0 when nothing is running.
+ *
+ * A build runs twenty-odd minutes, most of it inside one compose step that emits tool
+ * calls at an uneven rate — long silences while the agent renders frames and looks at
+ * them. Without a clock the only way to tell "still working" from "wedged" is to sit and
+ * wait for the next line.
+ */
+function useElapsed(active: boolean) {
+  const [seconds, setSeconds] = useState(0);
+  useEffect(() => {
+    if (!active) {
+      setSeconds(0);
+      return;
+    }
+    // Derived from a start stamp rather than counted per tick: browsers throttle timers
+    // in a backgrounded tab, and a counter would drift low over twenty minutes exactly
+    // when the number matters most.
+    const startedAt = Date.now();
+    setSeconds(0);
+    const timer = setInterval(() => setSeconds(Math.round((Date.now() - startedAt) / 1000)), 1000);
+    return () => clearInterval(timer);
+  }, [active]);
+  return seconds;
+}
+
+/** `48s`, then `4m 12s`. Seconds stay visible throughout — they are the sign of life. */
+export function formatElapsed(seconds: number) {
+  if (seconds < 60) return `${seconds}s`;
+  return `${Math.floor(seconds / 60)}m ${String(seconds % 60).padStart(2, "0")}s`;
+}
+
 export function ChatPane({thread, onTurnComplete}: Props) {
   const [messages, setMessages] = useState<ThreadMessage[]>(thread.messages);
   const [draft, setDraft] = useState("");
   const [running, setRunning] = useState(false);
   const [cost, setCost] = useState<AgentEvent["cost"] | null>(null);
   const logRef = useRef<HTMLDivElement>(null);
+  const elapsed = useElapsed(running);
 
   useEffect(() => {
     setMessages(thread.messages);
@@ -65,7 +98,11 @@ export function ChatPane({thread, onTurnComplete}: Props) {
         {messages.map((message) => (
           <Message key={message.id} message={message} />
         ))}
-        {running ? <div className="msg msg-event running">working…</div> : null}
+        {running ? (
+          <div className="msg msg-event running">
+            working… <span className="elapsed">{formatElapsed(elapsed)}</span>
+          </div>
+        ) : null}
       </div>
 
       {cost ? (

@@ -85,9 +85,75 @@ button, input, textarea, select { font: inherit; color: inherit; }
  */
 .shell > * { min-height: 0; min-width: 0; }
 
+/*
+ * Narrow: one pane at a time, chosen by the switch — never a pane that cannot be reached.
+ *
+ * This used to be `.canvas { display: none }`, which is not a responsive layout but a
+ * deletion: below 1180px the player, the script, the scenes, the check findings and the
+ * files all vanished with no control to bring them back, and the only fix was to widen
+ * the window. Half the application depended on a viewport measurement.
+ */
+.pane-switch { display: none; }
+
 @media (max-width: 1180px) {
-  .shell { grid-template-columns: var(--rail) 1fr; }
-  .shell .canvas { display: none; }
+  .shell {
+    grid-template-columns: var(--rail) minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr);
+  }
+  .shell.no-canvas { grid-template-columns: var(--rail) minmax(0, 1fr); }
+
+  /* The switch spans the top; the rail and the live pane share the row beneath it. */
+  .pane-switch {
+    display: flex;
+    grid-column: 1 / -1;
+    gap: 4px;
+    padding: 8px 14px;
+    border-bottom: 1px solid var(--border);
+    background: var(--card);
+  }
+  .pane-switch button {
+    flex: 1;
+    padding: 7px 12px;
+    border: 1px solid transparent;
+    border-radius: var(--r-button);
+    background: none;
+    color: var(--muted);
+    font: 600 13px/1 var(--sans);
+    cursor: pointer;
+  }
+  .pane-switch button.active {
+    border-color: var(--border-strong);
+    background: var(--yellow);
+    color: var(--near-black);
+  }
+
+  /* Exactly one of the two occupies the second column. */
+  .shell.pane-chat .canvas { display: none; }
+  .shell.pane-canvas .chat { display: none; }
+}
+
+/*
+ * Narrower still: the rail becomes a horizontal strip so the content keeps the width.
+ * A 220px sidebar against a 380px viewport leaves nothing to read the video in.
+ */
+@media (max-width: 760px) {
+  .shell,
+  .shell.no-canvas {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto auto minmax(0, 1fr);
+  }
+  .rail {
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+    overflow-x: auto;
+    padding: 10px 12px;
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+  }
+  .rail-item, .rail-new { flex: 0 0 auto; white-space: nowrap; }
+  .rail-item small { display: none; }
+  .rail-label, .rail-spacer, .rail-brand span { display: none; }
 }
 
 /* ── rail — white surface, hairline border, yellow pill for active ── */
@@ -242,6 +308,13 @@ button, input, textarea, select { font: inherit; color: inherit; }
   transform: translateY(-2px);
 }
 .msg-event.running::before { animation: pulse 1.1s ease-in-out infinite; }
+
+/* Tabular figures, so a ticking clock does not shuffle the line it sits on. */
+.elapsed {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  opacity: 0.75;
+}
 
 @keyframes pulse {
   0%, 100% { opacity: 1; }
