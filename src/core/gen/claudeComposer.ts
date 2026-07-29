@@ -1,6 +1,7 @@
 import {query, type Options, type PermissionResult} from "@anthropic-ai/claude-agent-sdk";
 import path from "node:path";
 import type {CheckReport} from "../render/check.ts";
+import {compatibleNode} from "../render/node.ts";
 import {
   assertCompositionWritten,
   registerComposer,
@@ -14,8 +15,8 @@ import {
  * The composer runs inside a throwaway authoring directory, so the blast radius
  * of a mistake is one composition attempt.
  */
-const ALLOWED_TOOLS = ["Read", "Write", "Edit", "Glob", "Grep", "Bash", "TodoWrite"];
-const ALLOWED_BASH = /^(npx\s+)?hyperframes\s+(check|snapshot|lint|docs)\b/;
+export const ALLOWED_TOOLS = ["Read", "Write", "Edit", "Glob", "Grep", "Bash", "TodoWrite"];
+export const ALLOWED_BASH = /^(npx\s+)?hyperframes\s+(check|snapshot|lint|docs)\b/;
 
 const SYSTEM_PROMPT = `You are a motion designer who writes code. You author HyperFrames
 compositions — deterministic HTML/CSS/GSAP that renders frame by frame to video.
@@ -32,25 +33,61 @@ sequence of similar centred layouts is a failure even if every check passes.
 Verify with \`npx hyperframes check . --json --strict\` and fix every error before you
 finish. Look at snapshots and judge the frames honestly.
 
+Run that command exactly as written, on its own. Node is already the right version on
+your PATH — do not probe for one, and do not prefix the command with \`cd\`, \`export\` or
+anything else. Only a command that *begins* with \`hyperframes\` or \`npx hyperframes\` is
+permitted; a prefixed one is refused, and you are already in the right directory.
+
 Reply with a short summary of the scene archetypes you used — one line each.`;
 
-function permission(toolName: string, input: Record<string, unknown>): PermissionResult {
+export function permission(toolName: string, input: Record<string, unknown>): PermissionResult {
   if (!ALLOWED_TOOLS.includes(toolName)) {
     return {behavior: "deny", message: `${toolName} is not available while composing.`};
   }
   if (toolName === "Bash") {
     const command = String(input.command ?? "").trim();
     if (!ALLOWED_BASH.test(command)) {
+      // A refusal that only states the rule leaves the agent guessing at the cause, and
+      // it guessed wrong for thirty-odd turns: it read this as "the CLI is unavailable"
+      // and went looking for a runtime. Name the fix, not just the restriction.
       return {
         behavior: "deny",
-        message: "Only `hyperframes check|snapshot|lint|docs` may be run from here.",
+        message:
+          "Only `hyperframes check|snapshot|lint|docs` may be run, and the command must "
+          + "begin with it — no `cd`, `export` or other prefix, since anything before the "
+          + "`&&` would run unchecked. You are already in the authoring directory and the "
+          + "Node on your PATH already satisfies HyperFrames, so run the bare command: "
+          + "`npx hyperframes check . --json --strict`.",
       };
     }
   }
   return {behavior: "allow", updatedInput: input};
 }
 
-function baseOptions(context: ComposeContext): Options {
+/**
+ * PATH with a HyperFrames-capable Node in front, resolved once per process.
+ *
+ * The composer may only run a command that *begins* with `hyperframes`, because
+ * allowing a prefix would let anything through ahead of the `&&`. That gate is right,
+ * but it left the agent unable to do the one thing it needed when the default `node`
+ * was too old: it ran `npx hyperframes check`, hit a Node 22 error, and then spent
+ * turn after turn probing nvm and Homebrew and retrying with `export PATH=...`, every
+ * one of which was refused. Thirty-four of fifty-two bash calls in one run were spent
+ * that way. The environment is the place to fix it — put the right Node in front and
+ * the bare command simply works.
+ */
+let nodePath: Promise<string> | null = null;
+async function composerEnv(): Promise<Record<string, string>> {
+  nodePath ??= compatibleNode();
+  const binDir = path.dirname(await nodePath);
+  return {
+    ...process.env,
+    PATH: `${binDir}${path.delimiter}${process.env.PATH ?? ""}`,
+    HYPERFRAMES_NO_TELEMETRY: "1",
+  } as Record<string, string>;
+}
+
+async function baseOptions(context: ComposeContext): Promise<Options> {
   return {
     cwd: context.authoring.dir,
     systemPrompt: SYSTEM_PROMPT,
@@ -61,7 +98,7 @@ function baseOptions(context: ComposeContext): Options {
     canUseTool: async (toolName, input) => permission(toolName, input as Record<string, unknown>),
     maxTurns: context.effort === "high" ? 90 : 60,
     abortController: toController(context.signal),
-    env: {...process.env, HYPERFRAMES_NO_TELEMETRY: "1"} as Record<string, string>,
+    env: await composerEnv(),
   };
 }
 
@@ -77,7 +114,7 @@ async function drive(prompt: string, context: ComposeContext, label: string): Pr
   let model = "claude";
   let notes = "";
 
-  for await (const message of query({prompt, options: baseOptions(context)})) {
+  for await (const message of query({prompt, options: await baseOptions(context)})) {
     if (message.type === "assistant") {
       model = message.message.model ?? model;
       for (const block of message.message.content) {
