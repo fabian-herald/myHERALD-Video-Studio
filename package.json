@@ -11,6 +11,7 @@
     "studio": "tsx scripts/dev.ts",
     "server": "tsx src/server/index.ts",
     "make": "tsx scripts/make.ts",
+    "recompose": "tsx scripts/recompose.ts",
     "tokens": "tsx scripts/tokens.ts",
     "build": "tsc --noEmit && vite build",
     "typecheck": "tsc --noEmit",

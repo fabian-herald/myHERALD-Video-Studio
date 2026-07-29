@@ -5,7 +5,8 @@ import {FONT_FILES, writeTokensCss} from "../brand/tokens.ts";
 import {FORMATS, referenceFormat, type FormatFamily} from "../plan/formats.ts";
 import {languageName} from "../plan/language.ts";
 import {ENERGY_MOTION} from "../tts/energy.ts";
-import {planDurationMs, type VideoPlan} from "../plan/schema.ts";
+import {intentPreset} from "../intents/index.ts";
+import {planDurationMs, type Energy, type Intent, type VideoPlan} from "../plan/schema.ts";
 import {ROOT} from "../paths.ts";
 import {buildCaptions, writeCaptionData} from "../tts/captions.ts";
 
@@ -102,6 +103,43 @@ export async function prepareAuthoringDir(options: {
     height: spec.height,
     durationSeconds,
   };
+}
+
+/**
+ * The motion section of the brief, in absolute milliseconds.
+ *
+ * Two reasons it is generated rather than written. First, the composer should not be
+ * doing arithmetic: it gets the number to type, not a baseline and two multipliers.
+ * Second, the prose used to be a hand-copied duplicate of `ENERGY_MOTION` and had
+ * already drifted — the table still told the composer that `quiet` meant "long holds"
+ * months after that exact wording made a composition fail the post-render freeze check
+ * and the table in code was corrected. Deriving it from the one table makes that
+ * impossible rather than unlikely.
+ */
+export function motionBrief(kit: BrandKit, intent: Intent): string {
+  const {scale, simultaneousDelta, note} = intentPreset(intent).motion;
+  const enterMs = kit.motion.sceneEnterMs * scale;
+  const rows = (Object.entries(ENERGY_MOTION) as [Energy, (typeof ENERGY_MOTION)[Energy]][])
+    .map(([energy, {pace, note: feel}]) =>
+      `| \`${energy}\` | ${Math.round(enterMs * pace)}ms | ${Math.round(kit.motion.staggerMs * scale * pace)}ms | ${feel} |`)
+    .join("\n");
+
+  return `Easing: ease-out \`${kit.motion.easeOut}\`, ease-in \`${kit.motion.easeIn}\`.
+At most ${kit.motion.maxSimultaneous + simultaneousDelta} things moving at once.
+Forbidden motion: ${kit.motion.forbidden.join(", ")}.
+
+**Motion follows the energy curve.** Every section lists its own energy above. These are
+its timings, already scaled for \`${intent}\` — ${note}. Use them as written:
+
+| energy | entrance | stagger | what it should feel like |
+|---|---|---|---|
+${rows}
+
+A calm piece is not a still one. The point is contrast: a lift only reads as a lift
+because the section before it did not.
+
+Keep the sustained motion of §6 in every scene regardless of energy, and scale its
+speed the same way — but how far and how fast is your call, not a number in this brief.`;
 }
 
 /** The per-composition brief: everything specific to THIS video, in one file. */
@@ -243,24 +281,7 @@ ${pairs}
 
 Type scale: ${Object.keys(kit.type.scale).map((k) => `\`--brand-size-${kebab(k)}\``).join(" · ")}
 
-Motion: ease-out \`${kit.motion.easeOut}\`, ease-in \`${kit.motion.easeIn}\`, scene entrance
-~${kit.motion.sceneEnterMs}ms, stagger ~${kit.motion.staggerMs}ms, at most
-${kit.motion.maxSimultaneous} things moving at once.
-Forbidden motion: ${kit.motion.forbidden.join(", ")}.
-
-**Motion follows the energy curve.** Those numbers are the \`settled\` baseline; each
-section lists its own energy above and its entrance timings scale accordingly:
-
-| energy | entrance | what it should feel like |
-|---|---|---|
-| \`quiet\` | ×1.35 slower | one thing moving at a time, long holds, air |
-| \`settled\` | baseline | even and certain |
-| \`lift\` | ×0.8 quicker | tighter stagger, upward direction of travel |
-| \`edge\` | ×0.66 quicker | fast and flat, little easing, cuts rather than glides |
-
-A calm piece is not a still one. The point is contrast: a lift only reads as a lift
-because the section before it did not. Keep the sustained motion of §6 in every scene
-regardless of energy, and scale its speed the same way.
+${motionBrief(kit, plan.intent)}
 
 **Do**
 ${kit.doDont.do.map((rule) => `- ${rule}`).join("\n")}

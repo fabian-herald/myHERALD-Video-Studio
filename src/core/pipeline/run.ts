@@ -284,7 +284,13 @@ export async function runPipeline(options: RunOptions): Promise<RunResult> {
  * attempt is frozen for inspection and the deterministic baseline takes over, so the
  * autopilot always produces a video rather than nothing.
  */
-async function composeWithRepair(options: {
+/**
+ * Exported so an existing video can be re-authored without re-planning and re-narrating
+ * it. Changing the shape of a composition is the one edit `plan-apply` cannot do, and
+ * re-running the whole pipeline to see a motion change also changes the script and the
+ * voice — which is precisely the comparison you were trying to make.
+ */
+export async function composeWithRepair(options: {
   authoring: Awaited<ReturnType<typeof prepareAuthoringDir>>;
   plan: VideoPlan;
   kit: Awaited<ReturnType<typeof loadBrandKit>>;
