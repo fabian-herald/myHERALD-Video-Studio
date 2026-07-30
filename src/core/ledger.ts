@@ -49,6 +49,42 @@ export async function upsertLedgerEntry(entry: LedgerEntry): Promise<void> {
   if (index >= 0) entries[index] = entry;
   else entries.push(entry);
 
+  await writeLedger(entries);
+}
+
+/**
+ * Update what an edit actually changed about a video, and nothing else.
+ *
+ * `applyPlanEdits` re-narrates, re-renders and re-runs QC, and wrote none of it back — so
+ * a video that failed its first render and was then repaired by an edit went on reading
+ * `failed` for good. Four of twelve entries said `failed` while the files on disk were
+ * fine, and that is a failure rate the owner was reading as real.
+ *
+ * `id` and `createdAt` are excluded by the type rather than left to discipline. An edit is
+ * not a new video: the date is what `factUsage` reports as "last charted" and what the
+ * planner prints as how recently a figure was spent, so re-stamping it on a wording change
+ * would make an old video look fresh and quietly retire figures that were still free.
+ *
+ * Returns null when there is nothing to amend — a video made before the ledger existed.
+ * The caller reports that rather than inventing an entry, because a fabricated one would
+ * carry a creation date that is simply wrong and would then be used as if it were real.
+ */
+export async function amendLedgerEntry(
+  id: string,
+  patch: Partial<Omit<LedgerEntry, "id" | "createdAt">>,
+): Promise<LedgerEntry | null> {
+  const entries = await readLedger();
+  const index = entries.findIndex((entry) => entry.id === id);
+  const existing = entries[index];
+  if (!existing) return null;
+
+  const amended: LedgerEntry = {...existing, ...patch, id: existing.id, createdAt: existing.createdAt};
+  entries[index] = amended;
+  await writeLedger(entries);
+  return amended;
+}
+
+async function writeLedger(entries: readonly LedgerEntry[]): Promise<void> {
   await fs.mkdir(path.dirname(LEDGER_PATH), {recursive: true});
   await fs.writeFile(LEDGER_PATH, `${JSON.stringify(entries, null, 2)}\n`, "utf8");
 }

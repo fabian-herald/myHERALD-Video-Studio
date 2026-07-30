@@ -2,9 +2,10 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import {loadBrandKit} from "../brand/kit.ts";
 import {FPS, NARRATION_FILE, sectionSnapshotTimes} from "../compose/workdir.ts";
+import {amendLedgerEntry} from "../ledger.ts";
 import {byFamily, FORMATS, familyOf, type OutputFormat} from "../plan/formats.ts";
 import {loadPlan, planDurationMs, savePlan, type Energy, type VideoPlan} from "../plan/schema.ts";
-import {OUT_DIR, videoDir} from "../paths.ts";
+import {OUT_DIR, rel, videoDir} from "../paths.ts";
 import {buildContactSheet, buildCover} from "../render/artifacts.ts";
 import {checkComposition} from "../render/check.ts";
 import {emitFormat, renderSnapshots, renderVideo, type Quality} from "../render/hyperframes.ts";
@@ -190,7 +191,48 @@ export async function applyPlanEdits(options: {
     }
   }
 
+  await recordEdit({videoId, plan, outputs, needsCompose, log});
   return {plan, outputs, contactSheet, needsCompose, durationChanged};
+}
+
+/**
+ * Write the result of an edit back to the studio's memory.
+ *
+ * Everything here was already known and thrown away. The script was re-narrated, the files
+ * were re-rendered, QC ran on each one — and the ledger kept whatever the first build said,
+ * so a video repaired by an edit read `failed` for good and the studio's own failure rate
+ * was wrong by a third.
+ *
+ * `stale` rather than `ready` when an edit could not be pushed all the way through: the
+ * files rendered and may well pass QC, but the composition no longer says what the plan
+ * says, and calling that ready is the same lie one step further along.
+ */
+async function recordEdit(options: {
+  videoId: string;
+  plan: VideoPlan;
+  outputs: ApplyResult["outputs"];
+  needsCompose: readonly string[];
+  log: (line: string) => void;
+}): Promise<void> {
+  const {videoId, plan, outputs, needsCompose, log} = options;
+  const passed = outputs.every((output) => output.qc.passed);
+  const status = !passed ? "failed" : needsCompose.length ? "stale" : "ready";
+
+  const amended = await amendLedgerEntry(videoId, {
+    status,
+    formats: plan.formats,
+    language: plan.language,
+    spokenScript: plan.sections.flatMap((section) => section.phrases.map((phrase) => phrase.text)).join(" "),
+    // Recomputed, not merged: removing a section can drop the only chart carrying a figure,
+    // and leaving it listed would keep a fact retired that this video no longer spends.
+    factIds: [...new Set(plan.sections.flatMap((section) =>
+      (section.data?.points ?? []).map((point) => point.factId)))],
+    outputs: outputs.map((output) => ({format: output.format, path: rel(output.path)})),
+  });
+
+  log(amended
+    ? `ledger        ${status}`
+    : "ledger        no entry for this video, so nothing was updated");
 }
 
 /**
