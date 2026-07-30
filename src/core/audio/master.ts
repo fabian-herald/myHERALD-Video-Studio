@@ -1,6 +1,6 @@
 import fs from "node:fs/promises";
 import path from "node:path";
-import {exists, probeDuration, run} from "../util/exec.ts";
+import {exists, fileHash, probeDuration, run} from "../util/exec.ts";
 
 export const NARRATION_TARGET_LUFS = -16;
 export const NARRATION_TRUE_PEAK_DB = -1.5;
@@ -8,8 +8,19 @@ export const NARRATION_BITRATE = "192k";
 export const AUDIO_MASTERING_VERSION = "narration-loudnorm-v2";
 
 /**
- * Normalise a narration track to broadcast-ish loudness. Idempotent: an existing
- * output is reused, so re-running the pipeline never re-encodes.
+ * Normalise a narration track to broadcast-ish loudness.
+ *
+ * Reuses an existing master only when it was made from exactly this audio, recorded as a
+ * hash beside it. It used to skip whenever the output merely *existed*, and because the
+ * output name is fixed per video, a second narration in the same directory got the first
+ * one's audio back — along with the first one's duration, which the caller then retimed
+ * the whole plan against. That shipped a video whose captions ran eight seconds past the
+ * last word and ended in ten seconds of silence, and no check anywhere noticed.
+ *
+ * The hash rather than a timestamp, which was the first fix and was also wrong: "the input
+ * is newer than the output" says nothing about a *different* input that happens to be
+ * older, and re-narrating can reach for a take synthesised minutes earlier. Identity is
+ * the question being asked, so identity is what gets compared.
  */
 export async function masterNarration(
   inputPath: string,
@@ -17,7 +28,10 @@ export async function masterNarration(
   volume = 1,
 ): Promise<number> {
   const boundedVolume = Number.isFinite(volume) ? Math.max(0, Math.min(1, volume)) : 1;
-  if (!await exists(outputPath)) {
+  const stampPath = `${outputPath}.source`;
+  const stamp = `${await fileHash(inputPath)} ${boundedVolume}`;
+
+  if (stamp !== await sourceOf(stampPath) || !await exists(outputPath)) {
     await fs.mkdir(path.dirname(outputPath), {recursive: true});
     await run("ffmpeg", [
       "-y",
@@ -28,8 +42,16 @@ export async function masterNarration(
       "-b:a", NARRATION_BITRATE,
       outputPath,
     ]);
+    // After the encode, never before: a stamp written for a master that failed to appear
+    // would make the next run skip the work and trust the file that is not there.
+    await fs.writeFile(stampPath, stamp, "utf8");
   }
   return probeDuration(outputPath);
+}
+
+/** What the master beside this stamp was made from, or null if we cannot say. */
+async function sourceOf(stampPath: string): Promise<string | null> {
+  return fs.readFile(stampPath, "utf8").then((value) => value.trim()).catch(() => null);
 }
 
 /** A spoken clip, or a stretch of deliberate silence for a wordless section. */

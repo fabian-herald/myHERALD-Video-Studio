@@ -243,9 +243,25 @@ frame has one object in the middle and air everywhere else, add structure: ancho
 something to an edge, run a line across the canvas, stack a second layer behind.
 
 Movement is continuous, not a single entrance. Alongside the entrance give each scene
-at least one **sustained** motion for as long as it is on screen: a slow drift or scale,
-a line that keeps drawing, a mark that rotates, elements that settle in late. Silence in
-the picture is as noticeable as silence in the audio.
+**one** sustained motion for as long as it is on screen: a slow drift or scale, a line
+that keeps drawing, a mark that rotates, elements that settle in late. Silence in the
+picture is as noticeable as silence in the audio.
+
+One, not one per element. Three rules, because "sustained" has been read as licence to
+vibrate:
+
+- **Sustained means one direction.** A drift travels; it does not return. If you cycle
+  something, the full cycle is **4 seconds or longer** — anything faster is not drift, it
+  is a shake, and fifteen of them at 0.7s across one composition is a picture that will
+  not sit still. A slow ramp that moves less than a pixel per frame is fine: the eye
+  integrates it over seconds, which is exactly what makes it read as calm rather than as
+  nothing.
+- **At most two moving things per scene.** The point of motion is that something is
+  moving *against* something that is not. When everything drifts, nothing does.
+- **Never move type while it is being read.** Headlines, on-screen copy and captions
+  enter, hold still, and leave. Moving the words is the one thing the viewer cannot
+  ignore and the one thing they came for. Frames, rules, fields and marks may move behind
+  them.
 
 ## 7. Brand
 

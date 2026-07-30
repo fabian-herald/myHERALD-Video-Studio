@@ -150,14 +150,58 @@ export async function narrate(
   if (provider.synthesizeTake) {
     try {
       const take = await narrateAsTake(plan, workDir, provider, onLog, signal);
-      if (take) return take;
+      if (take) return covering(take);
     } catch (error) {
       if (signal?.aborted) throw error;
       onLog(`narration    one-take path failed: ${String(error).slice(0, 160)}`);
     }
     onLog("narration    falling back to a clip per phrase");
   }
-  return narrateAsClips(plan, workDir, onLog, signal);
+  return covering(await narrateAsClips(plan, workDir, onLog, signal));
+}
+
+/**
+ * Speech may not be scheduled past the end of the sound.
+ *
+ * The one invariant this whole module exists to provide: every timestamp downstream — the
+ * caption pages, the scene starts, the QC duration check — is derived from the returned
+ * plan, and all of them agree with each other whether or not any of them agrees with the
+ * audio. So a narration track that does not match its own plan is invisible to every
+ * check there is, and the only symptom is a viewer noticing the words are late.
+ *
+ * That is not hypothetical. A stale master handed back the previous take's audio and its
+ * duration; the plan was retimed to 81.3s against 71.1s of speech, and the video shipped
+ * QC-clean with captions running eight seconds past the last word.
+ *
+ * Throws rather than warns. A desynced video is not a video with a note attached.
+ */
+function covering(result: NarrationResult): NarrationResult {
+  const fault = narrationCoverageFault(result.plan, result.durationMs);
+  if (fault) throw new Error(fault);
+  return result;
+}
+
+/**
+ * Half a second, which is longer than any real slop and shorter than any real desync.
+ *
+ * Word timings come from an ASR model and land within a few tens of milliseconds; the
+ * failure this catches was off by nearly nine seconds. Anything between those is a fault
+ * worth stopping for.
+ */
+export const NARRATION_COVERAGE_TOLERANCE_MS = 500;
+
+/** The complaint, or null when the audio covers every phrase. Pure, so it is testable. */
+export function narrationCoverageFault(plan: VideoPlan, audioMs: number): string | null {
+  const speechEndMs = Math.max(
+    0,
+    ...allPhrases(plan).map(({phrase}) => phrase.startMs + phrase.durationMs),
+  );
+  if (audioMs + NARRATION_COVERAGE_TOLERANCE_MS >= speechEndMs) return null;
+  return `The narration is ${(audioMs / 1000).toFixed(2)}s but the plan speaks until `
+    + `${(speechEndMs / 1000).toFixed(2)}s — ${((speechEndMs - audioMs) / 1000).toFixed(2)}s of `
+    + "captions and picture with no voice under them. The timing was measured against "
+    + "different audio than the track that was produced; delete the narration files in this "
+    + "video's directory and run it again.";
 }
 
 /**
