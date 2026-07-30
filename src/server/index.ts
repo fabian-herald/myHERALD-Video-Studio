@@ -8,6 +8,7 @@ import {addLogo, removeLogo} from "../core/brand/logos.ts";
 import {LOGO_ROLES} from "../core/brand/kit.ts";
 import {DEVICE_PRESETS, readMedia} from "../core/media/library.ts";
 import {loadResearch} from "../core/knowledge/brief.ts";
+import {figureFactState} from "../core/knowledge/trail.ts";
 import {readFacts, writeFacts, factZ} from "../core/knowledge/facts.ts";
 import {researchSite, saveResearch} from "../core/knowledge/research.ts";
 import {readSettings, writeSettings, settingsZ} from "../core/settings.ts";
@@ -272,9 +273,12 @@ async function videoDetail(videoId: string) {
  * The research trail for a thread, with each figure told what became of it.
  *
  * The state annotation is the point of doing this server-side. A figure in the trail is a
- * number some page printed; the same sentence may since have been proposed as a fact, or
- * approved, or neither — and only the facts file knows. Matched on the statement, which is
- * what `propose_facts` itself dedupes on, so the two agree by construction.
+ * number some page printed; the same number may since have been proposed as a fact, or
+ * approved, or neither — and only the facts file knows.
+ *
+ * The matching itself is `figureFactState`, kept pure in `knowledge/trail.ts` so it can be
+ * tested — this function reads two files and serves a route, and the interesting part is
+ * neither of those. See there for why a reworded statement still counts.
  *
  * Read-only. Nothing here can change a fact's state; that is `PUT /api/facts` and a click.
  */
@@ -283,7 +287,6 @@ async function threadResearch(threadId: string) {
   if (!record) return {threadId, queries: [], sources: [], brief: null};
 
   const facts = await readFacts();
-  const stateOf = new Map(facts.map((fact) => [fact.statement.trim().toLowerCase(), fact.state]));
 
   return {
     threadId,
@@ -294,7 +297,7 @@ async function threadResearch(threadId: string) {
       ...source,
       figures: source.figures.map((figure) => ({
         ...figure,
-        factState: stateOf.get(figure.statement.trim().toLowerCase()) ?? null,
+        factState: figureFactState(figure, source.url, facts),
       })),
     })),
   };

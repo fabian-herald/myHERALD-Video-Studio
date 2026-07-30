@@ -178,5 +178,14 @@
     "state": "proposed",
     "source": "https://myherald.io/",
     "updatedAt": "2026-07-28T17:11:05.114Z"
+  },
+  {
+    "id": "f-ms7jytio-0",
+    "kind": "problem",
+    "statement": "Content professionals spend an average of 3.4 hours every working day creating content.",
+    "evidence": "\"On average, content professionals spend 3.4 hours each day creating content.\" Kontent.ai, The content creator's toolbox 2025, a survey of 610 content professionals across Australia, France, Germany, Poland, Spain, the UK and the USA. The same page adds: \"Nearly half the respondents spend 2-4 hours creating content every day.\" Caveat: respondents are content professionals generally, not B2B marketers specifically, and the survey is published by a CMS vendor.",
+    "state": "approved",
+    "source": "https://kontent.ai/blog/10-insights-from-content-creators-toolbox/",
+    "updatedAt": "2026-07-30T13:37:26.241Z"
   }
 ]

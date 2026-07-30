@@ -1,0 +1,1587 @@
+{
+  "schemaVersion": 1,
+  "id": "t-eaeab68e",
+  "kind": "video",
+  "title": "Video 7/30/2026",
+  "videoId": "thought-leadership-255684",
+  "createdAt": "2026-07-30T13:30:29.336Z",
+  "updatedAt": "2026-07-30T14:35:00.139Z",
+  "sessionId": "193c7a67-dc2b-4970-840a-7900316d5e16",
+  "messages": [
+    {
+      "id": "d7d14b779e",
+      "role": "user",
+      "text": "Find me one solid, sourced figure on how much time B2B marketing teams lose to content production, then propose the best one as a fact. Search, read the best source, and tell me the sentence the number comes from. Do not make a video yet.",
+      "at": "2026-07-30T13:32:10.996Z"
+    },
+    {
+      "id": "c660894d0e",
+      "role": "assistant",
+      "text": "I'll start by reading the context and checking previous videos, then research.",
+      "at": "2026-07-30T13:32:10.996Z"
+    },
+    {
+      "id": "efe96ef80f",
+      "role": "event",
+      "text": "context read — 16 tokens, 0 approved facts, content language English",
+      "at": "2026-07-30T13:32:10.996Z",
+      "tool": "read_context"
+    },
+    {
+      "id": "d1060bea7b",
+      "role": "event",
+      "text": "ledger — 6 related of 10 videos",
+      "at": "2026-07-30T13:32:10.996Z",
+      "tool": "search_videos"
+    },
+    {
+      "id": "b10d5cb53d",
+      "role": "event",
+      "text": "found www.contentgrip.com — Report: B2B marketers spend too much time creating content",
+      "at": "2026-07-30T13:32:10.996Z",
+      "tool": "search_web"
+    },
+    {
+      "id": "5bf19c377d",
+      "role": "event",
+      "text": "found www.statista.com — Content production time spent when using AI tools globally 2023",
+      "at": "2026-07-30T13:32:10.996Z",
+      "tool": "search_web"
+    },
+    {
+      "id": "a1f55ec1a0",
+      "role": "event",
+      "text": "found www.thestarrconspiracy.com — AI Content Workflow Benchmarks 2025 | The Starr Conspiracy",
+      "at": "2026-07-30T13:32:10.996Z",
+      "tool": "search_web"
+    },
+    {
+      "id": "78d2d113f7",
+      "role": "event",
+      "text": "found contentmarketinginstitute.com — B2B Content Marketing Benchmarks, Budgets, and Trends: Outlook for 2024 [Researc",
+      "at": "2026-07-30T13:32:10.996Z",
+      "tool": "search_web"
+    },
+    {
+      "id": "4da1e4cf20",
+      "role": "event",
+      "text": "found www.marketingprofs.com — Marketing Content - B2B Content Marketing Benchmarks, Budgets, and Trends: Outlo",
+      "at": "2026-07-30T13:32:10.996Z",
+      "tool": "search_web"
+    },
+    {
+      "id": "65240bb4e3",
+      "role": "event",
+      "text": "found eu-assets.contentstack.com — CONTENT MARKETING",
+      "at": "2026-07-30T13:32:10.996Z",
+      "tool": "search_web"
+    },
+    {
+      "id": "1f8b359762",
+      "role": "event",
+      "text": "found www.themxgroup.com — BCONTENT2B",
+      "at": "2026-07-30T13:32:10.996Z",
+      "tool": "search_web"
+    },
+    {
+      "id": "223fb77437",
+      "role": "event",
+      "text": "found research.agilebrandguide.com — ",
+      "at": "2026-07-30T13:32:10.996Z",
+      "tool": "search_web"
+    },
+    {
+      "id": "c81756bac8",
+      "role": "event",
+      "text": "8 result(s) via Exa",
+      "at": "2026-07-30T13:32:10.996Z",
+      "tool": "search_web"
+    },
+    {
+      "id": "18f1f4af63",
+      "role": "event",
+      "text": "found dylan.tweney.com — Content marketing and content creation survey 2025",
+      "at": "2026-07-30T13:32:10.996Z",
+      "tool": "search_web"
+    },
+    {
+      "id": "469ee63fb1",
+      "role": "event",
+      "text": "found coschedule.com — State Of AI In Marketing Report 2025",
+      "at": "2026-07-30T13:32:10.996Z",
+      "tool": "search_web"
+    },
+    {
+      "id": "08e29097aa",
+      "role": "event",
+      "text": "found kontent.ai — 10 insights from The content creator’s toolbox 2025 | Kontent.ai",
+      "at": "2026-07-30T13:32:10.996Z",
+      "tool": "search_web"
+    },
+    {
+      "id": "fefb5b0840",
+      "role": "event",
+      "text": "found www.orbitmedia.com — 2025 Blogging Statistics: Blogger Data Shows Trends and Insights Into Blogging",
+      "at": "2026-07-30T13:32:10.996Z",
+      "tool": "search_web"
+    },
+    {
+      "id": "950c5dd9b0",
+      "role": "event",
+      "text": "found www.forbes.com — Skyrocketing Demand For Marketing Content Will Just Keep Growing",
+      "at": "2026-07-30T13:32:10.996Z",
+      "tool": "search_web"
+    },
+    {
+      "id": "911bf6f7c8",
+      "role": "event",
+      "text": "found www.statista.com — Time creators spend on content worldwide 2025| Statista",
+      "at": "2026-07-30T13:32:10.996Z",
+      "tool": "search_web"
+    },
+    {
+      "id": "435b75fe1e",
+      "role": "event",
+      "text": "found www.olivermunro.com — 160+ Content Marketing Statistics & Benchmarks for 2026",
+      "at": "2026-07-30T13:32:10.996Z",
+      "tool": "search_web"
+    },
+    {
+      "id": "c65050b32a",
+      "role": "event",
+      "text": "found www.sixthcitymarketing.com — 80+ Content Marketing Statistics & Facts | Marketing Stats",
+      "at": "2026-07-30T13:32:10.996Z",
+      "tool": "search_web"
+    },
+    {
+      "id": "7dc90fd383",
+      "role": "event",
+      "text": "8 result(s) via Exa",
+      "at": "2026-07-30T13:32:10.996Z",
+      "tool": "search_web"
+    },
+    {
+      "id": "efa9c1087b",
+      "role": "assistant",
+      "text": "Three worth reading: Orbit Media (12-year primary survey, 808 respondents), Kontent.ai (610 professionals, 7 countries), Tweney Media (fielded by Researchscape, dated). Skipping Statista (numbers masked), the aggregator listicles, and the Starr Conspiracy page (suspiciously precise, undated underlying source).",
+      "at": "2026-07-30T13:32:10.996Z"
+    },
+    {
+      "id": "acadf96569",
+      "role": "event",
+      "text": "www.orbitmedia.com — 3 figure(s) via exa-index",
+      "at": "2026-07-30T13:32:10.996Z",
+      "tool": "read_source"
+    },
+    {
+      "id": "24f0409d62",
+      "role": "event",
+      "text": "dropped 50% — not in the sentence quoted for it",
+      "at": "2026-07-30T13:32:10.996Z",
+      "tool": "read_source"
+    },
+    {
+      "id": "5ec2b5f07d",
+      "role": "event",
+      "text": "kontent.ai — 3 figure(s) via exa-index",
+      "at": "2026-07-30T13:32:10.996Z",
+      "tool": "read_source"
+    },
+    {
+      "id": "e315dae897",
+      "role": "event",
+      "text": "dylan.tweney.com — 0 figure(s) via exa-index",
+      "at": "2026-07-30T13:32:10.996Z",
+      "tool": "read_source"
+    },
+    {
+      "id": "e09fe4c0a2",
+      "role": "event",
+      "text": "6 figure(s) across 3 page(s) · $0.0095 on Haiku",
+      "at": "2026-07-30T13:32:10.996Z",
+      "tool": "read_source"
+    },
+    {
+      "id": "d0c44a90e6",
+      "role": "assistant",
+      "text": "The Orbit page didn't surface its time figure from the index, and it's their signature stat. One targeted check:",
+      "at": "2026-07-30T13:32:10.996Z"
+    },
+    {
+      "id": "c38c967c02",
+      "role": "event",
+      "text": "found www.orbitmedia.com — 2025 Blogging Statistics: Blogger Data Shows Trends and ...",
+      "at": "2026-07-30T13:32:10.996Z",
+      "tool": "search_web"
+    },
+    {
+      "id": "1c2fe1cb0d",
+      "role": "event",
+      "text": "found www.orbitmedia.com — ",
+      "at": "2026-07-30T13:32:10.996Z",
+      "tool": "search_web"
+    },
+    {
+      "id": "2dbd955a05",
+      "role": "event",
+      "text": "found www.digitalinformationworld.com — 2025 Blogging Report: AI Use Explodes While Average Article Length Slides",
+      "at": "2026-07-30T13:32:10.996Z",
+      "tool": "search_web"
+    },
+    {
+      "id": "43eea956c2",
+      "role": "event",
+      "text": "found diviflash.com — 100+ Top Blogging Statistics & Trends for Marketers in 2026",
+      "at": "2026-07-30T13:32:10.996Z",
+      "tool": "search_web"
+    },
+    {
+      "id": "d2df378f3c",
+      "role": "event",
+      "text": "found xborderinsights.com — [New Research] The 12th Annual Blogger Survey: What Content Works in 2025? – XBo",
+      "at": "2026-07-30T13:32:10.996Z",
+      "tool": "search_web"
+    },
+    {
+      "id": "455c598487",
+      "role": "event",
+      "text": "found blog.99coupons.ai — 25+ Blogging Statistics, Word Count, Traffic & ROI Data (2026) — 99 Coupons Jour",
+      "at": "2026-07-30T13:32:10.996Z",
+      "tool": "search_web"
+    },
+    {
+      "id": "85b8f6c113",
+      "role": "event",
+      "text": "6 result(s) via Exa",
+      "at": "2026-07-30T13:32:10.996Z",
+      "tool": "search_web"
+    },
+    {
+      "id": "b6e2f0b6eb",
+      "role": "assistant",
+      "text": "Two aggregators disagree (3h25m vs 3h27m), so I need the number off the primary page.",
+      "at": "2026-07-30T13:32:10.996Z"
+    },
+    {
+      "id": "2f89f16804",
+      "role": "event",
+      "text": "dropped 3.5hours — not in the sentence quoted for it",
+      "at": "2026-07-30T13:32:10.996Z",
+      "tool": "read_source"
+    },
+    {
+      "id": "4b8938564e",
+      "role": "event",
+      "text": "dropped 50% — not in the sentence quoted for it",
+      "at": "2026-07-30T13:32:10.996Z",
+      "tool": "read_source"
+    },
+    {
+      "id": "019817cbb0",
+      "role": "event",
+      "text": "dropped 10% — not in the sentence quoted for it",
+      "at": "2026-07-30T13:32:10.996Z",
+      "tool": "read_source"
+    },
+    {
+      "id": "f4445381b2",
+      "role": "event",
+      "text": "dropped 50% — not in the sentence quoted for it",
+      "at": "2026-07-30T13:32:10.996Z",
+      "tool": "read_source"
+    },
+    {
+      "id": "dc8d0c78cc",
+      "role": "event",
+      "text": "dropped 33% — not in the sentence quoted for it",
+      "at": "2026-07-30T13:32:10.996Z",
+      "tool": "read_source"
+    },
+    {
+      "id": "ad1f6ff939",
+      "role": "event",
+      "text": "dropped 33% — not in the sentence quoted for it",
+      "at": "2026-07-30T13:32:10.996Z",
+      "tool": "read_source"
+    },
+    {
+      "id": "7f59cc35b8",
+      "role": "event",
+      "text": "www.orbitmedia.com — 4 figure(s) via fetched",
+      "at": "2026-07-30T13:32:10.996Z",
+      "tool": "read_source"
+    },
+    {
+      "id": "fe2ffd0bbb",
+      "role": "event",
+      "text": "4 figure(s) across 1 page(s) · $0.0196 on Haiku",
+      "at": "2026-07-30T13:32:10.996Z",
+      "tool": "read_source"
+    },
+    {
+      "id": "5a08917af9",
+      "role": "event",
+      "text": "1 fact(s) proposed for approval",
+      "at": "2026-07-30T13:32:10.996Z",
+      "tool": "propose_facts"
+    },
+    {
+      "id": "db94711088",
+      "role": "assistant",
+      "text": "I've proposed one fact for your approval in the Brand screen.\n\n**The figure: 3.4 hours per day.**\n\nThe sentence it comes from, word for word off the page:\n\n> \"On average, content professionals spend 3.4 hours each day creating content.\"\n\nSource: Kontent.ai, *The content creator's toolbox 2025*, a survey of 610 content professionals across seven countries. The page backs it with a distribution rather than just an average: \"Nearly half the respondents spend 2–4 hours creating content every day,\" with another quarter at 4–6 hours. That distribution is what makes me trust it. An average alone can hide a few outliers doing all the work; this one has a real mass in the middle.\n\nTwo things you should know before you approve it:\n\n**It is not strictly B2B.** Respondents are \"content professionals,\" not B2B marketers. If a video says \"B2B marketing teams,\" the number does not quite cover the claim. It supports \"content teams\" honestly.\n\n**It is a vendor survey.** Kontent.ai sells a CMS. A big number is useful to them. That does not make it wrong, but it is not neutral, and it is worth saying so.\n\n**What I could not stand behind.** The stronger source is Orbit Media's 12th Annual Blogger Survey (808 respondents, twelve years of trend data, genuinely primary). Their time-per-post figure is the one I wanted. But it does not appear on the page in a form I could quote, and the secondhand sites citing it disagree with each other, one says 3 hours 25 minutes, another says 3 hours 27 minutes. That disagreement is the reason not to use it. I will not hand you a number I cannot show you the sentence for. If you want that one, the report likely has a downloadable version worth a direct look.\n\nI also passed on the contentgrip \"33 hours a week, 82% of work hours\" figure. It is genuinely B2B and the most quotable number here, but it is from a 2022 write-up of someone else's survey of only 100 marketers, and the pre-AI date makes it stale for 2026.\n\nNothing built yet, as asked.",
+      "at": "2026-07-30T13:32:10.996Z"
+    },
+    {
+      "id": "ba9315642d",
+      "role": "user",
+      "text": "Now make the video: content teams are not short of ideas, they are short of hours. Chart the 3.4 hours figure you just had me approve, and put the source on screen. 9x16, thought leadership.",
+      "at": "2026-07-30T14:35:00.138Z"
+    },
+    {
+      "id": "6b2ea99b1b",
+      "role": "event",
+      "text": "context read — 16 tokens, 1 approved facts, content language English",
+      "at": "2026-07-30T14:35:00.138Z",
+      "tool": "read_context"
+    },
+    {
+      "id": "84e84fc8bf",
+      "role": "assistant",
+      "text": "Fact is approved. Building it now.",
+      "at": "2026-07-30T14:35:00.138Z"
+    },
+    {
+      "id": "92c6f3ab3f",
+      "role": "event",
+      "text": "ledger        2 related video(s): thought-leadership-5741a2, thought-leadership-a2ab00",
+      "at": "2026-07-30T14:35:00.138Z",
+      "tool": "make_video"
+    },
+    {
+      "id": "b74bf371c6",
+      "role": "event",
+      "text": "plan          thought-leadership · 9x16 · en",
+      "at": "2026-07-30T14:35:00.138Z",
+      "tool": "make_video"
+    },
+    {
+      "id": "94ca099da5",
+      "role": "event",
+      "text": "plan          attempt 1 broke a copy rule; retrying.",
+      "at": "2026-07-30T14:35:00.138Z",
+      "tool": "make_video"
+    },
+    {
+      "id": "5af49d208b",
+      "role": "event",
+      "text": "plan          \"Content teams are not short of ideas, they are short of the hours it takes to turn an idea into a published thing.\"",
+      "at": "2026-07-30T14:35:00.138Z",
+      "tool": "make_video"
+    },
+    {
+      "id": "c1f5c41073",
+      "role": "event",
+      "text": "plan          7 sections · 22 phrases",
+      "at": "2026-07-30T14:35:00.138Z",
+      "tool": "make_video"
+    },
+    {
+      "id": "78166a29ee",
+      "role": "event",
+      "text": "narration    take came back at 1.73 words per second; asking again",
+      "at": "2026-07-30T14:35:00.138Z",
+      "tool": "make_video"
+    },
+    {
+      "id": "c606aa7892",
+      "role": "event",
+      "text": "narration    take came back at 1.24 words per second and 5.8 dB quieter by the end",
+      "at": "2026-07-30T14:35:00.138Z",
+      "tool": "make_video"
+    },
+    {
+      "id": "1d20562cb3",
+      "role": "event",
+      "text": "narration    keeping the better of two takes; 1 check(s) still unmet",
+      "at": "2026-07-30T14:35:00.138Z",
+      "tool": "make_video"
+    },
+    {
+      "id": "0484c39fdb",
+      "role": "event",
+      "text": "narration    123 word timings · whisper-large-v3 · 71s billed",
+      "at": "2026-07-30T14:35:00.138Z",
+      "tool": "make_video"
+    },
+    {
+      "id": "201403b428",
+      "role": "event",
+      "text": "narration    one take · 22 phrases located · Google Gemini TTS · Achird · whisper-large-v3",
+      "at": "2026-07-30T14:35:00.138Z",
+      "tool": "make_video"
+    },
+    {
+      "id": "97d0592aec",
+      "role": "event",
+      "text": "timing        72.74s measured from narration",
+      "at": "2026-07-30T14:35:00.138Z",
+      "tool": "make_video"
+    },
+    {
+      "id": "b6c1616d62",
+      "role": "event",
+      "text": "rhythm        lines 1.1s to 3.9s · variation 0.287 · energy quiet, settled, lift, edge",
+      "at": "2026-07-30T14:35:00.138Z",
+      "tool": "make_video"
+    },
+    {
+      "id": "68e5092402",
+      "role": "event",
+      "text": "compose       Claude Agent SDK (claude CLI subscription) · portrait 1080×1920",
+      "at": "2026-07-30T14:35:00.138Z",
+      "tool": "make_video"
+    },
+    {
+      "id": "12007be509",
+      "role": "event",
+      "text": "  compose      bash · ls -la; echo \"---\"; ls -R exemplar 2>/dev/null | head -50",
+      "at": "2026-07-30T14:35:00.138Z",
+      "tool": "make_video"
+    },
+    {
+      "id": "326e0bd175",
+      "role": "event",
+      "text": "  compose      read · ../../../../../../../../CONTRACT.md",
+      "at": "2026-07-30T14:35:00.138Z",
+      "tool": "make_video"
+    },
+    {
+      "id": "4e50e3ef3b",
+      "role": "event",
+      "text": "  compose      read · CONTRACT.md",
+      "at": "2026-07-30T14:35:00.138Z",
+      "tool": "make_video"
+    },
+    {
+      "id": "824c86b104",
+      "role": "event",
+      "text": "  compose      read · BRIEF.md",
+      "at": "2026-07-30T14:35:00.138Z",
+      "tool": "make_video"
+    },
+    {
+      "id": "e1b6e7a8f2",
+      "role": "event",
+      "text": "  compose      read · exemplar/index.html",
+      "at": "2026-07-30T14:35:00.138Z",
+      "tool": "make_video"
+    },
+    {
+      "id": "2a244b598a",
+      "role": "event",
+      "text": "  compose      read · exemplar/animation.js",
+      "at": "2026-07-30T14:35:00.138Z",
+      "tool": "make_video"
+    },
+    {
+      "id": "7726f1f200",
+      "role": "event",
+      "text": "  compose      read · tokens.css",
+      "at": "2026-07-30T14:35:00.138Z",
+      "tool": "make_video"
+    },
+    {
+      "id": "ef4fe6a214",
+      "role": "event",
+      "text": "  compose      bash · cd \"/Users/fwinkler/Documents/AI Agents/myHERALD-Video-Studio/data/video",
+      "at": "2026-07-30T14:35:00.138Z",
+      "tool": "make_video"
+    },
+    {
+      "id": "5b90c9c7eb",
+      "role": "event",
+      "text": "  compose      read · exemplar/reference-contact-sheet.png",
+      "at": "2026-07-30T14:35:00.138Z",
+      "tool": "make_video"
+    },
+    {
+      "id": "c91ad3ac79",
+      "role": "event",
+      "text": "  compose      bash · cd \"/Users/fwinkler/Documents/AI Agents/myHERALD-Video-Studio/data/video",
+      "at": "2026-07-30T14:35:00.138Z",
+      "tool": "make_video"
+    },
+    {
+      "id": "e3b0cf459e",
+      "role": "event",
+      "text": "  compose      write · index.html",
+      "at": "2026-07-30T14:35:00.138Z",
+      "tool": "make_video"
+    },
+    {
+      "id": "73ff131ee6",
+      "role": "event",
+      "text": "  compose      write · styles.css",
+      "at": "2026-07-30T14:35:00.138Z",
+      "tool": "make_video"
+    },
+    {
+      "id": "52abc6558b",
+      "role": "event",
+      "text": "  compose      write · animation.js",
+      "at": "2026-07-30T14:35:00.138Z",
+      "tool": "make_video"
+    },
+    {
+      "id": "be8cbd0d23",
+      "role": "event",
+      "text": "  compose      bash · npx hyperframes check . --json --strict",
+      "at": "2026-07-30T14:35:00.138Z",
+      "tool": "make_video"
+    },
+    {
+      "id": "f0ecedd5ff",
+      "role": "event",
+      "text": "  compose      edit · styles.css",
+      "at": "2026-07-30T14:35:00.138Z",
+      "tool": "make_video"
+    },
+    {
+      "id": "a5b9d6be55",
+      "role": "event",
+      "text": "  compose      edit · styles.css",
+      "at": "2026-07-30T14:35:00.138Z",
+      "tool": "make_video"
+    },
+    {
+      "id": "b0d8b4aff4",
+      "role": "event",
+      "text": "  compose      edit · styles.css",
+      "at": "2026-07-30T14:35:00.138Z",
+      "tool": "make_video"
+    },
+    {
+      "id": "94dacf989e",
+      "role": "event",
+      "text": "  compose      edit · index.html",
+      "at": "2026-07-30T14:35:00.138Z",
+      "tool": "make_video"
+    },
+    {
+      "id": "4bbd91f708",
+      "role": "event",
+      "text": "  compose      edit · index.html",
+      "at": "2026-07-30T14:35:00.138Z",
+      "tool": "make_video"
+    },
+    {
+      "id": "47cb692e42",
+      "role": "event",
+      "text": "  compose      edit · styles.css",
+      "at": "2026-07-30T14:35:00.138Z",
+      "tool": "make_video"
+    },
+    {
+      "id": "f4b6523fb8",
+      "role": "event",
+      "text": "  compose      bash · npx hyperframes check . --json --strict 2>/dev/null | node -e \"let s='';",
+      "at": "2026-07-30T14:35:00.138Z",
+      "tool": "make_video"
+    },
+    {
+      "id": "ab5311b6a4",
+      "role": "event",
+      "text": "  compose      bash · npx hyperframes snapshot . --at 4.55,13.64,22.73,31.82 --no-end --descri",
+      "at": "2026-07-30T14:35:00.138Z",
+      "tool": "make_video"
+    },
+    {
+      "id": "1dd6eb53f2",
+      "role": "event",
+      "text": "  compose      read · snapshots/contact-sheet.jpg",
+      "at": "2026-07-30T14:35:00.138Z",
+      "tool": "make_video"
+    },
+    {
+      "id": "f1df130262",
+      "role": "event",
+      "text": "  compose      toolsearch",
+      "at": "2026-07-30T14:35:00.138Z",
+      "tool": "make_video"
+    },
+    {
+      "id": "c500c2460f",
+      "role": "event",
+      "text": "  compose      mcp__plugin_playwright_playwright__browser_navigate",
+      "at": "2026-07-30T14:35:00.138Z",
+      "tool": "make_video"
+    },
+    {
+      "id": "ec128a06b8",
+      "role": "event",
+      "text": "  compose      edit · styles.css",
+      "at": "2026-07-30T14:35:00.138Z",
+      "tool": "make_video"
+    },
+    {
+      "id": "02809cea39",
+      "role": "event",
+      "text": "  compose      edit · styles.css",
+      "at": "2026-07-30T14:35:00.138Z",
+      "tool": "make_video"
+    },
+    {
+      "id": "674dba4b18",
+      "role": "event",
+      "text": "  compose      edit · styles.css",
+      "at": "2026-07-30T14:35:00.138Z",
+      "tool": "make_video"
+    },
+    {
+      "id": "1e97101ca3",
+      "role": "event",
+      "text": "  compose      edit · animation.js",
+      "at": "2026-07-30T14:35:00.138Z",
+      "tool": "make_video"
+    },
+    {
+      "id": "d8fa825ba9",
+      "role": "event",
+      "text": "  compose      bash · npx hyperframes check . --json --strict 2>/dev/null | node -e \"let s='';",
+      "at": "2026-07-30T14:35:00.138Z",
+      "tool": "make_video"
+    },
+    {
+      "id": "505f7db10c",
+      "role": "event",
+      "text": "  compose      edit · styles.css",
+      "at": "2026-07-30T14:35:00.138Z",
+      "tool": "make_video"
+    },
+    {
+      "id": "ba28b9efd3",
+      "role": "event",
+      "text": "  compose      bash · npx hyperframes check . --json --strict 2>/dev/null | node -e \"let s='';",
+      "at": "2026-07-30T14:35:00.138Z",
+      "tool": "make_video"
+    },
+    {
+      "id": "8fbbd187e3",
+      "role": "event",
+      "text": "  compose      bash · npx hyperframes check . --json --strict 2>/dev/null | node -e \"let s='';",
+      "at": "2026-07-30T14:35:00.138Z",
+      "tool": "make_video"
+    },
+    {
+      "id": "752be2f638",
+      "role": "event",
+      "text": "  compose      edit · index.html",
+      "at": "2026-07-30T14:35:00.138Z",
+      "tool": "make_video"
+    },
+    {
+      "id": "3160577f07",
+      "role": "event",
+      "text": "  compose      bash · npx hyperframes check . --json --strict 2>/dev/null | node -e \"let s='';",
+      "at": "2026-07-30T14:35:00.138Z",
+      "tool": "make_video"
+    },
+    {
+      "id": "841cf8ad1f",
+      "role": "event",
+      "text": "  compose      bash · rm -rf snapshots && npx hyperframes snapshot . --at 4.55,13.64,22.73,31.",
+      "at": "2026-07-30T14:35:00.138Z",
+      "tool": "make_video"
+    },
+    {
+      "id": "4ffc0565f4",
+      "role": "event",
+      "text": "  compose      read · snapshots/contact-sheet.jpg",
+      "at": "2026-07-30T14:35:00.138Z",
+      "tool": "make_video"
+    },
+    {
+      "id": "34035fbe2d",
+      "role": "event",
+      "text": "  compose      edit · index.html",
+      "at": "2026-07-30T14:35:00.138Z",
+      "tool": "make_video"
+    },
+    {
+      "id": "1dd5d2fc3f",
+      "role": "event",
+      "text": "  compose      edit · styles.css",
+      "at": "2026-07-30T14:35:00.138Z",
+      "tool": "make_video"
+    },
+    {
+      "id": "5998605f3d",
+      "role": "event",
+      "text": "  compose      edit · styles.css",
+      "at": "2026-07-30T14:35:00.138Z",
+      "tool": "make_video"
+    },
+    {
+      "id": "422598a7e5",
+      "role": "event",
+      "text": "  compose      edit · index.html",
+      "at": "2026-07-30T14:35:00.138Z",
+      "tool": "make_video"
+    },
+    {
+      "id": "d2505977d3",
+      "role": "event",
+      "text": "  compose      edit · styles.css",
+      "at": "2026-07-30T14:35:00.138Z",
+      "tool": "make_video"
+    },
+    {
+      "id": "fa3c4db6f8",
+      "role": "event",
+      "text": "  compose      edit · styles.css",
+      "at": "2026-07-30T14:35:00.138Z",
+      "tool": "make_video"
+    },
+    {
+      "id": "28b9ab5877",
+      "role": "event",
+      "text": "  compose      edit · animation.js",
+      "at": "2026-07-30T14:35:00.138Z",
+      "tool": "make_video"
+    },
+    {
+      "id": "53499d095d",
+      "role": "event",
+      "text": "  compose      edit · styles.css",
+      "at": "2026-07-30T14:35:00.138Z",
+      "tool": "make_video"
+    },
+    {
+      "id": "24daacb73d",
+      "role": "event",
+      "text": "  compose      edit · styles.css",
+      "at": "2026-07-30T14:35:00.138Z",
+      "tool": "make_video"
+    },
+    {
+      "id": "7d95f09bc9",
+      "role": "event",
+      "text": "  compose      edit · animation.js",
+      "at": "2026-07-30T14:35:00.138Z",
+      "tool": "make_video"
+    },
+    {
+      "id": "b342fe164a",
+      "role": "event",
+      "text": "  compose      edit · animation.js",
+      "at": "2026-07-30T14:35:00.138Z",
+      "tool": "make_video"
+    },
+    {
+      "id": "a05f6f2582",
+      "role": "event",
+      "text": "  compose      edit · animation.js",
+      "at": "2026-07-30T14:35:00.138Z",
+      "tool": "make_video"
+    },
+    {
+      "id": "58790f3f59",
+      "role": "event",
+      "text": "  compose      edit · animation.js",
+      "at": "2026-07-30T14:35:00.138Z",
+      "tool": "make_video"
+    },
+    {
+      "id": "dbfabca11c",
+      "role": "event",
+      "text": "  compose      bash · npx hyperframes check . --json --strict 2>/dev/null | node -e \"let s='';",
+      "at": "2026-07-30T14:35:00.138Z",
+      "tool": "make_video"
+    },
+    {
+      "id": "61624a2366",
+      "role": "event",
+      "text": "  compose      bash · rm -rf snapshots && npx hyperframes snapshot . --at 4.55,13.64,22.73,31.",
+      "at": "2026-07-30T14:35:00.138Z",
+      "tool": "make_video"
+    },
+    {
+      "id": "81d60a8c66",
+      "role": "event",
+      "text": "  compose      read · snapshots/contact-sheet.jpg",
+      "at": "2026-07-30T14:35:00.138Z",
+      "tool": "make_video"
+    },
+    {
+      "id": "fd71a382d4",
+      "role": "event",
+      "text": "  compose      edit · styles.css",
+      "at": "2026-07-30T14:35:00.138Z",
+      "tool": "make_video"
+    },
+    {
+      "id": "e810d53645",
+      "role": "event",
+      "text": "  compose      edit · styles.css",
+      "at": "2026-07-30T14:35:00.138Z",
+      "tool": "make_video"
+    },
+    {
+      "id": "c20374dabc",
+      "role": "event",
+      "text": "  compose      edit · styles.css",
+      "at": "2026-07-30T14:35:00.138Z",
+      "tool": "make_video"
+    },
+    {
+      "id": "565cae2d15",
+      "role": "event",
+      "text": "  compose      edit · animation.js",
+      "at": "2026-07-30T14:35:00.138Z",
+      "tool": "make_video"
+    },
+    {
+      "id": "8f169497b1",
+      "role": "event",
+      "text": "  compose      bash · npx hyperframes check . --json --strict 2>/dev/null | node -e \"let s='';",
+      "at": "2026-07-30T14:35:00.138Z",
+      "tool": "make_video"
+    },
+    {
+      "id": "29b0580e97",
+      "role": "event",
+      "text": "  compose      read · snapshots/contact-sheet.jpg",
+      "at": "2026-07-30T14:35:00.138Z",
+      "tool": "make_video"
+    },
+    {
+      "id": "76ce55fbf1",
+      "role": "event",
+      "text": "  compose      edit · index.html",
+      "at": "2026-07-30T14:35:00.138Z",
+      "tool": "make_video"
+    },
+    {
+      "id": "73105054c9",
+      "role": "event",
+      "text": "  compose      edit · animation.js",
+      "at": "2026-07-30T14:35:00.138Z",
+      "tool": "make_video"
+    },
+    {
+      "id": "6740630e62",
+      "role": "event",
+      "text": "  compose      bash · npx hyperframes check . --json --strict 2>/dev/null | node -e \"let s='';",
+      "at": "2026-07-30T14:35:00.138Z",
+      "tool": "make_video"
+    },
+    {
+      "id": "c5f17970c3",
+      "role": "event",
+      "text": "  compose      bash · rm -rf snapshots && npx hyperframes snapshot . --at 2.2,8.0,17.5,29.0,38",
+      "at": "2026-07-30T14:35:00.138Z",
+      "tool": "make_video"
+    },
+    {
+      "id": "722cc582d3",
+      "role": "event",
+      "text": "  compose      read · snapshots/contact-sheet.jpg",
+      "at": "2026-07-30T14:35:00.138Z",
+      "tool": "make_video"
+    },
+    {
+      "id": "9f2c0315d8",
+      "role": "event",
+      "text": "  compose      edit · styles.css",
+      "at": "2026-07-30T14:35:00.138Z",
+      "tool": "make_video"
+    },
+    {
+      "id": "c660ee3cfc",
+      "role": "event",
+      "text": "  compose      bash · npx hyperframes check . --json --strict 2>/dev/null | node -e \"let s='';",
+      "at": "2026-07-30T14:35:00.139Z",
+      "tool": "make_video"
+    },
+    {
+      "id": "17ac970595",
+      "role": "event",
+      "text": "  compose      read · snapshots/contact-sheet.jpg",
+      "at": "2026-07-30T14:35:00.139Z",
+      "tool": "make_video"
+    },
+    {
+      "id": "f77d9b4b5e",
+      "role": "event",
+      "text": "check         attempt 1: 3 error(s), 12 warning(s)",
+      "at": "2026-07-30T14:35:00.139Z",
+      "tool": "make_video"
+    },
+    {
+      "id": "1688fa1660",
+      "role": "event",
+      "text": "  [error] layout: Text is hidden beneath an opaque element.\n  [error] layout: Text is hidden beneath an opaque element.\n  [error] layout: Text is hidden beneath an opaque element.\n  [warning] layout: Element extends outside a clipping layout container.\n  [warning] layout: Element extends outside a clipping layout container.\n  [warning] layout: Element extends outside a clipping layout container.\n  [warning] layout: Element extends outside a clipping layout container.\n  [warning] layout: Element extends outside a clipping layout container.\n  [warning] layout: Element extends outside a clipping layout container.\n  [warning] layout: Element extends outside a clipping layout container.\n  [warning] layout: Element extends outside a clipping layout container.\n  [warning] layout: Element extends outside a clipping layout container.",
+      "at": "2026-07-30T14:35:00.139Z",
+      "tool": "make_video"
+    },
+    {
+      "id": "4324375643",
+      "role": "event",
+      "text": "compose       repairing (3 errors)",
+      "at": "2026-07-30T14:35:00.139Z",
+      "tool": "make_video"
+    },
+    {
+      "id": "b3bd031dae",
+      "role": "event",
+      "text": "  repair      bash · ls -la /Users/fwinkler/Documents/HyperFrames 2>/dev/null || pwd && ls -l",
+      "at": "2026-07-30T14:35:00.139Z",
+      "tool": "make_video"
+    },
+    {
+      "id": "5d2149ee98",
+      "role": "event",
+      "text": "  repair      read · index.html",
+      "at": "2026-07-30T14:35:00.139Z",
+      "tool": "make_video"
+    },
+    {
+      "id": "5a2e2ffad7",
+      "role": "event",
+      "text": "  repair      read · styles.css",
+      "at": "2026-07-30T14:35:00.139Z",
+      "tool": "make_video"
+    },
+    {
+      "id": "cc805fb17d",
+      "role": "event",
+      "text": "  repair      bash · npx hyperframes check . --json --strict 2>&1 | tail -c 12000",
+      "at": "2026-07-30T14:35:00.139Z",
+      "tool": "make_video"
+    },
+    {
+      "id": "1058b31b0d",
+      "role": "event",
+      "text": "  repair      bash · ls -la snapshots/",
+      "at": "2026-07-30T14:35:00.139Z",
+      "tool": "make_video"
+    },
+    {
+      "id": "7779bed42e",
+      "role": "event",
+      "text": "  repair      read · snapshots/contact-sheet.jpg",
+      "at": "2026-07-30T14:35:00.139Z",
+      "tool": "make_video"
+    },
+    {
+      "id": "e48a40faca",
+      "role": "event",
+      "text": "check         attempt 2: 3 error(s), 12 warning(s)",
+      "at": "2026-07-30T14:35:00.139Z",
+      "tool": "make_video"
+    },
+    {
+      "id": "e1ffe8916b",
+      "role": "event",
+      "text": "  [error] layout: Text is hidden beneath an opaque element.\n  [error] layout: Text is hidden beneath an opaque element.\n  [error] layout: Text is hidden beneath an opaque element.\n  [warning] layout: Element extends outside a clipping layout container.\n  [warning] layout: Element extends outside a clipping layout container.\n  [warning] layout: Element extends outside a clipping layout container.\n  [warning] layout: Element extends outside a clipping layout container.\n  [warning] layout: Element extends outside a clipping layout container.\n  [warning] layout: Element extends outside a clipping layout container.\n  [warning] layout: Element extends outside a clipping layout container.\n  [warning] layout: Element extends outside a clipping layout container.\n  [warning] layout: Element extends outside a clipping layout container.",
+      "at": "2026-07-30T14:35:00.139Z",
+      "tool": "make_video"
+    },
+    {
+      "id": "99aa7ded90",
+      "role": "event",
+      "text": "compose       repairing (3 errors)",
+      "at": "2026-07-30T14:35:00.139Z",
+      "tool": "make_video"
+    },
+    {
+      "id": "ba315f265c",
+      "role": "event",
+      "text": "  repair      bash · ls -la /Users/fwinkler/hyperframes-work 2>/dev/null || pwd && ls -la",
+      "at": "2026-07-30T14:35:00.139Z",
+      "tool": "make_video"
+    },
+    {
+      "id": "e69b8bd609",
+      "role": "event",
+      "text": "  repair      read · index.html",
+      "at": "2026-07-30T14:35:00.139Z",
+      "tool": "make_video"
+    },
+    {
+      "id": "4057f02b15",
+      "role": "event",
+      "text": "  repair      read · styles.css",
+      "at": "2026-07-30T14:35:00.139Z",
+      "tool": "make_video"
+    },
+    {
+      "id": "c3ababf079",
+      "role": "event",
+      "text": "  repair      read · animation.js",
+      "at": "2026-07-30T14:35:00.139Z",
+      "tool": "make_video"
+    },
+    {
+      "id": "f85004093b",
+      "role": "event",
+      "text": "  repair      bash · npx hyperframes check . --json --strict 2>&1 | tail -200",
+      "at": "2026-07-30T14:35:00.139Z",
+      "tool": "make_video"
+    },
+    {
+      "id": "91b50a300c",
+      "role": "event",
+      "text": "  repair      bash · grep -n -i \"allow-occlusion\\|allow-overflow\\|allow-overlap\\|contrast\" CO",
+      "at": "2026-07-30T14:35:00.139Z",
+      "tool": "make_video"
+    },
+    {
+      "id": "f3fe8d41c3",
+      "role": "event",
+      "text": "  repair      bash · sed -n 80,140p CONTRACT.md; echo \"=== editorial section-number ===\"; sed",
+      "at": "2026-07-30T14:35:00.139Z",
+      "tool": "make_video"
+    },
+    {
+      "id": "dd6c1d783d",
+      "role": "event",
+      "text": "  repair      bash · grep -n -A6 \"^\\.rule\\|^\\.kicker\\|^\\.tag\\|^\\.field\" blocks/editorial.css ",
+      "at": "2026-07-30T14:35:00.139Z",
+      "tool": "make_video"
+    },
+    {
+      "id": "93111ec27f",
+      "role": "event",
+      "text": "  repair      edit · index.html",
+      "at": "2026-07-30T14:35:00.139Z",
+      "tool": "make_video"
+    },
+    {
+      "id": "5fad54ae3b",
+      "role": "event",
+      "text": "  repair      edit · index.html",
+      "at": "2026-07-30T14:35:00.139Z",
+      "tool": "make_video"
+    },
+    {
+      "id": "093fc41912",
+      "role": "event",
+      "text": "  repair      edit · index.html",
+      "at": "2026-07-30T14:35:00.139Z",
+      "tool": "make_video"
+    },
+    {
+      "id": "7f3bf24b87",
+      "role": "event",
+      "text": "  repair      edit · index.html",
+      "at": "2026-07-30T14:35:00.139Z",
+      "tool": "make_video"
+    },
+    {
+      "id": "3157545c2f",
+      "role": "event",
+      "text": "  repair      edit · index.html",
+      "at": "2026-07-30T14:35:00.139Z",
+      "tool": "make_video"
+    },
+    {
+      "id": "e4a12beaf2",
+      "role": "event",
+      "text": "  repair      edit · index.html",
+      "at": "2026-07-30T14:35:00.139Z",
+      "tool": "make_video"
+    },
+    {
+      "id": "698d68528b",
+      "role": "event",
+      "text": "  repair      edit · index.html",
+      "at": "2026-07-30T14:35:00.139Z",
+      "tool": "make_video"
+    },
+    {
+      "id": "b0dd1d65f6",
+      "role": "event",
+      "text": "  repair      edit · index.html",
+      "at": "2026-07-30T14:35:00.139Z",
+      "tool": "make_video"
+    },
+    {
+      "id": "63e1628c82",
+      "role": "event",
+      "text": "  repair      edit · index.html",
+      "at": "2026-07-30T14:35:00.139Z",
+      "tool": "make_video"
+    },
+    {
+      "id": "20467314a5",
+      "role": "event",
+      "text": "  repair      edit · styles.css",
+      "at": "2026-07-30T14:35:00.139Z",
+      "tool": "make_video"
+    },
+    {
+      "id": "12d64a1b01",
+      "role": "event",
+      "text": "  repair      edit · styles.css",
+      "at": "2026-07-30T14:35:00.139Z",
+      "tool": "make_video"
+    },
+    {
+      "id": "0051f46291",
+      "role": "event",
+      "text": "  repair      edit · animation.js",
+      "at": "2026-07-30T14:35:00.139Z",
+      "tool": "make_video"
+    },
+    {
+      "id": "25c055b3ad",
+      "role": "event",
+      "text": "  repair      bash · npx hyperframes check . --json --strict 2>&1 | tail -80",
+      "at": "2026-07-30T14:35:00.139Z",
+      "tool": "make_video"
+    },
+    {
+      "id": "56ab157e2b",
+      "role": "event",
+      "text": "  repair      bash · npx hyperframes snapshot . --time 36.8 --time 37.0 --time 44.4 --out sna",
+      "at": "2026-07-30T14:35:00.139Z",
+      "tool": "make_video"
+    },
+    {
+      "id": "68c965e009",
+      "role": "event",
+      "text": "  repair      bash · npx hyperframes snapshot --help 2>&1 | head -30",
+      "at": "2026-07-30T14:35:00.139Z",
+      "tool": "make_video"
+    },
+    {
+      "id": "1bdb501f23",
+      "role": "event",
+      "text": "  repair      bash · npx hyperframes snapshot . --at 36.7,36.85,37.2,44.4 --no-end -o snapsho",
+      "at": "2026-07-30T14:35:00.139Z",
+      "tool": "make_video"
+    },
+    {
+      "id": "7371a66d90",
+      "role": "event",
+      "text": "  repair      read · snapshots/verify/contact-sheet.jpg",
+      "at": "2026-07-30T14:35:00.139Z",
+      "tool": "make_video"
+    },
+    {
+      "id": "3709dfce7e",
+      "role": "event",
+      "text": "  repair      bash · rm -rf snapshots/verify && npx hyperframes snapshot . --at 5.5,17,29,42,",
+      "at": "2026-07-30T14:35:00.139Z",
+      "tool": "make_video"
+    },
+    {
+      "id": "b534a2e533",
+      "role": "event",
+      "text": "  repair      read · snapshots/contact-sheet.jpg",
+      "at": "2026-07-30T14:35:00.139Z",
+      "tool": "make_video"
+    },
+    {
+      "id": "522b0119b9",
+      "role": "event",
+      "text": "  repair      bash · npx hyperframes check . --json --strict 2>&1 | python3 -c \"import sys,js",
+      "at": "2026-07-30T14:35:00.139Z",
+      "tool": "make_video"
+    },
+    {
+      "id": "60a5a57e58",
+      "role": "event",
+      "text": "check         attempt 3: clean, 2 warning(s)",
+      "at": "2026-07-30T14:35:00.139Z",
+      "tool": "make_video"
+    },
+    {
+      "id": "d315e47417",
+      "role": "event",
+      "text": "compose       **`npx hyperframes check . --json --strict` → `ok: true`, 0 errors, 0 warnings.** Only the 2 `pointer_events_none` infos remain — those are Studio-selectability notes on the mandatory `.caption-layer` and the decorative `.signal-layer`, not failures.",
+      "at": "2026-07-30T14:35:00.139Z",
+      "tool": "make_video"
+    },
+    {
+      "id": "e04251ab54",
+      "role": "event",
+      "text": "render        9x16 · 1080×1920 · high",
+      "at": "2026-07-30T14:35:00.139Z",
+      "tool": "make_video"
+    },
+    {
+      "id": "29ba41d19d",
+      "role": "event",
+      "text": "qc            9x16 FAILED — noLongFreeze; repairing once",
+      "at": "2026-07-30T14:35:00.139Z",
+      "tool": "make_video"
+    },
+    {
+      "id": "5a404c3c19",
+      "role": "event",
+      "text": "  repair      bash · ls -la /Users/fwinkler/hyperframes-eval 2>/dev/null || pwd && ls -la",
+      "at": "2026-07-30T14:35:00.139Z",
+      "tool": "make_video"
+    },
+    {
+      "id": "eabea36489",
+      "role": "event",
+      "text": "  repair      read · animation.js",
+      "at": "2026-07-30T14:35:00.139Z",
+      "tool": "make_video"
+    },
+    {
+      "id": "487b607aea",
+      "role": "event",
+      "text": "  repair      read · index.html",
+      "at": "2026-07-30T14:35:00.139Z",
+      "tool": "make_video"
+    },
+    {
+      "id": "a4ab4e1fb1",
+      "role": "event",
+      "text": "  repair      bash · ls -R snapshots | head -50; ls -la snapshots",
+      "at": "2026-07-30T14:35:00.139Z",
+      "tool": "make_video"
+    },
+    {
+      "id": "d92d4b79e6",
+      "role": "event",
+      "text": "  repair      grep",
+      "at": "2026-07-30T14:35:00.139Z",
+      "tool": "make_video"
+    },
+    {
+      "id": "cd7de8f6b6",
+      "role": "event",
+      "text": "  repair      read · styles.css",
+      "at": "2026-07-30T14:35:00.139Z",
+      "tool": "make_video"
+    },
+    {
+      "id": "67c82bcada",
+      "role": "event",
+      "text": "  repair      bash · grep -rn \"signal-spine\\|spine-line\\|spine-node\" blocks/ tokens.css 2>/de",
+      "at": "2026-07-30T14:35:00.139Z",
+      "tool": "make_video"
+    },
+    {
+      "id": "1743fd7182",
+      "role": "event",
+      "text": "  repair      bash · sed -n '45,80p' blocks/editorial.css",
+      "at": "2026-07-30T14:35:00.139Z",
+      "tool": "make_video"
+    },
+    {
+      "id": "efe43fce49",
+      "role": "event",
+      "text": "  repair      bash · node -e \"\nglobal.window={};\nrequire('./caption-data.js');\nconst d=window",
+      "at": "2026-07-30T14:35:00.139Z",
+      "tool": "make_video"
+    },
+    {
+      "id": "c41ad907ee",
+      "role": "event",
+      "text": "  repair      bash · grep -n \"lp-crawl\\|lp-base\\|arc-crawl\\|arc-base\\|dasharray\" styles.css",
+      "at": "2026-07-30T14:35:00.139Z",
+      "tool": "make_video"
+    },
+    {
+      "id": "61dc94c81e",
+      "role": "event",
+      "text": "  repair      bash · npx hyperframes check . --json --strict",
+      "at": "2026-07-30T14:35:00.139Z",
+      "tool": "make_video"
+    },
+    {
+      "id": "8c15ebce42",
+      "role": "event",
+      "text": "  repair      edit · animation.js",
+      "at": "2026-07-30T14:35:00.139Z",
+      "tool": "make_video"
+    },
+    {
+      "id": "dac6d0649f",
+      "role": "event",
+      "text": "  repair      edit · animation.js",
+      "at": "2026-07-30T14:35:00.139Z",
+      "tool": "make_video"
+    },
+    {
+      "id": "7e9c4a7223",
+      "role": "event",
+      "text": "  repair      edit · animation.js",
+      "at": "2026-07-30T14:35:00.139Z",
+      "tool": "make_video"
+    },
+    {
+      "id": "dbf252393c",
+      "role": "event",
+      "text": "  repair      edit · animation.js",
+      "at": "2026-07-30T14:35:00.139Z",
+      "tool": "make_video"
+    },
+    {
+      "id": "30b4d76f89",
+      "role": "event",
+      "text": "  repair      edit · animation.js",
+      "at": "2026-07-30T14:35:00.139Z",
+      "tool": "make_video"
+    },
+    {
+      "id": "2df9bd3cbd",
+      "role": "event",
+      "text": "  repair      edit · animation.js",
+      "at": "2026-07-30T14:35:00.139Z",
+      "tool": "make_video"
+    },
+    {
+      "id": "92490d7685",
+      "role": "event",
+      "text": "  repair      edit · animation.js",
+      "at": "2026-07-30T14:35:00.139Z",
+      "tool": "make_video"
+    },
+    {
+      "id": "c30a657802",
+      "role": "event",
+      "text": "  repair      edit · animation.js",
+      "at": "2026-07-30T14:35:00.139Z",
+      "tool": "make_video"
+    },
+    {
+      "id": "325dcef844",
+      "role": "event",
+      "text": "  repair      bash · npx hyperframes check . --json --strict",
+      "at": "2026-07-30T14:35:00.139Z",
+      "tool": "make_video"
+    },
+    {
+      "id": "dd1bf31abd",
+      "role": "event",
+      "text": "render        9x16 · 1080×1920 · high",
+      "at": "2026-07-30T14:35:00.139Z",
+      "tool": "make_video"
+    },
+    {
+      "id": "c2c8675587",
+      "role": "event",
+      "text": "qc            9x16 FAILED — noLongFreeze",
+      "at": "2026-07-30T14:35:00.139Z",
+      "tool": "make_video"
+    },
+    {
+      "id": "6bd1c37ac9",
+      "role": "event",
+      "text": "cost          $0.00 charged · $13.40 at API list prices",
+      "at": "2026-07-30T14:35:00.139Z",
+      "tool": "make_video"
+    },
+    {
+      "id": "f517643bd7",
+      "role": "assistant",
+      "text": "QC flagged a long freeze, likely the chart hold I asked for. Checking.",
+      "at": "2026-07-30T14:35:00.139Z"
+    },
+    {
+      "id": "821392d9a5",
+      "role": "event",
+      "text": "reviewing the result",
+      "at": "2026-07-30T14:35:00.139Z",
+      "tool": "mcp__studio__review_video"
+    },
+    {
+      "id": "e73907cfcf",
+      "role": "event",
+      "text": "reading the plan",
+      "at": "2026-07-30T14:35:00.139Z",
+      "tool": "mcp__studio__read_plan"
+    },
+    {
+      "id": "ae89b25e7d",
+      "role": "event",
+      "text": "brief saved — 3 finding(s), 3 gap(s)",
+      "at": "2026-07-30T14:35:00.139Z",
+      "tool": "save_brief"
+    },
+    {
+      "id": "d161a2d9e5",
+      "role": "assistant",
+      "text": "Plan is strong. The freeze is almost certainly the chart section: 13s long with only 8.8s of speech, so ~4s of a motionless chart at the end.",
+      "at": "2026-07-30T14:35:00.139Z"
+    },
+    {
+      "id": "0ead439ffe",
+      "role": "assistant",
+      "text": "`trailingGapMs` is exactly the lever. Tightening the dead air, heaviest on the chart section.",
+      "at": "2026-07-30T14:35:00.139Z"
+    },
+    {
+      "id": "50f6564450",
+      "role": "event",
+      "text": "narration    take came back at 1.73 words per second; asking again",
+      "at": "2026-07-30T14:35:00.139Z",
+      "tool": "edit_video"
+    },
+    {
+      "id": "4422091c5b",
+      "role": "event",
+      "text": "narration    take came back at 1.24 words per second and 5.8 dB quieter by the end",
+      "at": "2026-07-30T14:35:00.139Z",
+      "tool": "edit_video"
+    },
+    {
+      "id": "a3088cdc25",
+      "role": "event",
+      "text": "narration    keeping the better of two takes; 1 check(s) still unmet",
+      "at": "2026-07-30T14:35:00.139Z",
+      "tool": "edit_video"
+    },
+    {
+      "id": "0a080c1609",
+      "role": "event",
+      "text": "narration    123 word timings · whisper-large-v3 · 71s billed",
+      "at": "2026-07-30T14:35:00.139Z",
+      "tool": "edit_video"
+    },
+    {
+      "id": "3fd94147b8",
+      "role": "event",
+      "text": "narration    one take · 22 phrases located · Google Gemini TTS · Achird · whisper-large-v3",
+      "at": "2026-07-30T14:35:00.139Z",
+      "tool": "edit_video"
+    },
+    {
+      "id": "69b6d18bb9",
+      "role": "event",
+      "text": "timing        72.74s (unchanged)",
+      "at": "2026-07-30T14:35:00.139Z",
+      "tool": "edit_video"
+    },
+    {
+      "id": "225b84cfec",
+      "role": "event",
+      "text": "check         portrait: clean",
+      "at": "2026-07-30T14:35:00.139Z",
+      "tool": "edit_video"
+    },
+    {
+      "id": "6dc31b8fc8",
+      "role": "event",
+      "text": "render        9x16 · 1080×1920",
+      "at": "2026-07-30T14:35:00.139Z",
+      "tool": "edit_video"
+    },
+    {
+      "id": "2f015f5d4d",
+      "role": "assistant",
+      "text": "Trailing gaps weren't the slack, so the freeze is elsewhere. Let me look at the QC detail rather than guess again.",
+      "at": "2026-07-30T14:35:00.139Z"
+    },
+    {
+      "id": "3af929c01e",
+      "role": "assistant",
+      "text": "Found it: a 1.5s static hold at 50.3s, mid-phrase inside \"the-position\". Not gap-related, the composition just sits still under a long line. Breaking that line into shorter beats forces motion.",
+      "at": "2026-07-30T14:35:00.139Z"
+    },
+    {
+      "id": "450782c356",
+      "role": "event",
+      "text": "narration    take came back at 1.49 words per second; asking again",
+      "at": "2026-07-30T14:35:00.139Z",
+      "tool": "edit_video"
+    },
+    {
+      "id": "34f6f26593",
+      "role": "event",
+      "text": "narration    take came back at 1.29 words per second",
+      "at": "2026-07-30T14:35:00.139Z",
+      "tool": "edit_video"
+    },
+    {
+      "id": "b2d9fca3f4",
+      "role": "event",
+      "text": "narration    keeping the better of two takes; 1 check(s) still unmet",
+      "at": "2026-07-30T14:35:00.139Z",
+      "tool": "edit_video"
+    },
+    {
+      "id": "bbc00a489c",
+      "role": "event",
+      "text": "narration    123 word timings · whisper-large-v3 · 83s billed",
+      "at": "2026-07-30T14:35:00.139Z",
+      "tool": "edit_video"
+    },
+    {
+      "id": "199ca77594",
+      "role": "event",
+      "text": "narration    the-number/p1 matched only 50% of its words",
+      "at": "2026-07-30T14:35:00.139Z",
+      "tool": "edit_video"
+    },
+    {
+      "id": "ab5e046b1e",
+      "role": "event",
+      "text": "narration    falling back to a clip per phrase",
+      "at": "2026-07-30T14:35:00.139Z",
+      "tool": "edit_video"
+    },
+    {
+      "id": "910295b6ee",
+      "role": "event",
+      "text": "narration    23 phrases · Google Gemini TTS · Achird",
+      "at": "2026-07-30T14:35:00.139Z",
+      "tool": "edit_video"
+    },
+    {
+      "id": "08b3cd8597",
+      "role": "event",
+      "text": "narration    the-number/p4 stays sharp at 98 Hz against 123 Hz after 2 retries; shipping it rather than pitch-shifting it",
+      "at": "2026-07-30T14:35:00.139Z",
+      "tool": "edit_video"
+    },
+    {
+      "id": "be26227038",
+      "role": "event",
+      "text": "narration    voice held at 123 Hz · 5 re-rolled · 1 still off",
+      "at": "2026-07-30T14:35:00.139Z",
+      "tool": "edit_video"
+    },
+    {
+      "id": "0cf9e92b70",
+      "role": "event",
+      "text": "timing        81.34s (changed)",
+      "at": "2026-07-30T14:35:00.139Z",
+      "tool": "edit_video"
+    },
+    {
+      "id": "c5a81c7970",
+      "role": "event",
+      "text": "check         portrait: clean",
+      "at": "2026-07-30T14:35:00.139Z",
+      "tool": "edit_video"
+    },
+    {
+      "id": "0c05d7352f",
+      "role": "event",
+      "text": "render        9x16 · 1080×1920",
+      "at": "2026-07-30T14:35:00.139Z",
+      "tool": "edit_video"
+    },
+    {
+      "id": "0dc251537e",
+      "role": "event",
+      "text": "reviewing the result",
+      "at": "2026-07-30T14:35:00.139Z",
+      "tool": "mcp__studio__review_video"
+    },
+    {
+      "id": "6c8751f147",
+      "role": "assistant",
+      "text": "Done. QC passes clean.\n\n**What I made.** Thesis: content teams are not short of ideas, they are short of the hours it takes to turn an idea into a published thing. Seven sections, 81 seconds, 9x16, built as false diagnosis (another brainstorm, another idea tool) → turn onto the real constraint → the chart → what it costs you → the reframe: the gap is not idea to better idea, it is idea to published. The 3.4 hours sits in the proof section with \"Kontent.ai, The content creator's toolbox 2025, survey of 610 content professionals\" set on screen beside it, and the yellow is spent on the number itself.\n\n**Two things you should know.**\n\nThe word \"B2B\" appears nowhere in the script or on screen. I kept it out deliberately: the approved fact covers content professionals generally, and your brief to me said B2B. The copy says \"content teams\", which is what the figure actually supports. If you want the B2B framing, it needs a different source, and per the brief I saved, I could not find a defensible one.\n\n**The thing I am not happy with** is not the video, it is where it sits next to your others. Four of your six published pieces argue that the bottleneck is *not* production, it is thinking: \"Der Engpass ist nicht das Schreiben\", \"the one good thought never leaves the head\". This one argues the opposite, that the bottleneck is hours. Both are defensible, but published back to back they read as a position that moved rather than a position that sharpened. Worth deciding whether that is a deliberate counter-turn or an accident.\n\nIf it is bothering you too, the planner offered an alternate that resolves it cleanly: *a day with 3.4 hours in production has no slack left for a second draft, which is why so much published work is a first draft with a deadline on it.* Same number, same chart, but the missing hours cost **revision** rather than throughput, which lines up with your thinking-not-volume argument instead of contradicting it. That is a structural change, so it would be a rebuild, not an edit. Say the word.",
+      "at": "2026-07-30T14:35:00.139Z"
+    }
+  ]
+}
