@@ -40,28 +40,101 @@ permitted; a prefixed one is refused, and you are already in the right directory
 
 Reply with a short summary of the scene archetypes you used — one line each.`;
 
+/**
+ * A refusal that only states the rule leaves the agent guessing at the cause, and it
+ * guessed wrong for thirty-odd turns: it read this as "the CLI is unavailable" and went
+ * looking for a runtime. Name the fix, not just the restriction.
+ */
+const BASH_REFUSAL =
+  "Only `hyperframes check|snapshot|lint|docs` may be run, and the command must "
+  + "begin with it — no `cd`, `export` or other prefix, since anything before the "
+  + "`&&` would run unchecked. You are already in the authoring directory and the "
+  + "Node on your PATH already satisfies HyperFrames, so run the bare command: "
+  + "`npx hyperframes check . --json --strict`.";
+
+/** One decision, so the hook and the callback can never drift into disagreeing. */
+export function bashRefusal(command: string): string | null {
+  return ALLOWED_BASH.test(command.trim()) ? null : BASH_REFUSAL;
+}
+
+/**
+ * Files the composer may write. It writes exactly three, and the rest of the directory is
+ * provided — so a write anywhere else is either a mistake or a composition inventing its
+ * own inputs, and both are worth stopping.
+ */
+const WRITABLE = /(^|\/)(index\.html|styles\.css|animation\.js)$/;
+
+export function writeRefusal(dir: string, filePath: string): string | null {
+  const target = path.resolve(dir, filePath);
+  const inside = target === path.resolve(dir) || target.startsWith(`${path.resolve(dir)}${path.sep}`);
+  if (!inside) {
+    return `${filePath} is outside the authoring directory. Write only index.html, styles.css `
+      + "and animation.js, in the directory you are already in.";
+  }
+  if (!WRITABLE.test(target)) {
+    return `${path.basename(target)} is not one of the three files you author. Everything else `
+      + "in this directory is provided and must not be modified.";
+  }
+  return null;
+}
+
 export function permission(toolName: string, input: Record<string, unknown>): PermissionResult {
   if (!ALLOWED_TOOLS.includes(toolName)) {
     return {behavior: "deny", message: `${toolName} is not available while composing.`};
   }
   if (toolName === "Bash") {
-    const command = String(input.command ?? "").trim();
-    if (!ALLOWED_BASH.test(command)) {
-      // A refusal that only states the rule leaves the agent guessing at the cause, and
-      // it guessed wrong for thirty-odd turns: it read this as "the CLI is unavailable"
-      // and went looking for a runtime. Name the fix, not just the restriction.
-      return {
-        behavior: "deny",
-        message:
-          "Only `hyperframes check|snapshot|lint|docs` may be run, and the command must "
-          + "begin with it — no `cd`, `export` or other prefix, since anything before the "
-          + "`&&` would run unchecked. You are already in the authoring directory and the "
-          + "Node on your PATH already satisfies HyperFrames, so run the bare command: "
-          + "`npx hyperframes check . --json --strict`.",
-      };
-    }
+    const refusal = bashRefusal(String(input.command ?? ""));
+    if (refusal) return {behavior: "deny", message: refusal};
   }
   return {behavior: "allow", updatedInput: input};
+}
+
+/**
+ * The boundary, in the one place that actually holds it.
+ *
+ * `canUseTool` above does not run for Bash, and had not been running for a long time. The
+ * SDK auto-approves any bare name in `allowedTools` before the callback is consulted — it
+ * says so in a startup warning nobody was reading — so the anchored `ALLOWED_BASH` regex
+ * was dead code. Observed live: the composer ran `cd` into the project root and grepped
+ * the studio's own source for twelve turns, in a run whose comments promise the blast
+ * radius of a mistake is one composition attempt.
+ *
+ * A PreToolUse hook is the only one of the SDK's four permission mechanisms that sees
+ * every execution: modes are global, rules are declarative and shadow the callback, and
+ * the callback fires only for what the rules did not already settle. So the rule lives
+ * here, and `permission()` keeps its copy for the tools the hook does not match.
+ */
+export function composerHooks(dir: string): Options["hooks"] {
+  const deny = (reason: string) => ({
+    hookSpecificOutput: {
+      hookEventName: "PreToolUse" as const,
+      permissionDecision: "deny" as const,
+      permissionDecisionReason: reason,
+    },
+  });
+
+  return {
+    PreToolUse: [
+      {
+        matcher: "Bash",
+        hooks: [async (input) => {
+          if (input.hook_event_name !== "PreToolUse") return {};
+          const refusal = bashRefusal(String((input.tool_input as {command?: unknown}).command ?? ""));
+          return refusal ? deny(refusal) : {};
+        }],
+      },
+      {
+        matcher: "Write|Edit",
+        hooks: [async (input) => {
+          if (input.hook_event_name !== "PreToolUse") return {};
+          const target = (input.tool_input as {file_path?: unknown}).file_path;
+          if (typeof target !== "string") return {};
+          const refusal = writeRefusal(dir, target);
+          return refusal ? deny(refusal) : {};
+        }],
+      },
+    ],
+  };
 }
 
 /**
@@ -99,6 +172,7 @@ async function baseOptions(context: ComposeContext): Promise<Options> {
     maxTurns: context.effort === "high" ? 90 : 60,
     abortController: toController(context.signal),
     env: await composerEnv(),
+    hooks: composerHooks(context.authoring.dir),
   };
 }
 
