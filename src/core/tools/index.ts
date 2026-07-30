@@ -9,6 +9,7 @@ import {approvedStatements, readFacts, writeFacts} from "../knowledge/facts.ts";
 import {fetchPublic} from "../knowledge/fetch.ts";
 import {extractFigures, type Figure} from "../knowledge/figures.ts";
 import {pageText, pageTitle, researchSite, saveResearch} from "../knowledge/research.ts";
+import {findFigures, libraryStock, readLibrary, rememberSources} from "../knowledge/sourceLibrary.ts";
 import {rememberExcerpts, usableExcerptFor} from "../search/excerpts.ts";
 import {
   NO_PROVIDER_MESSAGE,
@@ -114,8 +115,10 @@ export function studioTools(context: ToolContext) {
           const kit = await loadBrandKit();
           const facts = await approvedStatements();
           const settings = await readSettings();
+          const stock = libraryStock(await readLibrary());
           context.onLog(
             `context read — ${Object.keys(kit.color.tokens).length} tokens, ${facts.length} approved facts, `
+            + `${stock.figures} figure(s) on the shelf, `
             + `content language ${languageName(settings.contentLanguage)}`,
             "read_context",
           );
@@ -135,11 +138,22 @@ export function studioTools(context: ToolContext) {
               dont: kit.doDont.dont,
             },
             approvedFacts: facts,
+            sourceLibrary: {
+              ...stock,
+              note: stock.figures
+                ? `${stock.figures} figure(s) off ${stock.pages} page(s) already read, `
+                  + `${stock.fresh} of them within the last year. Call recall_sources before`
+                  + " search_web: a page already read costs nothing and arrives with its quoted"
+                  + " sentence intact. These are not approved facts — approval is still the"
+                  + " owner's, in the Brand screen."
+                : "Nothing has been read for figures yet, so there is nothing to recall.",
+            },
             webSearch: {
               configured: configuredSearchProviders().map((provider) => provider.id),
               note: configuredSearchProviders().length
-                ? "Use search_web to find a figure the studio cannot already cite, then"
-                  + " read_source on the results worth reading — it returns each number with the"
+                ? "Use search_web to find a figure the studio cannot already cite — after"
+                  + " recall_sources has come back empty — then read_source on the results worth"
+                  + " reading. It returns each number with the"
                   + " sentence it sits in, which is what an evidence note is made of. Nothing you"
                   + " find is a fact until the owner approves it in the Brand screen."
                 : "No search provider is configured, so you can only read URLs the owner names.",
@@ -169,6 +183,10 @@ export function studioTools(context: ToolContext) {
               thesis: entry.thesis,
               intent: entry.intent,
               createdAt: entry.createdAt,
+              // Which figures this video already put on screen. Stated rather than left to
+              // be inferred from the thesis: a viewer who follows the account sees the same
+              // statistic twice long before the archive reads as repetitive to us.
+              charted: entry.factIds,
             })), null, 2)
             : "No related videos. This topic has not been covered yet.");
         },
@@ -348,8 +366,58 @@ export function studioTools(context: ToolContext) {
       ),
 
       tool(
+        "recall_sources",
+        "Look for a figure among the pages this studio has already read, before spending a "
+        + "search on one it may already have. Costs nothing and touches no network. Each hit "
+        + "carries the sentence it came from, who the page credited, and how long ago it was "
+        + "read. Recalling a figure approves nothing: it still goes through propose_facts and "
+        + "the owner's decision in the Brand screen, exactly as a fresh one would.",
+        {
+          query: z.string().min(3)
+            .describe("The figure you are after, in the words you would search with"),
+        },
+        async ({query}) => {
+          const library = await readLibrary();
+          const hits = findFigures(library, query);
+          const stock = libraryStock(library);
+          context.onLog(
+            `library — ${hits.length} of ${stock.figures} figure(s) match "${query.slice(0, 60)}"`,
+            "recall_sources",
+          );
+
+          if (!hits.length) {
+            return ok(JSON.stringify({
+              hits: [],
+              stock,
+              next: stock.figures
+                ? "Nothing on the shelf bears on this. Search the web for it."
+                : "The library is empty — nothing has been read for figures yet. Search the web.",
+            }, null, 2));
+          }
+
+          return ok([
+            SOURCE_FENCE,
+            "",
+            JSON.stringify({
+              hits,
+              stock,
+              next: "These are pages already read, not approved facts — check each one's state in"
+                + " the Brand screen before assuming a video may use it. `ageDays` is how long"
+                + " ago the page was read, which is not how old the number is: read"
+                + " `attribution` for the study and its year, and treat a figure whose own"
+                + " source predates the last year or two as worth re-checking however recently"
+                + " we read it. Anything marked `stale` is over a year old on our shelf. If the"
+                + " figure you need is not here, search the web.",
+            }, null, 2),
+          ].join("\n"));
+        },
+      ),
+
+      tool(
         "search_web",
-        "Search the public web for a figure or a source the studio cannot already cite. Returns "
+        "Search the public web for a figure or a source the studio cannot already cite. Call "
+        + "recall_sources first — a page this studio has already read costs nothing to reuse "
+        + "and arrives with its quoted sentence intact. Returns "
         + "titles, URLs and short snippets — nothing is fetched and nothing is saved. To read a "
         + "promising result, hand its URL to research_web, which fetches it through the address "
         + "guard. You cannot approve anything you find; only the owner can.",
@@ -504,9 +572,15 @@ export function studioTools(context: ToolContext) {
             sources.push({url, title, via, figures: extracted.figures, dropped: extracted.dropped});
             // Written to the thread's trail as well as returned, so the Sources tab holds what
             // was found even after this turn's transcript has scrolled away.
-            await recordSource(context.threadId, {
+            const filed = await recordSource(context.threadId, {
               url, title, via, figures: extracted.figures, dropped: extracted.dropped, statements: 0,
             });
+            // And to the shelf, which is the same page seen from the other side: the trail
+            // answers how this video got its number, the library answers whether we already
+            // have one. Filed from the trail's own entry rather than rebuilt here, so the two
+            // cannot drift into disagreeing about what was read.
+            const entry = filed.sources.find((source) => source.url === url);
+            if (entry) await rememberSources(context.threadId, [entry]);
             log(`${new URL(url).host} — ${extracted.figures.length} figure(s) via ${via}`);
           }
 
@@ -602,4 +676,5 @@ export const STUDIO_TOOL_NAMES = [
   "mcp__studio__search_web",
   "mcp__studio__read_source",
   "mcp__studio__save_brief",
+  "mcp__studio__recall_sources",
 ];

@@ -1,0 +1,50 @@
+{
+  "schemaVersion": 1,
+  "id": "t-7ae99f49",
+  "kind": "video",
+  "title": "Video 7/30/2026",
+  "createdAt": "2026-07-30T17:18:24.662Z",
+  "updatedAt": "2026-07-30T17:19:02.745Z",
+  "sessionId": "d2ac64bf-1163-41f5-bb80-38c34fb8239a",
+  "messages": [
+    {
+      "id": "f7dab880df",
+      "role": "user",
+      "text": "Have we already got a figure about how much of the day content teams lose to production? Just tell me what we have on the shelf — do not search the web, and do not build anything.",
+      "at": "2026-07-30T17:19:02.745Z"
+    },
+    {
+      "id": "7fac284fb3",
+      "role": "assistant",
+      "text": "I'll check the shelf — context, past videos, and saved sources.",
+      "at": "2026-07-30T17:19:02.745Z"
+    },
+    {
+      "id": "7eff3baef0",
+      "role": "event",
+      "text": "library — 7 of 42 figure(s) match \"share of workday content teams spend on production\"",
+      "at": "2026-07-30T17:19:02.745Z",
+      "tool": "recall_sources"
+    },
+    {
+      "id": "d5bb5f6af7",
+      "role": "event",
+      "text": "context read — 16 tokens, 1 approved facts, 42 figure(s) on the shelf, content language English",
+      "at": "2026-07-30T17:19:02.745Z",
+      "tool": "read_context"
+    },
+    {
+      "id": "3d15821d78",
+      "role": "event",
+      "text": "ledger — 6 related of 11 videos",
+      "at": "2026-07-30T17:19:02.745Z",
+      "tool": "search_videos"
+    },
+    {
+      "id": "e082f75e80",
+      "role": "assistant",
+      "text": "Yes, one approved and a few unapproved.\n\n**Approved, usable now:** content professionals spend an average of **3.4 hours per working day creating content** (Kontent.ai, *The content creator's toolbox 2025*, 610 content professionals across seven countries). The caveat on the fact card matters: content professionals generally, not B2B marketers, and the publisher is a CMS vendor.\n\n**On the shelf but not approved:**\n- 4 hours/day on administrative and operational tasks, credited to HubSpot but read second-hand off a Semrush roundup. This is the closest thing we have to time *lost* rather than time spent, but the sourcing is a step removed.\n- Age split from the same Kontent.ai survey: 3.7 h/day under 35, 2.7 h/day for 45+.\n\nTwo things worth knowing. First, nothing on the shelf actually measures \"share of the day lost to production\" — 3.4 hours is time spent creating, which is the job, not the waste. Framing it as loss is an argument we'd be making on top of the number, not something the number says. Second, that figure has already been spent: the video from earlier today (\"Content teams are not short of ideas, they are short of the hours it takes to turn an idea into a published thing\") carries it. Reusing it needs a genuinely different angle.",
+      "at": "2026-07-30T17:19:02.745Z"
+    }
+  ]
+}

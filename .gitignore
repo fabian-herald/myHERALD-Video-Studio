@@ -14,8 +14,10 @@ data/media/screenshots/
 data/media/recordings/
 data/media/uploads/
 data/knowledge/sources.json
-# Per-thread research trails: runtime state, and page text we did not write.
+# Per-thread research trails: runtime state, and page text we did not write. Same for the
+# shelf built out of them — every figure in it is a sentence off someone else's page.
 data/research/
+data/knowledge/source-library.json
 data/capture/
 data/brand/tokens.css
 out/

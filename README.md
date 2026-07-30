@@ -184,6 +184,17 @@ A statement carrying a figure is saved with an empty evidence note, which means 
 withheld from prompts even after you approve it, until you write down where the number
 comes from.
 
+The agent researches on its own, as part of making a video rather than as an errand you
+have to ask for — and it checks the shelf before the web. Every page it has ever read for
+figures is filed in `data/knowledge/source-library.json`, one entry per page, each figure
+still carrying the sentence it came from. Verifying a number is the slow part, so the pool
+of them is small and the same three statistics get looked up over and over; `recall_sources`
+answers "have we already got one" for nothing. Two things keep that from going stale in the
+other direction: a figure read over a year ago is offered marked stale rather than quietly
+alongside the fresh ones, and the ledger records which facts each video charted, so the
+planner is shown unused figures first and told how recently the rest were on screen. Neither
+refuses anything — sometimes the number *is* the video.
+
 ## Logos
 
 `data/brand/logos/` holds the marks, registered in the kit with a role (`seal`,
@@ -223,12 +234,13 @@ src/core/
   gen/         composer interface, planner, Claude Agent SDK adapter
   render/      hyperframes CLI, the three-gate check, QC, contact sheet
   pipeline/    orchestration and the repair loop
-  knowledge/   product facts, the numeric-claim gate, SSRF-safe research, figure extraction
+  knowledge/   product facts, the numeric-claim gate, SSRF-safe research, figure extraction,
+               the source library every read is filed into
   search/      provider interface, Brave and Exa adapters, the excerpt store
   settings.ts  the two studio-wide preferences: content language, composer
 data/
   brand/       kit.json, logos, generated tokens.css
-  knowledge/   approved product facts
+  knowledge/   approved product facts, and the source library: every page ever read
   research/    per-thread research trail: searches run, pages read, figures found
   videos/      per-video plan, narration, compose workdirs, failed attempts, ledger
 ```
