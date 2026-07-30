@@ -16,6 +16,15 @@ export const ledgerEntryZ = z.object({
   status: z.enum(["draft", "ready", "failed", "awaiting-presenter", "stale"]),
   spokenScript: z.string().default(""),
   mediaIds: z.array(z.string()).default([]),
+  /**
+   * The facts this video charted, by id.
+   *
+   * Here rather than derived from the plan on demand, for the reason the ledger exists at
+   * all: a question about the whole body of work should not require opening every plan on
+   * disk. It is what stops the same three statistics turning up in nine videos — the
+   * planner is shown which figures are already spent, and how recently.
+   */
+  factIds: z.array(z.string()).default([]),
   outputs: z.array(z.object({format: z.string(), path: z.string()})).default([]),
 });
 
@@ -43,6 +52,41 @@ export async function upsertLedgerEntry(entry: LedgerEntry): Promise<void> {
   await fs.mkdir(path.dirname(LEDGER_PATH), {recursive: true});
   await fs.writeFile(LEDGER_PATH, `${JSON.stringify(entries, null, 2)}\n`, "utf8");
 }
+
+/** How often a fact has been charted, and when it was last used. */
+export interface FactUse {
+  count: number;
+  lastAt: string;
+}
+
+/**
+ * Which figures are already spent, from the ledger.
+ *
+ * The point of the whole sourcing loop is that a number reaching a video is one somebody
+ * checked, and the cost of that is a small pool of them. A small pool plus no memory is how
+ * the same three statistics end up in nine videos — each one individually justified, the
+ * body of work repeating itself. So the planner is told what has been used and how recently,
+ * and prefers a figure that has not.
+ *
+ * A count, never a ban. Sometimes the number *is* the video, and the second piece about it
+ * is the better one. That is the owner's call and the planner's judgement, not a rule.
+ */
+export async function factUsage(): Promise<Map<string, FactUse>> {
+  const usage = new Map<string, FactUse>();
+  for (const entry of await readLedger()) {
+    // A failed run charted nothing anyone saw. Counting it would retire a figure over a
+    // render that never produced a file.
+    if (entry.status === "failed") continue;
+    for (const id of entry.factIds) {
+      const seen = usage.get(id);
+      if (!seen) usage.set(id, {count: 1, lastAt: entry.createdAt});
+      else usage.set(id, {count: seen.count + 1, lastAt: later(seen.lastAt, entry.createdAt)});
+    }
+  }
+  return usage;
+}
+
+const later = (a: string, b: string): string => (a > b ? a : b);
 
 /**
  * Cheap lexical overlap against prior theses. Good enough to surface "you already

@@ -21,7 +21,13 @@ export interface PlanRequest {
    * Approved facts that carry a number, with their ids, so a `data` block can cite one.
    * Separate from `knowledge` because citing needs an id and reading needs a sentence.
    */
-  citableFacts?: readonly {id: string; statement: string; source: string}[];
+  citableFacts?: readonly {
+    id: string;
+    statement: string;
+    source: string;
+    /** How many published videos already charted it, and when it was last used. */
+    used?: {count: number; lastAt: string};
+  }[];
   /**
    * The library, as the planner may see it: an id, a shape and a caption. Never a path —
    * the planner binds by id and the assembler copies the real file under that name, so a
@@ -42,14 +48,39 @@ export interface PlanResult {
  * Only facts that already carry a number are offered. Inviting a `data` block against a
  * qualitative fact produces a chart of made-up values with a real id attached to them,
  * which is worse than no chart — it looks sourced.
+ *
+ * Unused figures come first, and a used one says so. Verifying a number is slow, so the pool
+ * of them is small, and a small pool with no memory is how the same three statistics end up
+ * in nine videos — each individually justified, the body of work repeating itself. Stated as
+ * a fact about the archive rather than a rule: sometimes the number *is* the video, and the
+ * second piece about it is the better one.
  */
-function citableBlock(request: PlanRequest): string {
-  const citable = (request.citableFacts ?? []).filter((fact) => /\d/.test(fact.statement));
+export function citableBlock(request: PlanRequest): string {
+  const citable = (request.citableFacts ?? [])
+    .filter((fact) => /\d/.test(fact.statement))
+    // Fresh first, then least-recently-charted. `localeCompare` on ISO timestamps is a
+    // chronological sort, which is the one property of that format worth relying on.
+    .slice()
+    .sort((a, b) => (a.used?.count ?? 0) - (b.used?.count ?? 0)
+      || (a.used?.lastAt ?? "").localeCompare(b.used?.lastAt ?? ""));
   if (!citable.length) return "";
+
+  const spent = citable.filter((fact) => fact.used).length;
   return `# Figures you may chart\n\n`
     + "Only these. A `data` block cites one of these ids per value, and the run is refused "
     + "if it cites anything else.\n\n"
-    + citable.map((fact) => `- \`${fact.id}\` — ${fact.statement}${fact.source ? ` [${fact.source}]` : ""}`).join("\n")
+    + citable.map((fact) => {
+      const source = fact.source ? ` [${fact.source}]` : "";
+      const used = fact.used
+        ? ` — already charted in ${fact.used.count} video(s), last ${fact.used.lastAt.slice(0, 10)}`
+        : "";
+      return `- \`${fact.id}\` — ${fact.statement}${source}${used}`;
+    }).join("\n")
+    + (spent
+      ? "\n\nThe ones marked as already charted have been on screen before. Prefer one that "
+      + "has not, unless this video is specifically about that number — a viewer who follows "
+      + "the account sees the repetition long before you do."
+      : "")
     + "\n";
 }
 

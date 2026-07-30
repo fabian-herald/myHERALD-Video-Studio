@@ -8,7 +8,7 @@ import {composerFor, type ComposeResult} from "../gen/composer.ts";
 import {CostLedger, formatCost, type CostSummary} from "../cost.ts";
 import {planVideo} from "../gen/planner.ts";
 import {approvedStatements, readFacts} from "../knowledge/facts.ts";
-import {upsertLedgerEntry, similarTheses} from "../ledger.ts";
+import {factUsage, upsertLedgerEntry, similarTheses} from "../ledger.ts";
 import {aspectOf, DEVICE_PRESETS, mediaForFormat, mediaForPlan} from "../media/library.ts";
 import {assertPlanClaimsAreSourced} from "../plan/claims.ts";
 import {byFamily, FORMATS, type OutputFormat} from "../plan/formats.ts";
@@ -67,6 +67,7 @@ export async function runPipeline(options: RunOptions): Promise<RunResult> {
   // 1 — plan, informed by approved facts and what already exists.
   const facts = await readFacts();
   const knowledge = await approvedStatements();
+  const usage = await factUsage();
   const prior = await similarTheses(options.brief);
   if (prior.length) {
     log(`ledger        ${prior.length} related video(s): ${prior.map((entry) => entry.id).join(", ")}`);
@@ -88,7 +89,12 @@ export async function runPipeline(options: RunOptions): Promise<RunResult> {
       // then be refused for using.
       citableFacts: facts
         .filter((fact) => fact.state === "approved" && fact.evidence.trim().length > 0)
-        .map((fact) => ({id: fact.id, statement: fact.statement, source: fact.source})),
+        .map((fact) => ({
+          id: fact.id,
+          statement: fact.statement,
+          source: fact.source,
+          used: usage.get(fact.id),
+        })),
       media: (await mediaForFormat(options.formats[0] ?? "9x16")).map((item) => ({
         id: item.id,
         aspect: aspectOf(item),
@@ -307,6 +313,11 @@ export async function runPipeline(options: RunOptions): Promise<RunResult> {
     status: outputs.every((output) => output.qc.passed) ? "ready" : "failed",
     spokenScript: plan.sections.flatMap((section) => section.phrases.map((phrase) => phrase.text)).join(" "),
     mediaIds: [],
+    // Recorded at the one moment the plan and the finished file are both in hand, and it is
+    // what stops the next video reaching for the same figure. Deduped: a fact charted in two
+    // sections of one video is still one video.
+    factIds: [...new Set(plan.sections.flatMap((section) =>
+      (section.data?.points ?? []).map((point) => point.factId)))],
     outputs: outputs.map((output) => ({format: output.format, path: rel(output.path)})),
   });
 
