@@ -72,13 +72,26 @@ const decodeEntities = (value: string) => value
   .replace(/[‘’]/g, "'")
   .replace(/[“”]/g, "\"");
 
-const stripTags = (value: string) => decodeEntities(
+/**
+ * HTML to readable text.
+ *
+ * Exported because `knowledge/figures.ts` feeds this same output to a model, which promotes
+ * the three removals above the tag stripper from tidying to a control: a `<script>` body is
+ * code an attacker chose, a `<style>` block is thousands of characters of declarations that
+ * would eat a prompt budget, and an inline `<svg>` is neither. What survives is the prose
+ * a reader would see, which is the only part anyone is being asked to judge.
+ */
+export const pageText = (value: string) => decodeEntities(
   value
     .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, " ")
     .replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, " ")
     .replace(/<svg\b[^>]*>[\s\S]*?<\/svg>/gi, " ")
     .replace(/<[^>]+>/g, " "),
 ).replace(/\s+/g, " ").trim();
+
+/** The `<title>`, as text. Shared so `read_source` can name a page without a second regex. */
+export const pageTitle = (html: string) =>
+  pageText(html.match(/<title\b[^>]*>([\s\S]*?)<\/title>/i)?.[1] ?? "");
 
 /**
  * A coarse sort into the kit's fact kinds. It is wrong sometimes, which is fine: the
@@ -97,7 +110,7 @@ const BOILERPLATE = /^(?:cookie|privacy|datenschutz|terms|agb|impressum|sign in|
 
 function extractFacts(html: string, url: string): FactCandidate[] {
   const blocks = [...html.matchAll(/<(h1|h2|h3|p|li)\b[^>]*>([\s\S]*?)<\/\1>/gi)]
-    .map((match) => stripTags(match[2] ?? ""))
+    .map((match) => pageText(match[2] ?? ""))
     .filter((text) => text.length >= 24 && text.length <= 280)
     .filter((text) => !BOILERPLATE.test(text))
     // A block that is one long run of navigation labels has no sentence in it.
@@ -219,8 +232,8 @@ function styleSources(html: string, baseUrl: string): {inline: string[]; hrefs: 
  * a fixture without either mocking `fetch` or punching a hole in the address guard.
  */
 export function extractPage(html: string, url: string, into: {colors: Map<string, Usage>; fonts: Map<string, number>}) {
-  const title = stripTags(html.match(/<title\b[^>]*>([\s\S]*?)<\/title>/i)?.[1] ?? "");
-  const summary = stripTags(
+  const title = pageTitle(html);
+  const summary = pageText(
     html.match(/<meta\b[^>]*(?:name|property)=["'](?:description|og:description)["'][^>]*content=["']([^"']*)["']/i)?.[1]
     ?? html.match(/<meta\b[^>]*content=["']([^"']*)["'][^>]*(?:name|property)=["'](?:description|og:description)["']/i)?.[1]
     ?? "",

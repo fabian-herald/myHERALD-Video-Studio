@@ -214,7 +214,8 @@ src/core/
   gen/         composer interface, planner, Claude Agent SDK adapter
   render/      hyperframes CLI, the three-gate check, QC, contact sheet
   pipeline/    orchestration and the repair loop
-  knowledge/   product facts, the numeric-claim gate, SSRF-safe research
+  knowledge/   product facts, the numeric-claim gate, SSRF-safe research, figure extraction
+  search/      provider interface, Brave and Exa adapters, the excerpt store
   settings.ts  the two studio-wide preferences: content language, composer
 data/
   brand/       kit.json, logos, generated tokens.css
