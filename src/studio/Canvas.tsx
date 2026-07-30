@@ -1,19 +1,29 @@
 import {useEffect, useMemo, useState} from "react";
 import {api, type VideoDetail} from "./api.ts";
 import {ScriptTab} from "./ScriptTab.tsx";
+import {SourcesTab} from "./SourcesTab.tsx";
 
-type Tab = "video" | "script" | "scenes" | "assets" | "checks" | "files";
+type Tab = "video" | "script" | "scenes" | "sources" | "assets" | "checks" | "files";
 
 const TABS: {id: Tab; label: string}[] = [
   {id: "video", label: "VIDEO"},
   {id: "script", label: "SCRIPT"},
   {id: "scenes", label: "SCENES"},
+  // Beside the script rather than at the end: what the video is allowed to claim belongs next
+  // to what it says, not filed behind the render artefacts.
+  {id: "sources", label: "SOURCES"},
   {id: "assets", label: "ASSETS"},
   {id: "checks", label: "CHECKS"},
   {id: "files", label: "FILES"},
 ];
 
-export function Canvas({videoId, refreshKey, onRefresh}: {videoId?: string; refreshKey: number; onRefresh: () => void}) {
+export function Canvas({threadId, videoId, refreshKey, onRefresh, onOpenBrand}: {
+  threadId: string;
+  videoId?: string;
+  refreshKey: number;
+  onRefresh: () => void;
+  onOpenBrand: () => void;
+}) {
   const [tab, setTab] = useState<Tab>("video");
   const [detail, setDetail] = useState<VideoDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -29,23 +39,22 @@ export function Canvas({videoId, refreshKey, onRefresh}: {videoId?: string; refr
     };
   }, [videoId, refreshKey]);
 
-  if (!videoId) {
-    return (
-      <aside className="canvas">
-        <div className="canvas-empty">
-          <p>No video in this thread yet.</p>
-        </div>
-      </aside>
-    );
-  }
+  /*
+   * Before the video exists there is exactly one thing worth showing, and it is the research.
+   * The canvas used to refuse to open at all until something had been rendered, which put the
+   * brief and the sources out of reach during the half of the work they are written for —
+   * you could only read what a video was allowed to claim after it had already claimed it.
+   */
+  const tabs = videoId ? TABS : TABS.filter((entry) => entry.id === "sources");
+  const active: Tab = videoId ? tab : "sources";
 
   return (
     <aside className="canvas">
       <div className="canvas-tabs">
-        {TABS.map((entry) => (
+        {tabs.map((entry) => (
           <button
             key={entry.id}
-            className={`canvas-tab${tab === entry.id ? " active" : ""}`}
+            className={`canvas-tab${active === entry.id ? " active" : ""}`}
             onClick={() => setTab(entry.id)}
           >
             {entry.label}
@@ -54,7 +63,15 @@ export function Canvas({videoId, refreshKey, onRefresh}: {videoId?: string; refr
       </div>
       <div className="canvas-body">
         {error ? <div className="banner error">{error}</div> : null}
-        {!detail ? <p className="pane-sub">Loading…</p> : <TabBody tab={tab} detail={detail} onApplied={onRefresh} />}
+        {/* Sources does not wait on the video detail, because it is not about the video: the
+            research is the thread's, and it exists before there is anything rendered to load. */}
+        {active === "sources" ? (
+          <SourcesTab threadId={threadId} refreshKey={refreshKey} onOpenBrand={onOpenBrand} />
+        ) : !detail ? (
+          <p className="pane-sub">Loading…</p>
+        ) : (
+          <TabBody tab={active} detail={detail} onApplied={onRefresh} />
+        )}
       </div>
     </aside>
   );
@@ -68,6 +85,8 @@ function TabBody({tab, detail, onApplied}: {tab: Tab; detail: VideoDetail; onApp
     case "assets": return <AssetsTab detail={detail} />;
     case "checks": return <ChecksTab detail={detail} />;
     case "files": return <FilesTab detail={detail} />;
+    // Handled above, without a VideoDetail. Listed so the switch stays exhaustive.
+    case "sources": return null;
   }
 }
 

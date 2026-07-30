@@ -63,6 +63,7 @@ export async function* runAgentTurn(options: {
   let videoId = thread.videoId;
   const pending: AgentEvent[] = [];
   const context = {
+    threadId: thread.id,
     onLog: (line: string, tool?: string) => pending.push({type: "event", text: line, tool}),
     getVideoId: () => videoId,
     setVideoId: (next: string) => {

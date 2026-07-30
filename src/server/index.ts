@@ -7,6 +7,7 @@ import {writeTokensCss} from "../core/brand/tokens.ts";
 import {addLogo, removeLogo} from "../core/brand/logos.ts";
 import {LOGO_ROLES} from "../core/brand/kit.ts";
 import {DEVICE_PRESETS, readMedia} from "../core/media/library.ts";
+import {loadResearch} from "../core/knowledge/brief.ts";
 import {readFacts, writeFacts, factZ} from "../core/knowledge/facts.ts";
 import {researchSite, saveResearch} from "../core/knowledge/research.ts";
 import {readSettings, writeSettings, settingsZ} from "../core/settings.ts";
@@ -68,6 +69,11 @@ async function route(request: http.IncomingMessage, response: http.ServerRespons
   const messageMatch = pathname.match(/^\/api\/threads\/([\w-]+)\/message$/);
   if (messageMatch?.[1] && method === "POST") {
     return streamTurn(request, response, messageMatch[1]);
+  }
+
+  const researchMatch = pathname.match(/^\/api\/threads\/([\w-]+)\/research$/);
+  if (researchMatch?.[1] && method === "GET") {
+    return json(response, 200, await threadResearch(researchMatch[1]));
   }
 
   // — videos ——————————————————————————————————————————————
@@ -259,6 +265,38 @@ async function videoDetail(videoId: string) {
     provenance,
     qc,
     files: files.map((name) => ({name, url: `/files/${path.relative(ROOT, path.join(outDir, name))}`})),
+  };
+}
+
+/**
+ * The research trail for a thread, with each figure told what became of it.
+ *
+ * The state annotation is the point of doing this server-side. A figure in the trail is a
+ * number some page printed; the same sentence may since have been proposed as a fact, or
+ * approved, or neither — and only the facts file knows. Matched on the statement, which is
+ * what `propose_facts` itself dedupes on, so the two agree by construction.
+ *
+ * Read-only. Nothing here can change a fact's state; that is `PUT /api/facts` and a click.
+ */
+async function threadResearch(threadId: string) {
+  const record = await loadResearch(threadId);
+  if (!record) return {threadId, queries: [], sources: [], brief: null};
+
+  const facts = await readFacts();
+  const stateOf = new Map(facts.map((fact) => [fact.statement.trim().toLowerCase(), fact.state]));
+
+  return {
+    threadId,
+    updatedAt: record.updatedAt,
+    brief: record.brief ?? null,
+    queries: record.queries,
+    sources: record.sources.map((source) => ({
+      ...source,
+      figures: source.figures.map((figure) => ({
+        ...figure,
+        factState: stateOf.get(figure.statement.trim().toLowerCase()) ?? null,
+      })),
+    })),
   };
 }
 

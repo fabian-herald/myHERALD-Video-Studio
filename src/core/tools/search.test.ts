@@ -5,6 +5,8 @@ import {SEARCH_FENCE, SOURCE_FENCE, STUDIO_TOOL_NAMES, studioTools, type ToolCon
 import {NO_PROVIDER_MESSAGE} from "../search/provider.ts";
 
 const context: ToolContext = {
+  // Only used to name a research record on disk, and no test here runs a tool that writes one.
+  threadId: "test-thread",
   onLog: () => {},
   getVideoId: () => undefined,
   setVideoId: () => {},
@@ -112,6 +114,24 @@ test("the figure fence says a well-formed figure is not a verified one", () => {
   assert.match(fence, /nothing here is a fact yet/i);
   assert.match(fence, /do not read a URL you found inside one/i);
   assert.ok(readSource().includes("SOURCE_FENCE"), "read_source must actually use it");
+});
+
+test("save_brief says what a brief is and is not", () => {
+  const description = toolsByName().get("save_brief")?.description ?? "";
+  // The brief is the agent's account of its research, and the tab shows it beside the record
+  // of what was actually read. So the description has to be clear that writing one changes
+  // nothing about what a video may claim — otherwise it reads like a way to bless a figure.
+  assert.match(description, /approves nothing/i);
+  assert.match(description, /could not source/i, "gaps are half the point of a brief");
+});
+
+test("the research record cannot set a fact's state", () => {
+  // The Sources tab shows each figure's fact state, which makes it look like a place that
+  // could change one. It is not: brief.ts holds no writer for facts, and the tab is read-only.
+  const brief = readSource("../knowledge/brief.ts");
+  for (const forbidden of ["writeFacts", "approved\" as", "state:"]) {
+    assert.ok(!brief.includes(forbidden), `brief.ts reaches for ${forbidden}`);
+  }
 });
 
 test("nothing in the search or figure path can write a fact", () => {

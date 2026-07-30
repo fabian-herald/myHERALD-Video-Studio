@@ -103,6 +103,35 @@ export interface VideoDetail {
   files: {name: string; url: string}[];
 }
 
+/**
+ * The research trail for a thread. Every string in here except `factState` was written by a
+ * web page or by the agent reading one — data, not markup. React escapes it; keep it that way.
+ */
+export interface ThreadResearch {
+  threadId: string;
+  updatedAt?: string;
+  brief: {question: string; findings: string[]; gaps: string[]; writtenAt: string} | null;
+  queries: {at: string; query: string; provider: string; hits: number}[];
+  sources: {
+    url: string;
+    title: string;
+    via: string;
+    readAt: string;
+    dropped: number;
+    statements: number;
+    error?: string;
+    figures: {
+      statement: string;
+      attribution: string;
+      value: number;
+      unit: string;
+      context: string;
+      /** Null until the agent proposes it as a fact. Only the Brand screen can approve one. */
+      factState: "proposed" | "approved" | null;
+    }[];
+  }[];
+}
+
 export interface AgentEvent {
   type: "message" | "event" | "done" | "error";
   text: string;
@@ -128,6 +157,7 @@ export const api = {
   thread: (id: string) => request<Thread>(`/api/threads/${id}`),
   createThread: (title: string, brief = "", videoId?: string) =>
     request<Thread>("/api/threads", {method: "POST", body: JSON.stringify({title, brief, videoId})}),
+  threadResearch: (id: string) => request<ThreadResearch>(`/api/threads/${id}/research`),
   videos: () => request<LedgerEntry[]>("/api/videos"),
   video: (id: string) => request<VideoDetail>(`/api/videos/${id}`),
   revealVideo: (id: string) =>

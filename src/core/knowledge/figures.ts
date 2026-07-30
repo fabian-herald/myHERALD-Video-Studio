@@ -42,7 +42,8 @@ export const MAX_PAGE_CHARS = 20_000;
  */
 export const MAX_FIGURES = 10;
 
-const figureZ = z.object({
+/** Exported so `knowledge/brief.ts` validates a stored figure with the same shape. */
+export const figureZ = z.object({
   /** The claim as the page makes it, in one sentence. */
   statement: z.string().min(8).max(280),
   /** Who the page credits, and when. Empty when the page credits nobody — often the case. */

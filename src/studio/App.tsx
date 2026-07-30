@@ -56,7 +56,13 @@ export function App() {
     setView({kind: "thread", id: created.id});
   }
 
-  const showCanvas = view.kind === "thread" && Boolean(thread?.videoId);
+  /*
+   * Any video thread, whether or not it has produced a video yet — the canvas opens on Sources
+   * until there is something rendered. Gated on `videoId` this panel appeared only after the
+   * work was finished, which is the wrong half of the job to be looking at the research in.
+   * The studio thread is still canvas-less: it has no video and no research of its own.
+   */
+  const showCanvas = view.kind === "thread" && thread?.kind === "video";
 
   return (
     <div className={`shell${showCanvas ? "" : " no-canvas"} pane-${pane}`}>
@@ -123,9 +129,11 @@ export function App() {
           <ChatPane thread={thread} onTurnComplete={onTurnComplete} />
           {showCanvas ? (
             <Canvas
+              threadId={thread.id}
               videoId={thread.videoId}
               refreshKey={refreshKey}
               onRefresh={() => setRefreshKey((key) => key + 1)}
+              onOpenBrand={() => setView({kind: "brand"})}
             />
           ) : null}
         </>

@@ -56,8 +56,17 @@ npm run studio     # UI on 127.0.0.1:5173, API on 5174
 Chat is the main surface. The agent reads the brand kit, checks the ledger so it
 sharpens a previous angle instead of repeating it, then makes the video. Alongside it
 the canvas is an artefact inspector: **Video** (player and contact sheet), **Script**
-(copy and pacing, editable), **Scenes**, **Assets**, **Checks** (the QC report),
-**Files**.
+(copy and pacing, editable), **Scenes**, **Sources** (the research), **Assets**,
+**Checks** (the QC report), **Files**.
+
+**Sources** is the one tab that is not about the finished file. It holds the research for
+the whole thread — every search run, every page read, every figure found with the sentence
+it came from — written by the tools as they go, plus the brief the agent writes over the
+top. The trail is a record and the brief is a claim, kept apart on purpose: when the brief
+says something the sources do not support, that is visible here, and it stays visible
+because the record is not the agent's to rewrite. It opens before a video exists, which is
+when the research is being done. Read-only: a figure becomes usable by approving it in
+`/brand`, which is still the only place that can.
 
 The rule that decides where a change goes: **what lives in `plan.json` you edit
 directly; what changes the shape of a scene you discuss with the agent.** A wording or
@@ -220,6 +229,7 @@ src/core/
 data/
   brand/       kit.json, logos, generated tokens.css
   knowledge/   approved product facts
+  research/    per-thread research trail: searches run, pages read, figures found
   videos/      per-video plan, narration, compose workdirs, failed attempts, ledger
 ```
 

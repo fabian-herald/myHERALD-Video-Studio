@@ -4,6 +4,7 @@ import path from "node:path";
 import {z} from "zod";
 import {loadBrandKit} from "../brand/kit.ts";
 import {intentPreset, INTENT_PRESETS} from "../intents/index.ts";
+import {recordQuery, recordSource, saveBrief} from "../knowledge/brief.ts";
 import {approvedStatements, readFacts, writeFacts} from "../knowledge/facts.ts";
 import {fetchPublic} from "../knowledge/fetch.ts";
 import {extractFigures, type Figure} from "../knowledge/figures.ts";
@@ -32,6 +33,14 @@ import "../search/brave.ts";
 import "../search/exa.ts";
 
 export interface ToolContext {
+  /**
+   * Which thread this turn belongs to, so research is recorded against it.
+   *
+   * The thread rather than the video, because the searching happens before anyone says "make
+   * it" — see `knowledge/brief.ts`. Required, not optional: a research trail that silently
+   * goes nowhere when a caller forgets to pass an id is worse than no trail.
+   */
+  threadId: string;
   /** Streamed to the browser as run-log lines. */
   onLog: (line: string, tool?: string) => void;
   /** Set once a video exists in this thread, so later tools default to it. */
@@ -372,6 +381,10 @@ export function studioTools(context: ToolContext) {
           // rather than inside the adapter: this is the point at which a result was actually
           // shown to the agent, and only a result it has seen can be one it picked.
           rememberExcerpts(hits);
+          // Recorded whether or not anything came back. A query with no hits is the part of a
+          // research trail nobody would write down voluntarily and the part that tells the
+          // owner most about how hard the number was to find.
+          await recordQuery(context.threadId, {query, provider: chosen.id, hits: hits.length});
           for (const hit of hits) {
             // Attacker-authored text reaches the run log here. React escapes it and nothing in
             // the app uses dangerouslySetInnerHTML — do not render the log as HTML or markdown.
@@ -393,6 +406,35 @@ export function studioTools(context: ToolContext) {
                 + " result carries no date of its own — neither provider returns one.",
             }, null, 2),
           ].join("\n"));
+        },
+      ),
+
+      tool(
+        "save_brief",
+        "Write the research brief for this thread — the question you set out to answer, what "
+        + "the sources actually support, and what you could not source. The owner reads it in "
+        + "the Sources tab beside the pages you read. Call it once you have an answer, or once "
+        + "you are satisfied there is not one. Saving a brief approves nothing.",
+        {
+          question: z.string().min(8).max(300)
+            .describe("The question the research was trying to answer, in one line"),
+          findings: z.array(z.string().min(8).max(400)).max(10)
+            .describe("What the sources support, one claim per entry. Name the source in the text."),
+          gaps: z.array(z.string().min(4).max(300)).max(6).optional()
+            .describe("What you looked for and could not source. Say it plainly; this is the "
+              + "half of a brief that stops a number being invented later."),
+        },
+        async ({question, findings, gaps}) => {
+          await saveBrief(context.threadId, {question, findings, gaps: gaps ?? []});
+          context.onLog(
+            `brief saved — ${findings.length} finding(s), ${gaps?.length ?? 0} gap(s)`,
+            "save_brief",
+          );
+          return ok(
+            "Brief saved to the Sources tab. It is your account of the research, not a fact: "
+            + "nothing in it reaches a video until the owner approves the underlying figure in "
+            + "the Brand screen.",
+          );
         },
       ),
 
@@ -440,6 +482,10 @@ export function studioTools(context: ToolContext) {
                 // One unreachable page is not a failed read. The others still get mined, and
                 // the agent is told which one it lost and why.
                 sources.push({url, error: (error as Error).message});
+                await recordSource(context.threadId, {
+                  url, title: "", via: "fetched", figures: [], dropped: 0, statements: 0,
+                  error: (error as Error).message,
+                });
                 log(`skipped ${url} — ${(error as Error).message}`);
                 continue;
               }
@@ -447,11 +493,20 @@ export function studioTools(context: ToolContext) {
 
             const extracted = await extractFigures({url, text, lookingFor}, log);
             if (!extracted) {
-              sources.push({url, title, via, error: "the page could not be read for figures"});
+              const failure = "the page could not be read for figures";
+              sources.push({url, title, via, error: failure});
+              await recordSource(context.threadId, {
+                url, title, via, figures: [], dropped: 0, statements: 0, error: failure,
+              });
               continue;
             }
             costUsd += extracted.costUsd;
             sources.push({url, title, via, figures: extracted.figures, dropped: extracted.dropped});
+            // Written to the thread's trail as well as returned, so the Sources tab holds what
+            // was found even after this turn's transcript has scrolled away.
+            await recordSource(context.threadId, {
+              url, title, via, figures: extracted.figures, dropped: extracted.dropped, statements: 0,
+            });
             log(`${new URL(url).host} — ${extracted.figures.length} figure(s) via ${via}`);
           }
 
@@ -467,9 +522,12 @@ export function studioTools(context: ToolContext) {
                 ? "Tell the owner what you found and what it would let a video claim. To propose"
                   + " one, call propose_facts with the statement, `evidence` set to the context"
                   + " sentence and its attribution, and `source` set to the URL. A figure without"
-                  + " an evidence note stays out of every prompt even once approved."
+                  + " an evidence note stays out of every prompt even once approved. Then"
+                  + " save_brief, so the reasoning outlives this conversation."
                 : "No figure survived. Say so plainly rather than reaching for a number from"
-                  + " somewhere else — an unsourced figure is the one thing this cannot produce.",
+                  + " somewhere else — an unsourced figure is the one thing this cannot produce."
+                  + " Record it with save_brief as a gap: what you looked for and did not find is"
+                  + " worth as much to the owner as what you did.",
               note: "`via` says where the text came from: `exa-index` is what the search provider"
                 + " had indexed, `fetched` went through the address guard. `dropped` counts"
                 + " figures whose own quoted sentence did not contain the number.",
@@ -490,6 +548,13 @@ export function studioTools(context: ToolContext) {
 
           for (const page of result.pages) {
             context.onLog(`read ${page.url} — ${page.blocks} statement(s)`, "research_web");
+            // In the same trail as read_source's pages, with `statements` where the figure
+            // count would be. This tool extracts sentences rather than numbers, and a Sources
+            // tab that showed only half of what was read would be a misleading record.
+            await recordSource(context.threadId, {
+              url: page.url, title: page.title, via: "fetched",
+              figures: [], dropped: 0, statements: page.blocks,
+            });
           }
           for (const failure of result.errors) context.onLog(`skipped ${failure}`, "research_web");
           context.onLog(
@@ -536,4 +601,5 @@ export const STUDIO_TOOL_NAMES = [
   "mcp__studio__research_web",
   "mcp__studio__search_web",
   "mcp__studio__read_source",
+  "mcp__studio__save_brief",
 ];

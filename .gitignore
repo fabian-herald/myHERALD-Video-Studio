@@ -14,6 +14,8 @@ data/media/screenshots/
 data/media/recordings/
 data/media/uploads/
 data/knowledge/sources.json
+# Per-thread research trails: runtime state, and page text we did not write.
+data/research/
 data/capture/
 data/brand/tokens.css
 out/
