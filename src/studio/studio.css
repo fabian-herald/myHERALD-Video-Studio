@@ -316,6 +316,25 @@ button, input, textarea, select { font: inherit; color: inherit; }
   opacity: 0.75;
 }
 
+/* Quiet until wanted. Stopping is never what you came to do, but the moment you want it
+   you want it now — so it sits on the running line, next to the clock that made you look. */
+.run-stop {
+  margin-left: 10px;
+  padding: 2px 10px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.run-stop:hover {
+  border-color: currentcolor;
+  color: var(--fg);
+}
+
 @keyframes pulse {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.2; }

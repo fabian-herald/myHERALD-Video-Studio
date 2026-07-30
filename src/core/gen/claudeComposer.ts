@@ -114,21 +114,38 @@ async function drive(prompt: string, context: ComposeContext, label: string): Pr
   let model = "claude";
   let notes = "";
 
-  for await (const message of query({prompt, options: await baseOptions(context)})) {
-    if (message.type === "assistant") {
-      model = message.message.model ?? model;
-      for (const block of message.message.content) {
-        if (block.type === "tool_use") {
-          context.onLog(`  ${label}      ${describeTool(block.name, block.input as Record<string, unknown>, context.authoring.dir)}`);
+  // Closed on every exit, for the same reason as the studio agent in server/agent.ts:
+  // aborting the controller stops messages reaching us but leaves the spawned CLI running.
+  // This is the longer session of the two — a compose runs for twenty minutes — so it is
+  // the one most likely to be abandoned mid-flight.
+  const session = query({prompt, options: await baseOptions(context)});
+  const closeSession = () => session.close();
+  context.signal?.addEventListener("abort", closeSession, {once: true});
+
+  try {
+    for await (const message of session) {
+      if (message.type === "assistant") {
+        model = message.message.model ?? model;
+        for (const block of message.message.content) {
+          if (block.type === "tool_use") {
+            context.onLog(`  ${label}      ${describeTool(block.name, block.input as Record<string, unknown>, context.authoring.dir)}`);
+          }
+        }
+      } else if (message.type === "result") {
+        turns = message.num_turns ?? 0;
+        costUsd = message.total_cost_usd ?? 0;
+        notes = message.subtype === "success" ? message.result : `(${message.subtype})`;
+        if (message.subtype !== "success") {
+          throw new Error(`Composer stopped: ${message.subtype}.`);
         }
       }
-    } else if (message.type === "result") {
-      turns = message.num_turns ?? 0;
-      costUsd = message.total_cost_usd ?? 0;
-      notes = message.subtype === "success" ? message.result : `(${message.subtype})`;
-      if (message.subtype !== "success") {
-        throw new Error(`Composer stopped: ${message.subtype}.`);
-      }
+    }
+  } finally {
+    context.signal?.removeEventListener("abort", closeSession);
+    try {
+      session.close();
+    } catch {
+      // Already closed by the abort listener.
     }
   }
 

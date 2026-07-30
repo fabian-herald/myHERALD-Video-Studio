@@ -8,6 +8,7 @@ import {composerFor, type ComposeResult} from "../gen/composer.ts";
 import {CostLedger, formatCost, type CostSummary} from "../cost.ts";
 import {planVideo} from "../gen/planner.ts";
 import {approvedStatements, readFacts} from "../knowledge/facts.ts";
+import {isCancellation, throwIfCancelled} from "../cancel.ts";
 import {factUsage, upsertLedgerEntry, similarTheses} from "../ledger.ts";
 import {aspectOf, DEVICE_PRESETS, mediaForFormat, mediaForPlan} from "../media/library.ts";
 import {assertPlanClaimsAreSourced} from "../plan/claims.ts";
@@ -122,6 +123,9 @@ export async function runPipeline(options: RunOptions): Promise<RunResult> {
   assertPlanClaimsAreSourced(planned.plan, facts, knowledge);
 
   // 2 — narrate, then rebuild every timestamp from the audio that actually exists.
+  // Checked between every stage, because each one is minutes long and a cancel that only
+  // takes effect at the end of the current stage is not a cancel the owner can feel.
+  throwIfCancelled(options.signal, "planning");
   const narration = await narrate(planned.plan, dir, log, options.signal);
   if (narration.costUsd > 0) ledger.metered("gemini", "narrate", narration.costUsd);
   else ledger.free("gemini", "narrate", `${narration.clipCount} phrases on the free tier; Google's quota records are authoritative`);
@@ -140,6 +144,7 @@ export async function runPipeline(options: RunOptions): Promise<RunResult> {
   for (const note of rhythm.notes) log(`rhythm        ${note.split(". ")[0]}.`);
 
   // 3 — compose once per format family, then re-emit per format.
+  throwIfCancelled(options.signal, "narration");
   const outputs: RunResult["outputs"] = [];
   let composeResult: ComposeResult | null = null;
   let attemptsUsed = 0;
@@ -187,13 +192,16 @@ export async function runPipeline(options: RunOptions): Promise<RunResult> {
     let qcRepairsLeft = composed.usedBaseline ? 0 : 1;
 
     for (const format of formats) {
+      // Each format is its own render. Cancelling during the first of four must not sit
+      // through the other three.
+      throwIfCancelled(options.signal, "render");
       let rendered = await renderAndQc(format);
 
       // Some defects only exist in the finished file — a held still frame is the
       // common one. The composer never saw those findings, so give it exactly one
       // chance to act on them before accepting the result.
       const fixable = composerFixableFailures(rendered.qc);
-      if (fixable.length && qcRepairsLeft > 0) {
+      if (fixable.length && qcRepairsLeft > 0 && !options.signal?.aborted) {
         qcRepairsLeft -= 1;
         log(`qc            ${format} FAILED — ${fixable.map((item) => item.check).join(", ")}; repairing once`);
         const repaired = await repairFromQc(fixable);
@@ -373,12 +381,20 @@ export async function composeWithRepair(options: {
       effort: attempt === 1 ? ("default" as const) : ("high" as const),
     };
 
+    // Before spending an attempt, not only after. The budget is three repairs and each one
+    // is a model session, so a run cancelled during attempt two must not open attempt three.
+    throwIfCancelled(signal, "compose");
+
     try {
       result = attempt === 1 || !report
         ? await composer.compose(context)
         : await composer.repair(context, report, attempt - 1);
       costUsd += result.costUsd;
     } catch (error) {
+      // A cancelled attempt is not a failed one. Retrying it was the bug: cancelling left
+      // this loop composing for an hour, opening a fresh session every few seconds, because
+      // the abort surfaced here as an ordinary error and `continue` did what it says.
+      if (isCancellation(error)) throw error;
       log(`compose       attempt ${attempt} failed: ${(error as Error).message}`);
       await freezeAttempt(authoring.dir, attempt);
       continue;
@@ -397,6 +413,9 @@ export async function composeWithRepair(options: {
     }
   }
 
+  // Not after a cancellation: writing a baseline would hand back a composition nobody asked
+  // for and let the caller carry on into narration and render.
+  throwIfCancelled(signal, "compose");
   log(`compose       repair budget exhausted — falling back to the baseline composition`);
   await writeBaselineComposition(authoring, plan, kit);
   await reportCheck(await check(), log, "baseline");

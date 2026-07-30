@@ -318,8 +318,22 @@ async function streamTurn(request: http.IncomingMessage, response: http.ServerRe
     Connection: "keep-alive",
   });
 
+  /**
+   * The client going away, which is what "stop" is on the wire.
+   *
+   * On the **response**, not the request. This was wired to `request.on("close")` and that
+   * event never fires for a stream like this one: the request body was fully read before
+   * the first byte went out, so as far as the IncomingMessage is concerned it finished long
+   * ago. The abort was therefore never raised — not late, never — and a cancelled run kept
+   * composing until the server was killed. It took a printed probe on both events to see
+   * it, because every symptom pointed at the pipeline rather than at the listener.
+   *
+   * `close` on the response fires when the socket goes, whether the run finished or the
+   * owner pressed stop, so `aborted` distinguishes them: a finished run has already left
+   * this loop and its abort is a no-op on nothing.
+   */
   const controller = new AbortController();
-  request.on("close", () => controller.abort());
+  response.on("close", () => controller.abort());
 
   const collected: AgentEvent[] = [];
   for await (const event of runAgentTurn({

@@ -46,9 +46,28 @@ export function ChatPane({thread, onTurnComplete}: Props) {
   const [cost, setCost] = useState<AgentEvent["cost"] | null>(null);
   const logRef = useRef<HTMLDivElement>(null);
   const elapsed = useElapsed(running);
+  /**
+   * The handle on the run in flight.
+   *
+   * A ref rather than state: stopping must not wait for a render, and nothing about the
+   * controller belongs on screen. Aborting it drops the response stream, which the server
+   * hears as `response.on("close")` and turns into the run's own cancellation.
+   */
+  const runRef = useRef<AbortController | null>(null);
+  /** Which thread the messages on screen belong to, so a switch can be told from a refetch. */
+  const threadIdRef = useRef(thread.id);
 
   useEffect(() => {
-    setMessages(thread.messages);
+    // A shorter list for the same thread is a stale read, not an edit. Stopping a run
+    // refetches the thread the instant the stream drops, which can beat the server writing
+    // the turn down by a few milliseconds — and adopting that answer wiped the whole
+    // transcript off the screen while all twenty-one messages sat safely on disk. Switching
+    // threads is the real change, and that always brings a different id.
+    setMessages((current) =>
+      thread.id !== threadIdRef.current || thread.messages.length >= current.length
+        ? thread.messages
+        : current);
+    threadIdRef.current = thread.id;
     setCost(null);
   }, [thread.id, thread.messages]);
 
@@ -65,6 +84,9 @@ export function ChatPane({thread, onTurnComplete}: Props) {
     setCost(null);
     append({role: "user", text});
 
+    const controller = new AbortController();
+    runRef.current = controller;
+
     let videoId: string | undefined;
     try {
       await sendMessage(thread.id, text, (event: AgentEvent) => {
@@ -75,13 +97,24 @@ export function ChatPane({thread, onTurnComplete}: Props) {
           videoId = event.videoId;
           if (event.cost) setCost(event.cost);
         }
-      });
+      }, controller.signal);
     } catch (error) {
-      append({role: "assistant", text: `⚠ ${(error as Error).message}`});
+      // A stop the owner asked for is not an error to apologise for. It is still recorded,
+      // because a run that spent twenty minutes and produced nothing should say so in the
+      // transcript rather than leave a gap someone has to reconstruct later.
+      append(controller.signal.aborted
+        ? {role: "event", text: "stopped by you"}
+        : {role: "assistant", text: `⚠ ${(error as Error).message}`});
     } finally {
+      runRef.current = null;
       setRunning(false);
       onTurnComplete(videoId);
     }
+  }
+
+  /** Stop the run in flight. See `core/cancel.ts` for what the server does with it. */
+  function stop() {
+    runRef.current?.abort();
   }
 
   function append(message: Omit<ThreadMessage, "id" | "at">) {
@@ -101,6 +134,9 @@ export function ChatPane({thread, onTurnComplete}: Props) {
         {running ? (
           <div className="msg msg-event running">
             working… <span className="elapsed">{formatElapsed(elapsed)}</span>
+            {/* Beside the elapsed time on purpose: the moment you want to stop a run is the
+                moment you notice how long it has been going. */}
+            <button className="run-stop" onClick={stop}>Stop</button>
           </div>
         ) : null}
       </div>

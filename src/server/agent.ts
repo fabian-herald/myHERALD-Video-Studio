@@ -1,5 +1,6 @@
 import {query, type Options, type PermissionResult} from "@anthropic-ai/claude-agent-sdk";
 import {loadBrandKit} from "../core/brand/kit.ts";
+import {isCancellation} from "../core/cancel.ts";
 import {billingMode} from "../core/cost.ts";
 import {ROOT} from "../core/paths.ts";
 import {STUDIO_TOOL_NAMES, studioTools} from "../core/tools/index.ts";
@@ -107,8 +108,17 @@ export async function* runAgentTurn(options: {
   let sessionId = thread.sessionId;
   let costUsd = 0;
 
+  // Held rather than iterated anonymously, so it can be closed. Aborting the controller
+  // stops messages arriving here but leaves the CLI the SDK spawned running: one survived a
+  // cancelled run by twenty minutes, and an orphan from two days earlier was still holding
+  // the studio's port this morning. `close()` is the SDK's own shutdown, and `finally` runs
+  // it on every exit — a normal finish, a thrown error, or the owner pressing stop.
+  const session = query({prompt, options: sdkOptions});
+  const closeSession = () => session.close();
+  signal?.addEventListener("abort", closeSession, {once: true});
+
   try {
-    for await (const message of query({prompt, options: sdkOptions})) {
+    for await (const message of session) {
       // Tool output queued by the pipeline is flushed before the next model message,
       // so the run log stays in the order things actually happened.
       while (pending.length) yield pending.shift() as AgentEvent;
@@ -136,7 +146,20 @@ export async function* runAgentTurn(options: {
     }
     while (pending.length) yield pending.shift() as AgentEvent;
   } catch (error) {
-    yield {type: "error", text: (error as Error).message};
+    // A cancelled run is a thing the owner did, not a fault. It still reaches the transcript
+    // — a turn that spent twenty minutes and produced nothing should say why — but as a
+    // record rather than a warning, and the session is still saved below so the thread can
+    // pick up where it stopped.
+    if (isCancellation(error) || signal?.aborted) yield {type: "event", text: "run stopped"};
+    else yield {type: "error", text: (error as Error).message};
+  } finally {
+    signal?.removeEventListener("abort", closeSession);
+    try {
+      session.close();
+    } catch {
+      // Already closed by the abort listener. Closing twice is not a failure worth
+      // surfacing, and throwing here would replace a real error with a cleanup one.
+    }
   }
 
   await saveThread({...thread, sessionId, videoId});

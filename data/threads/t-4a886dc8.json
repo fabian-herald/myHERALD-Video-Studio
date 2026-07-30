@@ -1,0 +1,153 @@
+{
+  "schemaVersion": 1,
+  "id": "t-4a886dc8",
+  "kind": "video",
+  "title": "Video 7/30/2026",
+  "createdAt": "2026-07-30T19:18:08.943Z",
+  "updatedAt": "2026-07-30T19:19:13.152Z",
+  "sessionId": "8e828e59-8df1-4f38-81c5-a09f03fe8212",
+  "messages": [
+    {
+      "id": "511462064b",
+      "role": "user",
+      "text": "Make a thought-leadership video about why teams mistake activity for progress. 9x16.",
+      "at": "2026-07-30T19:19:13.152Z"
+    },
+    {
+      "id": "584af8cf4e",
+      "role": "assistant",
+      "text": "I'll start by reading the studio context and checking what's already been published.",
+      "at": "2026-07-30T19:19:13.152Z"
+    },
+    {
+      "id": "08996db72a",
+      "role": "event",
+      "text": "context read — 16 tokens, 1 approved facts, 70 figure(s) on the shelf, content language English",
+      "at": "2026-07-30T19:19:13.152Z",
+      "tool": "read_context"
+    },
+    {
+      "id": "2530dde2bd",
+      "role": "event",
+      "text": "ledger — 1 related of 12 videos",
+      "at": "2026-07-30T19:19:13.152Z",
+      "tool": "search_videos"
+    },
+    {
+      "id": "01467e1a8b",
+      "role": "assistant",
+      "text": "One prior video, adjacent but distinct. Now let me look for a figure worth carrying.",
+      "at": "2026-07-30T19:19:13.152Z"
+    },
+    {
+      "id": "9cac07e6f4",
+      "role": "event",
+      "text": "library — 2 of 70 figure(s) match \"time spent on work about work, coordination overhead, meetin\"",
+      "at": "2026-07-30T19:19:13.152Z",
+      "tool": "recall_sources"
+    },
+    {
+      "id": "e81574551e",
+      "role": "event",
+      "text": "library — 5 of 70 figure(s) match \"share of projects or content that produces no measurable out\"",
+      "at": "2026-07-30T19:19:13.152Z",
+      "tool": "recall_sources"
+    },
+    {
+      "id": "a5e8722534",
+      "role": "assistant",
+      "text": "The volume-vs-performance angle is exactly this thesis. Let me chase the primary source rather than lean on an aggregator.",
+      "at": "2026-07-30T19:19:13.152Z"
+    },
+    {
+      "id": "250cb0a8c6",
+      "role": "event",
+      "text": "found zmistandcopy.beehiiv.com — Trying to make AI content work? We found the bottleneck",
+      "at": "2026-07-30T19:19:13.152Z",
+      "tool": "search_web"
+    },
+    {
+      "id": "e05d9548ca",
+      "role": "event",
+      "text": "found authoritytech.io — 94% of B2B Teams Scaled Content with AI. Performance ...",
+      "at": "2026-07-30T19:19:13.152Z",
+      "tool": "search_web"
+    },
+    {
+      "id": "4b20df070d",
+      "role": "event",
+      "text": "found www.marketscale.com — B2B content marketing trends 2026: AI, ABM, and buyer data",
+      "at": "2026-07-30T19:19:13.152Z",
+      "tool": "search_web"
+    },
+    {
+      "id": "970752a48a",
+      "role": "event",
+      "text": "found www.heinzmarketing.com — The AI Content Trap: When Scaling Becomes a Liability | Heinz Marketing",
+      "at": "2026-07-30T19:19:13.152Z",
+      "tool": "search_web"
+    },
+    {
+      "id": "00104da23b",
+      "role": "event",
+      "text": "found www.zmistandcopy.com — The 2026 B2B Content Report: Everyone Publishes More. Few Have Something to Say",
+      "at": "2026-07-30T19:19:13.152Z",
+      "tool": "search_web"
+    },
+    {
+      "id": "7bc2946d02",
+      "role": "event",
+      "text": "found www.marketscale.com — 95% of B2B marketers use AI, but only 39% see results",
+      "at": "2026-07-30T19:19:13.152Z",
+      "tool": "search_web"
+    },
+    {
+      "id": "dbbeedc2fe",
+      "role": "event",
+      "text": "6 result(s) via Exa",
+      "at": "2026-07-30T19:19:13.152Z",
+      "tool": "search_web"
+    },
+    {
+      "id": "feca6c1f60",
+      "role": "assistant",
+      "text": "The zmistandcopy report is a primary survey of B2B content teams, which is exactly on-thesis. Reading it plus one measured-behaviour counterpart.",
+      "at": "2026-07-30T19:19:13.152Z"
+    },
+    {
+      "id": "da73b9946e",
+      "role": "event",
+      "text": "www.zmistandcopy.com — 0 figure(s) via exa-index",
+      "at": "2026-07-30T19:19:13.152Z",
+      "tool": "read_source"
+    },
+    {
+      "id": "e56298e986",
+      "role": "event",
+      "text": "zmistandcopy.beehiiv.com — 3 figure(s) via exa-index",
+      "at": "2026-07-30T19:19:13.152Z",
+      "tool": "read_source"
+    },
+    {
+      "id": "5c30eceb9a",
+      "role": "event",
+      "text": "dropped 50% — not in the sentence quoted for it",
+      "at": "2026-07-30T19:19:13.152Z",
+      "tool": "read_source"
+    },
+    {
+      "id": "8b4c70fb48",
+      "role": "event",
+      "text": "www.heinzmarketing.com — 3 figure(s) via exa-index",
+      "at": "2026-07-30T19:19:13.152Z",
+      "tool": "read_source"
+    },
+    {
+      "id": "22cd61efe8",
+      "role": "event",
+      "text": "6 figure(s) across 3 page(s) · $0.0095 on Haiku",
+      "at": "2026-07-30T19:19:13.152Z",
+      "tool": "read_source"
+    }
+  ]
+}

@@ -1,0 +1,202 @@
+{
+  "schemaVersion": 1,
+  "id": "t-ae721967",
+  "kind": "video",
+  "title": "Video 7/30/2026",
+  "createdAt": "2026-07-30T19:21:42.843Z",
+  "updatedAt": "2026-07-30T19:22:45.599Z",
+  "sessionId": "8d3fd10b-c64d-41fb-b41c-dec96ae04e32",
+  "messages": [
+    {
+      "id": "669400e76c",
+      "role": "user",
+      "text": "Make a thought-leadership video about why review queues quietly become the bottleneck. 9x16.",
+      "at": "2026-07-30T19:22:45.599Z"
+    },
+    {
+      "id": "584af8cf4e",
+      "role": "assistant",
+      "text": "I'll start by reading the studio context and checking what's already been published.",
+      "at": "2026-07-30T19:22:45.599Z"
+    },
+    {
+      "id": "715aab0e85",
+      "role": "event",
+      "text": "context read — 16 tokens, 1 approved facts, 76 figure(s) on the shelf, content language English",
+      "at": "2026-07-30T19:22:45.599Z",
+      "tool": "read_context"
+    },
+    {
+      "id": "d3a22ca06a",
+      "role": "event",
+      "text": "ledger — 6 related of 12 videos",
+      "at": "2026-07-30T19:22:45.599Z",
+      "tool": "search_videos"
+    },
+    {
+      "id": "9199ad4c2a",
+      "role": "assistant",
+      "text": "No prior video covers approval or review queues, so this is fresh territory. Now let me look for a defensible figure.",
+      "at": "2026-07-30T19:22:45.599Z"
+    },
+    {
+      "id": "690b653ea0",
+      "role": "event",
+      "text": "library — 12 of 76 figure(s) match \"content approval review cycle time delay bottleneck marketin\"",
+      "at": "2026-07-30T19:22:45.599Z",
+      "tool": "recall_sources"
+    },
+    {
+      "id": "ed4db1a7da",
+      "role": "event",
+      "text": "library — 1 of 76 figure(s) match \"how long content sits waiting for review rounds of revision\"",
+      "at": "2026-07-30T19:22:45.599Z",
+      "tool": "recall_sources"
+    },
+    {
+      "id": "25917a6104",
+      "role": "assistant",
+      "text": "The shelf has volume figures but nothing on approval or review cycle time. Searching the web for that specific number.",
+      "at": "2026-07-30T19:22:45.599Z"
+    },
+    {
+      "id": "53216829e3",
+      "role": "event",
+      "text": "found www.digitalapplied.com — Content Operations Statistics 2026: Teams & Workflow",
+      "at": "2026-07-30T19:22:45.599Z",
+      "tool": "search_web"
+    },
+    {
+      "id": "f08a476708",
+      "role": "event",
+      "text": "found writebros.ai — AI Content Approval Process Statistics: 20 Editorial Bottleneck Insights - Write",
+      "at": "2026-07-30T19:22:45.599Z",
+      "tool": "search_web"
+    },
+    {
+      "id": "050669d8f6",
+      "role": "event",
+      "text": "found blog.gainapp.com — How 16 Marketing Leaders Have Rebuilt Their Content Approval Process for the Age",
+      "at": "2026-07-30T19:22:45.599Z",
+      "tool": "search_web"
+    },
+    {
+      "id": "40715631d1",
+      "role": "event",
+      "text": "found jam7.com — How to Reduce Marketing Approval Process Time",
+      "at": "2026-07-30T19:22:45.599Z",
+      "tool": "search_web"
+    },
+    {
+      "id": "de2b6d3bd1",
+      "role": "event",
+      "text": "found www.thestarrconspiracy.com — Are Your Content Approval Bottlenecks Killing Your Go-to-Market Speed?",
+      "at": "2026-07-30T19:22:45.599Z",
+      "tool": "search_web"
+    },
+    {
+      "id": "86d55aa474",
+      "role": "event",
+      "text": "found artikle.ai — Content Approval Workflow for Agencies in 2026 — Artikle.ai | Artikle.ai",
+      "at": "2026-07-30T19:22:45.599Z",
+      "tool": "search_web"
+    },
+    {
+      "id": "4a0631b768",
+      "role": "event",
+      "text": "found mygomseo.com — Content Operations for Faster Approvals | Mygomseo | Mygom SEO",
+      "at": "2026-07-30T19:22:45.599Z",
+      "tool": "search_web"
+    },
+    {
+      "id": "585fba4dd0",
+      "role": "event",
+      "text": "found www.marq.com — 2026 Marketing Approval Workflow: Optimization & Scaling Tips",
+      "at": "2026-07-30T19:22:45.599Z",
+      "tool": "search_web"
+    },
+    {
+      "id": "61a77e3b5e",
+      "role": "event",
+      "text": "8 result(s) via Exa",
+      "at": "2026-07-30T19:22:45.599Z",
+      "tool": "search_web"
+    },
+    {
+      "id": "5578bc1b9f",
+      "role": "event",
+      "text": "found www.statista.com — Waiting time for approval of ad or marketing work 2022| Statista",
+      "at": "2026-07-30T19:22:45.599Z",
+      "tool": "search_web"
+    },
+    {
+      "id": "67b39058da",
+      "role": "event",
+      "text": "found www.prnewswire.com — Marketing teams adopted AI to move faster. 85% still missed a campaign launch da",
+      "at": "2026-07-30T19:22:45.599Z",
+      "tool": "search_web"
+    },
+    {
+      "id": "3f25875d7e",
+      "role": "event",
+      "text": "found www.typeface.ai — 4. Typeface Signal Report - The AI Speed Paradox",
+      "at": "2026-07-30T19:22:45.599Z",
+      "tool": "search_web"
+    },
+    {
+      "id": "9527281e02",
+      "role": "event",
+      "text": "found jam7.com — How to Reduce Marketing Approval Process Time",
+      "at": "2026-07-30T19:22:45.599Z",
+      "tool": "search_web"
+    },
+    {
+      "id": "ba584fc9ed",
+      "role": "event",
+      "text": "found proofjump.com — The Real Cost of Inefficient Email Proofing and Approvals",
+      "at": "2026-07-30T19:22:45.599Z",
+      "tool": "search_web"
+    },
+    {
+      "id": "ae72b6280e",
+      "role": "event",
+      "text": "found www.influencers-time.com — Fix Creative Waste in Approval Workflows: Cut the 40% Loss",
+      "at": "2026-07-30T19:22:45.599Z",
+      "tool": "search_web"
+    },
+    {
+      "id": "cda6d86028",
+      "role": "event",
+      "text": "found shiift.ai — Fix Marketing Approval Bottlenecks | Ship Faster",
+      "at": "2026-07-30T19:22:45.599Z",
+      "tool": "search_web"
+    },
+    {
+      "id": "ef357b4c02",
+      "role": "event",
+      "text": "found writebros.ai — AI Content Approval Process Statistics: 20 Editorial Bottleneck Insights - Write",
+      "at": "2026-07-30T19:22:45.599Z",
+      "tool": "search_web"
+    },
+    {
+      "id": "f7861d4980",
+      "role": "event",
+      "text": "8 result(s) via Exa",
+      "at": "2026-07-30T19:22:45.599Z",
+      "tool": "search_web"
+    },
+    {
+      "id": "5c36a00817",
+      "role": "assistant",
+      "text": "Most of these are unattributed round numbers on SEO pages. Three look like actual primary research: the Knak report release, the Typeface Signal Report PDF, and the Storyblok benchmark write-up.",
+      "at": "2026-07-30T19:22:45.599Z"
+    },
+    {
+      "id": "76322b8bce",
+      "role": "event",
+      "text": "www.prnewswire.com — 5 figure(s) via exa-index",
+      "at": "2026-07-30T19:22:45.599Z",
+      "tool": "read_source"
+    }
+  ]
+}

@@ -187,5 +187,41 @@
     "state": "approved",
     "source": "https://kontent.ai/blog/10-insights-from-content-creators-toolbox/",
     "updatedAt": "2026-07-30T13:37:26.241Z"
+  },
+  {
+    "id": "f-ms7w24w0-0",
+    "kind": "problem",
+    "statement": "A quarter of marketers say that under tight deadlines they publish AI-generated content they already know is off-brand.",
+    "evidence": "\"Optimizely has published research showing that 25% of marketers knowingly publish off-brand AI-generated content when facing tight deadlines.\" Reported by CMOtech, 30 June 2026, on an Optimizely global survey of more than 2,000 marketing leaders across seven markets, including the UK. Caveats worth keeping in view: Optimizely is a marketing-platform vendor publishing research about the category it sells into; respondents are marketing leaders rather than the writers doing the drafting; and the question is specifically about AI-generated content that is off-brand, which is narrower than work that is unfinished or unthought. The figure supports 'they can tell, and they ship it anyway under time pressure'. It does not support any claim about the share of all published content that is weak.",
+    "state": "proposed",
+    "source": "https://cmotech.news/story/optimizely-study-finds-marketers-cut-corners-on-ai",
+    "updatedAt": "2026-07-30T19:10:26.112Z"
+  },
+  {
+    "id": "f-ms7w5g8o-0",
+    "kind": "problem",
+    "statement": "Publishing more does not separate the winners: the median B2B SaaS company produces 11-20 blog posts a quarter, and high-growth, high-performing teams land in almost exactly the same range.",
+    "evidence": "\"The median company produces 11–20 blog posts per quarter, 51–100 social posts per quarter, and 3–5 webinars per quarter. High-growth and high-performing teams land in almost the exact same ranges.\" The same page adds: \"We also found that performance doesn't spike once teams push past these ranges. Blog views, video views, and webinar registrations all cluster tightly around predictable medians.\" From Benchmarker's survey of 321 B2B SaaS content, brand and demand leaders, in partnership with Contentful, published January 2026. Caveat: the sample is B2B SaaS leaders only, it is self-reported, and the research was run in partnership with a CMS vendor.",
+    "state": "proposed",
+    "source": "https://www.contentful.com/blog/content-marketing-benchmarker-report/",
+    "updatedAt": "2026-07-30T19:13:00.792Z"
+  },
+  {
+    "id": "f-ms7w5g8o-1",
+    "kind": "problem",
+    "statement": "Content output has risen far faster than content performance: 75% of content professionals say AI increased the volume they produce, while only 6% of B2B marketers report content performance significantly improved from AI tools.",
+    "evidence": "\"75% of content professionals say AI increased the volume they produce, and 46% plan to triple to quintuple output this year. (Canto/Ascend2, November 2025; 10Fold AI-First Buyer-Ready report)\" and \"Only 6% of B2B marketers report that content performance significantly improved from AI tools. (MarketingProfs and Storyblok, August 2025)\". IMPORTANT CAVEAT, please weigh before approving: these are two different studies with two different populations, collected at different times, and we read them on a synthesis blog (authoritytech.io) rather than on either primary report. The 75/6 contrast is the blog's framing, not a single study's finding. I did not build the video on this one for that reason.",
+    "state": "proposed",
+    "source": "https://authoritytech.io/curated/ai-content-volume-trap-6-percent-performance-2026",
+    "updatedAt": "2026-07-30T19:13:00.792Z"
+  },
+  {
+    "id": "f-ms7war0m-0",
+    "kind": "problem",
+    "statement": "Only 39.2% of brand marketers measure whether their work is delivering business outcomes, so roughly six in ten do not.",
+    "evidence": "\"Marketing Week's 2025 Language of Effectiveness survey, in partnership with Kantar and Google, finds just two-fifths (39.2%) of brand marketers measure whether their work is delivering business outcomes.\" The same article notes the survey covered more than 1,000 brand marketers, and that the most-used effectiveness metrics are conversion rates (60.8%), ROI (57.5%) and click-through rates (57.5%). Caveat: respondents are brand marketers, predominantly UK-based per Marketing Week's own description of the Language of Effectiveness sample, not B2B content teams specifically.",
+    "source": "https://www.marketingweek.com/marketers-measure-business-outcomes/",
+    "state": "proposed",
+    "updatedAt": "2026-07-30T19:17:08.038Z"
   }
 ]
