@@ -1,4 +1,4 @@
-import {query, type Options, type PermissionResult} from "@anthropic-ai/claude-agent-sdk";
+import {query, type HookInput, type Options, type PermissionResult} from "@anthropic-ai/claude-agent-sdk";
 import path from "node:path";
 import type {CheckReport} from "../render/check.ts";
 import {compatibleNode} from "../render/node.ts";
@@ -113,6 +113,14 @@ export function composerHooks(dir: string): Options["hooks"] {
     },
   });
 
+  const guardWrite = async (input: HookInput) => {
+    if (input.hook_event_name !== "PreToolUse") return {};
+    const target = (input.tool_input as {file_path?: unknown}).file_path;
+    if (typeof target !== "string") return {};
+    const refusal = writeRefusal(dir, target);
+    return refusal ? deny(refusal) : {};
+  };
+
   return {
     PreToolUse: [
       {
@@ -123,16 +131,11 @@ export function composerHooks(dir: string): Options["hooks"] {
           return refusal ? deny(refusal) : {};
         }],
       },
-      {
-        matcher: "Write|Edit",
-        hooks: [async (input) => {
-          if (input.hook_event_name !== "PreToolUse") return {};
-          const target = (input.tool_input as {file_path?: unknown}).file_path;
-          if (typeof target !== "string") return {};
-          const refusal = writeRefusal(dir, target);
-          return refusal ? deny(refusal) : {};
-        }],
-      },
+      // One exact matcher per tool rather than `Write|Edit`. Whether the SDK reads a
+      // matcher as a regex or as a literal name is not something to find out by shipping
+      // a boundary that silently matches nothing, and an exact name is right either way.
+      {matcher: "Write", hooks: [guardWrite]},
+      {matcher: "Edit", hooks: [guardWrite]},
     ],
   };
 }
