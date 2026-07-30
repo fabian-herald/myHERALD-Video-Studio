@@ -38,6 +38,15 @@ your PATH — do not probe for one, and do not prefix the command with \`cd\`, \
 anything else. Only a command that *begins* with \`hyperframes\` or \`npx hyperframes\` is
 permitted; a prefixed one is refused, and you are already in the right directory.
 
+The shell is for that CLI and nothing else. \`ls\`, \`cat\`, \`find\`, \`head\` and \`grep\` are
+refused, so use \`Read\` and \`Glob\` instead — and before reaching for either, read the
+manifest at the top of BRIEF.md, which lists every file in this directory. You do not
+need to explore. One composition ran out of turns doing exactly that: four shell probes,
+all refused, none of them telling it anything the brief had not already said.
+
+Your turns are finite and mostly want spending on the composition itself. Read what you
+need, write the three files, then check.
+
 Reply with a short summary of the scene archetypes you used — one line each.`;
 
 /**

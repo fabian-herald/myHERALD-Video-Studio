@@ -93,7 +93,14 @@ export async function prepareAuthoringDir(options: {
   await fs.copyFile(path.join(COMPOSE_SRC, "CONTRACT.md"), path.join(dir, "CONTRACT.md"));
   await fs.writeFile(
     path.join(dir, "BRIEF.md"),
-    renderBrief({plan, kit, compositionId, spec, durationSeconds}),
+    renderBrief({
+      plan,
+      kit,
+      compositionId,
+      spec,
+      durationSeconds,
+      mediaFiles: mediaFiles.map((media) => `${media.id}${path.extname(media.path)}`),
+    }),
     "utf8",
   );
 
@@ -205,6 +212,43 @@ export function dataBrief(data: DataSeries): string {
     + " `.data-figure` counts up rather than appearing at its final value";
 }
 
+/**
+ * Everything in the authoring directory, listed.
+ *
+ * Because the alternative is the composer finding out. One attempt died at
+ * `error_max_turns` having spent its budget on `ls -la`, `ls -R`, `find exemplar` and a
+ * `cat` of two files — every one of them refused by the sandbox, so it learned nothing
+ * and paid a turn each time. This module wrote those files; it knows exactly what is
+ * there, and a list costs nothing.
+ *
+ * Derived from the same constants `prepareAuthoringDir` copies from, so a file added
+ * there appears here rather than quietly going undocumented.
+ */
+function directoryManifest(kit: BrandKit, mediaFiles: readonly string[]): string {
+  const lines = [
+    "`CONTRACT.md`, `BRIEF.md` — read both, in that order",
+    "`tokens.css` — the generated brand tokens, linked first",
+    ...BLOCK_FILES.map((block) => `\`blocks/${block}\``),
+    "`exemplar/` — a complete worked composition: `index.html`, `styles.css`, `animation.js`",
+    "`vendor/gsap.min.js` — linked for you",
+    `\`${NARRATION_FILE}\` — the mastered narration`,
+    "`caption-data.js` — measured caption pages, already linked; read `window.__captionData`",
+    "`hyperframes.json` — project config",
+    ...kit.logos.map((logo) => `\`media/logo-${logo.id}${path.extname(logo.file)}\``),
+    ...mediaFiles.map((file) => `\`media/${file}\``),
+  ];
+
+  return `## What is in this directory
+
+You do not need to look. This is all of it:
+
+${lines.map((line) => `- ${line}`).join("\n")}
+
+Everything except the three files you write is provided and must not be modified. Use
+\`Read\` and \`Glob\` to look at any of it — the shell is restricted to the HyperFrames CLI,
+so \`ls\`, \`cat\`, \`find\` and \`head\` are refused and cost you a turn for nothing.`;
+}
+
 /** The per-composition brief: everything specific to THIS video, in one file. */
 function renderBrief(options: {
   plan: VideoPlan;
@@ -212,8 +256,9 @@ function renderBrief(options: {
   compositionId: string;
   spec: (typeof FORMATS)[keyof typeof FORMATS];
   durationSeconds: number;
+  mediaFiles: readonly string[];
 }): string {
-  const {plan, kit, compositionId, spec, durationSeconds} = options;
+  const {plan, kit, compositionId, spec, durationSeconds, mediaFiles} = options;
   const seconds = (ms: number) => (ms / 1000).toFixed(3);
   const stillest = new Map(worstStillWindows(plan).map((window) => [window.sectionId, window]));
 
@@ -254,6 +299,8 @@ function renderBrief(options: {
     : "_None supplied. Stay typographic and do not invent a mark._";
 
   return `# Compose: ${plan.title}
+
+${directoryManifest(kit, mediaFiles)}
 
 ## The video
 

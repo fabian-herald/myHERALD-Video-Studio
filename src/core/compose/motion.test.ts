@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import {readFileSync} from "node:fs";
 import {test} from "node:test";
 import {loadBrandKit} from "../brand/kit.ts";
 import {INTENT_PRESETS} from "../intents/index.ts";
@@ -89,4 +90,47 @@ test("the brief puts no number on sustained motion", () => {
     assert.ok(!/\d+(\.\d+)?%/.test(sustainedSection),
       `${intent}: a sustained-motion figure is back in the brief — see the table in intents/index.ts`);
   }
+});
+
+test("the area rule never appears without the rule that bounds it", () => {
+  // These two sentences are one rule. Given only the first, the composer read "move
+  // something large" as licence to sweep an opaque card over a headline and produced
+  // twenty `layout: Text is hidden beneath an opaque element` errors in a single pass —
+  // against two in the run before the area wording existed. Whoever edits one half has to
+  // see the other.
+  const contract = readFileSync(new URL("./CONTRACT.md", import.meta.url), "utf8");
+  const areaAt = contract.indexOf("What moves has to have area");
+  assert.ok(areaAt > 0, "the area rule is gone from the contract");
+  const boundedAt = contract.indexOf("behind the type", areaAt);
+  assert.ok(boundedAt > areaAt && boundedAt - areaAt < 1200,
+    "the area rule is stated without the rule that stops it burying the type");
+});
+
+test("the contract names the check that catches an opaque overlap", () => {
+  // Naming the finding is what lets the composer connect the rule to the error it is
+  // about to read in a repair prompt.
+  const contract = readFileSync(new URL("./CONTRACT.md", import.meta.url), "utf8");
+  assert.match(contract, /Text is hidden beneath an opaque element/);
+  assert.match(contract, /rgba\(0,0,0,α\)|translucent/, "no way out is offered, only a prohibition");
+});
+
+test("the brief lists the directory instead of making the composer find it", () => {
+  // An attempt died at error_max_turns having spent its budget on `ls -la`, `ls -R`,
+  // `find exemplar` and a `cat` — all refused by the sandbox, so it learned nothing and
+  // paid a turn each time. This module wrote those files and knows what is there.
+  const source = readFileSync(new URL("./workdir.ts", import.meta.url), "utf8");
+  const manifest = source.slice(source.indexOf("function directoryManifest"));
+  const body = manifest.slice(0, manifest.indexOf("\n}"));
+  assert.match(body, /BLOCK_FILES\.map/, "the block list is hand-copied and will drift");
+  assert.match(body, /NARRATION_FILE/);
+  assert.match(body, /caption-data\.js/);
+  assert.match(body, /kit\.logos\.map/, "logos are not listed, so the composer has to go looking");
+  assert.match(body, /ls.*cat.*find|refused/, "nothing says why the shell will not help");
+});
+
+test("the composer is told to read rather than shell out", () => {
+  const source = readFileSync(new URL("../gen/claudeComposer.ts", import.meta.url), "utf8");
+  const prompt = source.slice(source.indexOf("const SYSTEM_PROMPT"), source.indexOf("BASH_REFUSAL"));
+  assert.match(prompt, /\\`Read\\` and \\`Glob\\`/, "no alternative to the shell is named");
+  assert.match(prompt, /manifest/, "the composer is not pointed at the file list");
 });

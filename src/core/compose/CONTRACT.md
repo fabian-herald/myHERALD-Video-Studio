@@ -50,6 +50,18 @@ Everything else in the directory is provided and must not be modified.
    already failed it. BRIEF.md gives you, per scene, the longest stretch in which the
    caption layer changes nothing; in those stretches your motion is the only thing in the
    picture, and it is sampled **before** the video is rendered, not after.
+
+   **And that mass goes behind the type, or beside it. Never across it.** These two
+   sentences are one rule, and taking only the first is a failure with its own check:
+   `layout: Text is hidden beneath an opaque element`. The first composition written
+   against the paragraph above drew twenty of them in one pass, because "move something
+   large" was read as licence to sweep an opaque card over a headline.
+
+   So: give the moving mass a lower `data-track-index` than any text it overlaps, or
+   keep it in a region the text does not occupy, or make it translucent enough to read
+   through — an `rgba(0,0,0,α)` or `rgba(255,255,255,α)` scrim at α ≤ 0.5 is not opaque
+   and does not trip this. A wipe that reveals type is fine; a wipe that buries it is not.
+   If you cannot tell which you have built, you have built the second one.
 9. **Never hardcode a scene's time in `animation.js`. Read it from the DOM.**
 
    ```js
