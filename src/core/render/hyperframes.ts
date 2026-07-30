@@ -48,7 +48,8 @@ export async function emitFormat(
   await fs.rm(targetDir, {recursive: true, force: true});
   await fs.cp(authoringDir, targetDir, {
     recursive: true,
-    filter: (source) => !/(^|\/)(snapshots|renders|exemplar|CONTRACT\.md|BRIEF\.md)$/.test(source),
+    filter: (source) =>
+      !/(^|\/)(snapshots|renders|exemplar|\.motion-check|CONTRACT\.md|BRIEF\.md)$/.test(source),
   });
 
   const indexPath = path.join(targetDir, "index.html");
@@ -111,18 +112,23 @@ export async function renderSnapshots(options: {
   onLog?: (line: string) => void;
 }): Promise<string[]> {
   const {dir, durationSeconds, outputDir, at, count = 8, onLog} = options;
-  await fs.mkdir(outputDir, {recursive: true});
+  // Resolved against *our* working directory before the CLI sees it. The command runs with
+  // `cwd: dir`, so a relative --output is taken relative to the composition and lands in a
+  // path that repeats the project prefix — the files are written, the readdir below finds
+  // none, and the caller gets a confident empty answer.
+  const target = path.resolve(outputDir);
+  await fs.mkdir(target, {recursive: true});
   await cli(
     [
       "snapshot", ".",
       "--at", at || snapshotTimes(durationSeconds, count),
       "--no-end",
       "--describe", "false",
-      "--output", outputDir,
+      "--output", target,
     ],
     dir,
     onLog,
   );
-  const files = (await fs.readdir(outputDir)).filter((name) => name.endsWith(".png")).sort();
-  return files.map((name) => path.join(outputDir, name));
+  const files = (await fs.readdir(target)).filter((name) => name.endsWith(".png")).sort();
+  return files.map((name) => path.join(target, name));
 }

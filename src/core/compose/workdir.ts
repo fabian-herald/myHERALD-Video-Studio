@@ -9,6 +9,7 @@ import {intentPreset} from "../intents/index.ts";
 import {planDurationMs, type DataSeries, type Energy, type Intent, type ScreenSpec, type VideoPlan} from "../plan/schema.ts";
 import {ROOT} from "../paths.ts";
 import {buildCaptions, writeCaptionData} from "../tts/captions.ts";
+import {FREEZE_BAR_MS, stillBriefLine, worstStillWindows, type StillWindow} from "./still.ts";
 
 export const FPS = 30;
 export const NARRATION_FILE = "narration.m4a";
@@ -140,7 +141,16 @@ A calm piece is not a still one. The point is contrast: a lift only reads as a l
 because the section before it did not.
 
 Keep the sustained motion of §6 in every scene regardless of energy, and scale its
-speed the same way — but how far and how fast is your call, not a number in this brief.`;
+speed the same way.
+
+**How much motion is enough is not a matter of taste here — it is measured.** Each
+section above states the longest stretch in which the caption layer holds still, and the
+finished file is scanned with \`freezedetect=n=0.001:d=${FREEZE_BAR_MS / 1000}\`. That filter
+averages the change across the *entire* frame, so what it rewards is area, not distance: a
+hairline travelling the full height of the canvas changes a few thousand pixels out of two
+million and reads to it as a frozen frame. A field that shifts, a card that drifts, a large
+mask that wipes, a figure that counts — those register. A one-pixel rule does not, however
+far it goes.`;
 }
 
 /**
@@ -205,6 +215,7 @@ function renderBrief(options: {
 }): string {
   const {plan, kit, compositionId, spec, durationSeconds} = options;
   const seconds = (ms: number) => (ms / 1000).toFixed(3);
+  const stillest = new Map(worstStillWindows(plan).map((window) => [window.sectionId, window]));
 
   const sections = plan.sections.map((section, index) => {
     const spoken = section.phrases.map((phrase) => phrase.text).join(" ");
@@ -220,6 +231,7 @@ function renderBrief(options: {
       section.data ? dataBrief(section.data) : null,
       section.slot ? `- presenter slot: style \`${section.slot.style}\`, ${seconds(section.durationMs)}s` : null,
       `- narration underneath: "${spoken || "(silent)"}"`,
+      stillest.has(section.id) ? stillBriefLine(stillest.get(section.id) as StillWindow) : null,
       "",
     ].filter(Boolean).join("\n");
   }).join("\n");

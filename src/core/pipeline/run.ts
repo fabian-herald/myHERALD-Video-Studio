@@ -357,7 +357,7 @@ export async function composeWithRepair(options: {
   signal?: AbortSignal;
 }): Promise<{result: ComposeResult | null; costUsd: number; attempts: number; usedBaseline: boolean}> {
   const {authoring, plan, kit, family, composerId, baselineOnly, log, signal} = options;
-  const check = () => checkComposition({dir: authoring.dir, plan, kit, family, fps: FPS});
+  const check = () => checkComposition({dir: authoring.dir, plan, kit, family, fps: FPS, onLog: log});
 
   if (baselineOnly) {
     log("compose       baseline (deterministic fallback requested)");

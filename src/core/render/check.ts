@@ -7,6 +7,7 @@ import {checkMediaFit, readMedia} from "../media/library.ts";
 import type {VideoPlan} from "../plan/schema.ts";
 import {run} from "../util/exec.ts";
 import {compatibleNode} from "./node.ts";
+import {describeFrozen, sampleMotion} from "./motionGate.ts";
 import {ROOT} from "../paths.ts";
 
 export type Severity = "error" | "warning" | "info";
@@ -31,12 +32,18 @@ export interface CheckReport {
 const CLI = path.join(ROOT, "node_modules", "hyperframes", "bin", "hyperframes.mjs");
 
 /**
- * Three gates in one report:
+ * Four gates in one report:
  *   1. HyperFrames' own lint / runtime / layout / motion / WCAG contrast pass
  *   2. the token-only colour rule
  *   3. plan conformance — ids, timings and verbatim copy
+ *   4. actual movement where the caption layer has gone quiet
  *
  * Together these are what make it safe to let a model author the composition.
+ *
+ * The fourth is the only one that renders pixels. It costs 8–17 seconds and it is the only
+ * way to catch a composition that satisfies every structural rule and still paints the
+ * same frame for two seconds — the failure that otherwise surfaces after a full render,
+ * in the post-render freeze check, having already been paid for.
  */
 export async function checkComposition(options: {
   dir: string;
@@ -44,8 +51,11 @@ export async function checkComposition(options: {
   kit: BrandKit;
   family: FormatFamily;
   fps: number;
+  /** Off only where there is no browser to render with — never as a shortcut. */
+  sampleMotion?: boolean;
+  onLog?: (line: string) => void;
 }): Promise<CheckReport> {
-  const {dir, plan, kit, family, fps} = options;
+  const {dir, plan, kit, family, fps, sampleMotion: motion = true, onLog} = options;
   const findings: CheckFinding[] = [
     ...await runHyperframesCheck(dir, family),
     ...await checkTokens(dir, kit),
@@ -54,11 +64,47 @@ export async function checkComposition(options: {
     ...await checkMedia(plan, family),
     ...await checkCanvasLiterals(dir, plan, family),
     ...await checkWordmark(dir, kit),
+    ...motion ? await checkMotion(dir, plan, onLog) : [],
   ];
 
   const errorCount = findings.filter((finding) => finding.severity === "error").length;
   const warningCount = findings.filter((finding) => finding.severity === "warning").length;
   return {ok: errorCount === 0, errorCount, warningCount, findings};
+}
+
+/**
+ * A rendering failure here must not fail the composition.
+ *
+ * The other gates read files that are certainly present. This one drives a headless
+ * browser, and a browser that will not start is a fault in the machine, not in the work —
+ * reporting it as an error would send the composer off to repair something it did not do.
+ * It surfaces as a warning so it is visible in the log without spending a repair pass.
+ */
+async function checkMotion(
+  dir: string,
+  plan: VideoPlan,
+  onLog?: (line: string) => void,
+): Promise<CheckFinding[]> {
+  const sample = await sampleMotion({dir, plan, onLog}).catch((error: unknown) => error as Error);
+  if (sample instanceof Error) {
+    return [{
+      severity: "warning",
+      code: "motion_unsampled",
+      message: `Could not sample motion: ${sample.message}. The post-render freeze check still applies.`,
+      source: "plan",
+    }];
+  }
+
+  return sample.frozen.map((frozen): CheckFinding => ({
+    severity: "error",
+    code: "frozen_window",
+    message: describeFrozen(frozen),
+    selector: `#scene-${frozen.window.sectionId}`,
+    fixHint:
+      "Give this scene one sustained motion with area behind it, running for as long as the "
+      + "scene is on screen — see CONTRACT.md §6.",
+    source: "plan",
+  }));
 }
 
 async function runHyperframesCheck(dir: string, family: FormatFamily): Promise<CheckFinding[]> {

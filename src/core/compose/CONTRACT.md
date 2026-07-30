@@ -40,8 +40,16 @@ Everything else in the directory is provided and must not be modified.
 8. **Nothing may sit completely still for more than one second.** After a scene's
    entrance finishes it must keep moving — a slow drift, a growing rule, a rotating
    mark, a staggered late reveal. A held still frame reads as a stall to a viewer and
-   fails the post-render freeze check, which no amount of passing `check` will save.
-   The reliable way to guarantee this is one continuous full-duration element (see §5).
+   fails the freeze check, which no amount of passing `check` will save.
+
+   **What moves has to have area.** The check averages the change across the whole
+   frame, so a hairline crossing a 1080×1920 canvas alters a few thousand pixels out of
+   two million and counts as nothing at all. A field, a card, a large mask, a counting
+   figure, a shifting block of colour: those register. A one-pixel rule does not, however
+   far it travels — this is measured, and a full-duration `.signal-spine` on its own has
+   already failed it. BRIEF.md gives you, per scene, the longest stretch in which the
+   caption layer changes nothing; in those stretches your motion is the only thing in the
+   picture, and it is sampled **before** the video is rendered, not after.
 9. **Never hardcode a scene's time in `animation.js`. Read it from the DOM.**
 
    ```js
@@ -145,8 +153,12 @@ Linked before your `styles.css`. Use them; do not reimplement them.
 **One continuous element is mandatory.** Include `.signal-spine` — or an equivalent of
 your own design — as a full-duration clip on a low track, animated across the entire
 composition (the spine's line grows and its node travels). It carries the brand's "one
-thread through the whole piece" rule, and it is what guarantees no frame is ever
-identical to the one before it.
+thread through the whole piece" rule.
+
+It does **not** satisfy §1.8 on its own. A spine is a hairline, and the freeze measure
+averages change across the whole frame: compositions carrying a perfectly good spine have
+frozen anyway, because a line one pixel wide changes too little of the canvas to count.
+The spine is the thread; the motion with area is a separate thing each scene needs.
 
 Add `.on-light` to `.brand-rail`, `.kicker`, `.section-number` and `.rule` when they sit
 on a light field; `.on-dark` to `.cta-lockup` when it sits on the dark field.
@@ -253,9 +265,11 @@ vibrate:
 - **Sustained means one direction.** A drift travels; it does not return. If you cycle
   something, the full cycle is **4 seconds or longer** — anything faster is not drift, it
   is a shake, and fifteen of them at 0.7s across one composition is a picture that will
-  not sit still. A slow ramp that moves less than a pixel per frame is fine: the eye
-  integrates it over seconds, which is exactly what makes it read as calm rather than as
-  nothing.
+  not sit still.
+- **Slow is fine; small is not.** A ramp of a fraction of a pixel per frame reads as calm
+  rather than as nothing, and the eye integrates it over seconds — but only if what is
+  ramping covers real area. The two are independent, and the failure that keeps happening
+  is a composition that got the speed right on something far too thin to see.
 - **At most two moving things per scene.** The point of motion is that something is
   moving *against* something that is not. When everything drifts, nothing does.
 - **Never move type while it is being read.** Headlines, on-screen copy and captions
