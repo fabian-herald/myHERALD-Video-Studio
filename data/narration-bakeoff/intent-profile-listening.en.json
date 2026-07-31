@@ -1,0 +1,54 @@
+{
+  "schemaVersion": 1,
+  "language": "en",
+  "notice": "Internal narration-profile listening copy only. It is not approved product marketing or a release claim.",
+  "profiles": [
+    {
+      "intent": "promotional",
+      "profileId": "social-promotional",
+      "title": "Promotional voice profile",
+      "sections": [
+        ["Your next content week should not begin with five empty slots."],
+        ["Start with one clear direction. myHERALD turns it into researched drafts shaped around your voice."],
+        ["You review what matters. Nothing publishes without your approval."],
+        ["Less time moving work between tools. More time deciding what is worth saying."],
+        ["myHERALD. From direction to content that is ready for your review."]
+      ]
+    },
+    {
+      "intent": "promotional",
+      "profileId": "performance-ad",
+      "title": "Performance ad voice profile",
+      "sections": [
+        ["Still starting every content week with an empty calendar?"],
+        ["Give myHERALD one clear direction. It researches the angle, drafts the content, and keeps the sources attached."],
+        ["You check the claims, adjust the voice, and approve what is ready."],
+        ["Spend less time moving work between tools, and more time deciding what deserves your name."],
+        ["Start your next content week with myHERALD."]
+      ]
+    },
+    {
+      "intent": "educational",
+      "title": "Educational voice profile",
+      "sections": [
+        ["A reliable content workflow separates four different jobs: research, drafting, review, and publishing."],
+        ["Research gathers the source material and identifies what is actually worth saying."],
+        ["Drafting turns that direction into a clear argument, in language that sounds like the person behind it."],
+        ["Review checks the claims, the tone, and the details that should never be left to guesswork."],
+        ["Publishing comes last, after a person has approved what will go out and where it will appear."],
+        ["When those stages stay visible, automation can remove repetitive work without hiding important decisions."]
+      ]
+    },
+    {
+      "intent": "announcement",
+      "title": "Announcement voice profile",
+      "sections": [
+        ["Here is a small but important change to the myHERALD workflow."],
+        ["The review step now puts the draft, its supporting sources, and the decisions behind it in one clear view."],
+        ["You can check the claim, adjust the voice, and decide whether the piece is ready."],
+        ["Nothing moves forward until you approve it."],
+        ["The result is a review process that is easier to understand, without making it easier to skip."]
+      ]
+    }
+  ]
+}

@@ -1,0 +1,69 @@
+{
+  "videoId": "thought-leadership-7e83b7",
+  "language": "de",
+  "adaptationNote": "Faithful German adaptation for voice comparison. It preserves the seven spoken sections and 27 phrase boundaries, but favors idiomatic German over literal word order.",
+  "sections": [
+    {
+      "id": "you-can-tell",
+      "phrases": [
+        {"id": "tell", "text": "Du kannst es immer erkennen."},
+        {"id": "not-bad", "text": "Der Text ist in Ordnung, nur noch nicht fertig."},
+        {"id": "hedge", "text": "Die Einschränkung steckt noch im Satz."},
+        {"id": "last-para", "text": "Der Punkt kommt erst im letzten Absatz."}
+      ]
+    },
+    {
+      "id": "why-good-teams",
+      "phrases": [
+        {"id": "not-careless", "text": "Das sind keine nachlässigen Menschen."},
+        {"id": "they-know", "text": "Sie wissen, wie ein guter Text aussieht."},
+        {"id": "so-why", "text": "Warum kommt die Arbeit also unfertig an?"}
+      ]
+    },
+    {
+      "id": "the-day",
+      "phrases": [
+        {"id": "look", "text": "Sieh dir an, womit der Tag schon gefüllt ist."},
+        {"id": "figure", "text": "3,4 Stunden an jedem Arbeitstag: Inhalte erstellen."},
+        {"id": "real-work", "text": "Diese Zeit leistet echte Arbeit."},
+        {"id": "remainder", "text": "Und der Rest muss alles auffangen, was du noch zu erledigen hast."}
+      ]
+    },
+    {
+      "id": "revision-is-thinking",
+      "phrases": [
+        {"id": "not-polish", "text": "Ein zweiter Entwurf ist keine Politur."},
+        {"id": "cut-down", "text": "Dort wird das Argument gekürzt."},
+        {"id": "vague", "text": "Dort wird der vage Satz durch einen konkreten ersetzt."},
+        {"id": "meant", "text": "Dort findest du heraus, was du wirklich meintest."},
+        {"id": "thats-it", "text": "Das ist die eigentliche Arbeit."}
+      ]
+    },
+    {
+      "id": "first-thing-dropped",
+      "phrases": [
+        {"id": "dropped", "text": "Deshalb fällt er als Erstes weg."},
+        {"id": "publishable", "text": "Ein erster Entwurf kann veröffentlicht werden."},
+        {"id": "optional", "text": "Ein zweiter Entwurf ist optional."},
+        {"id": "not-speed", "text": "Ihn zu streichen kostet dich keine Geschwindigkeit."},
+        {"id": "the-point", "text": "Es kostet dich den eigentlichen Punkt."}
+      ]
+    },
+    {
+      "id": "reframe",
+      "phrases": [
+        {"id": "not-thinking", "text": "Deshalb ist das meiste Veröffentlichte noch nicht der Gedanke."},
+        {"id": "attempt", "text": "Es ist der erste Versuch, den Gedanken zu fassen."},
+        {"id": "deadline", "text": "Mit einer Deadline versehen."}
+      ]
+    },
+    {
+      "id": "close",
+      "phrases": [
+        {"id": "calendar", "text": "Also trag den zweiten Entwurf in den Kalender ein."},
+        {"id": "before", "text": "Nicht nach der Deadline, sondern davor."},
+        {"id": "publish-thought", "text": "Veröffentliche den Gedanken, nicht den Versuch."}
+      ]
+    }
+  ]
+}

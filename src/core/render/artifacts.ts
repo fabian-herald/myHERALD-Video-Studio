@@ -77,7 +77,17 @@ export interface Provenance {
     energies: readonly string[];
     notes: readonly string[];
   };
-  narration: {provider: string; model: string; voice: string; cloned: boolean; phrases: number};
+  narration: {
+    provider: string;
+    model: string;
+    voice: string;
+    cloned: boolean;
+    phrases: number;
+    profileId: string;
+    timingTreatment: string;
+    sectionGapMs?: number;
+    sectionGapsShortened?: number;
+  };
   visualEngine: string;
   hyperframesVersion: string;
   planHash: string;

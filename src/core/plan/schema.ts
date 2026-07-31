@@ -7,6 +7,25 @@ import {CONTENT_LANGUAGES} from "./language.ts";
 export const INTENTS = ["promotional", "educational", "thought-leadership", "announcement"] as const;
 export type Intent = (typeof INTENTS)[number];
 
+export const NARRATION_PROFILE_IDS = [
+  "social-promotional", "performance-ad", "educational", "thought-leadership", "announcement",
+] as const;
+export type NarrationProfileId = (typeof NARRATION_PROFILE_IDS)[number];
+
+/** Resolve before synthesis so an unsupported intent/profile pair never reaches a provider. */
+export function narrationProfileForIntent(intent: Intent, requested?: NarrationProfileId): NarrationProfileId {
+  const allowed: readonly NarrationProfileId[] = intent === "promotional"
+    ? ["performance-ad", "social-promotional"]
+    : [intent];
+  const resolved = requested ?? allowed[0]!;
+  if (!allowed.includes(resolved)) {
+    throw new Error(
+      `Narration profile "${resolved}" is not supported for ${intent}. Choose: ${allowed.join(", ")}.`,
+    );
+  }
+  return resolved;
+}
+
 export const SECTION_KINDS = [
   "hook", "point", "proof", "turn", "payoff", "cta",
   "title", "chapter", "screen", "quote", "outro",
@@ -158,6 +177,8 @@ export const videoPlanZ = z.object({
   narration: z.object({
     provider: z.string().default("gemini"),
     voice: z.string().default("Achird"),
+    /** Promotional has two distinct deliveries; other intents resolve to their own id. */
+    profile: z.enum(NARRATION_PROFILE_IDS).optional(),
     style: z.string().default(""),
     /** The brand's narrator register, held constant while `style` varies by section. */
     register: z.string().default(""),

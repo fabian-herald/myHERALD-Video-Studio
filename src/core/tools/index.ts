@@ -21,7 +21,15 @@ import {readLedger, similarTheses} from "../ledger.ts";
 import {OUTPUT_FORMATS, type OutputFormat} from "../plan/formats.ts";
 import {CONTENT_LANGUAGES, languageName} from "../plan/language.ts";
 import {readSettings} from "../settings.ts";
-import {ENERGIES, INTENTS, loadPlan, type Intent} from "../plan/schema.ts";
+import {
+  ENERGIES,
+  INTENTS,
+  NARRATION_PROFILE_IDS,
+  loadPlan,
+  narrationProfileForIntent,
+  type Intent,
+  type NarrationProfileId,
+} from "../plan/schema.ts";
 import {OUT_DIR, rel, videoDir} from "../paths.ts";
 import {applyPlanEdits} from "../pipeline/apply.ts";
 import {runPipeline} from "../pipeline/run.ts";
@@ -164,6 +172,7 @@ export function studioTools(context: ToolContext) {
               formats: preset.formats,
               durationBandSeconds: preset.durationBandSeconds,
               requiresCta: preset.requiresCta,
+              narrationProfiles: preset.narrationProfiles,
             })),
           }, null, 2));
         },
@@ -198,12 +207,19 @@ export function studioTools(context: ToolContext) {
         {
           brief: z.string().describe("What the video is about, in one or two sentences"),
           intent: z.enum(INTENTS).describe("Which kind of video this is"),
+          narrationProfile: z.enum(NARRATION_PROFILE_IDS).optional()
+            .describe("Delivery profile. Promotional defaults to performance-ad; pass social-promotional for organic campaigns or challenges."),
           formats: z.array(z.enum(OUTPUT_FORMATS)).optional().describe("Defaults to the intent's own formats"),
           language: z.enum(CONTENT_LANGUAGES).optional()
             .describe("Language the video is written and spoken in. Omit to use the studio's setting; only pass it when the owner asked for this one video in a different language."),
         },
-        async ({brief, intent, formats, language}) => {
+        async ({brief, intent, narrationProfile, formats, language}) => {
           const preset = intentPreset(intent as Intent);
+          try {
+            narrationProfileForIntent(intent as Intent, narrationProfile as NarrationProfileId | undefined);
+          } catch (error) {
+            return ok((error as Error).message);
+          }
           const chosen = (formats?.length ? formats : preset.defaultFormats) as OutputFormat[];
           const invalid = chosen.filter((format) => !preset.formats.includes(format));
           if (invalid.length) {
@@ -214,6 +230,7 @@ export function studioTools(context: ToolContext) {
           const result = await runPipeline({
             brief,
             intent: intent as Intent,
+            narrationProfile: narrationProfile as NarrationProfileId | undefined,
             formats: chosen,
             language: language ?? settings.contentLanguage,
             composerId: context.composerId,

@@ -4,13 +4,14 @@ import {intentPreset} from "../intents/index.ts";
 import type {OutputFormat} from "../plan/formats.ts";
 import {languageName, type ContentLanguage} from "../plan/language.ts";
 import {seedGaps} from "../plan/retime.ts";
-import {videoPlanZ, type Intent, type VideoPlan} from "../plan/schema.ts";
+import {videoPlanZ, type Intent, type NarrationProfileId, type VideoPlan} from "../plan/schema.ts";
 import {CAPTION_MAX_CHARS, CAPTION_MAX_WORDS} from "../render/qc.ts";
 
 export interface PlanRequest {
   id: string;
   brief: string;
   intent: Intent;
+  narrationProfile: NarrationProfileId;
   formats: OutputFormat[];
   language: ContentLanguage;
   kit: BrandKit;
@@ -372,6 +373,7 @@ function normalise(plan: VideoPlan, request: PlanRequest): VideoPlan {
     narration: {
       provider: plan.narration.provider || "gemini",
       voice: plan.narration.voice || "Achird",
+      profile: request.narrationProfile,
       // Both come from the kit, not from the model: the narrator is a brand fact, and a
       // planner free to restate it would be free to drift it.
       style: request.kit.voice.narrationStyle,

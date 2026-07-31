@@ -14,7 +14,14 @@ import {aspectOf, DEVICE_PRESETS, mediaForFormat, mediaForPlan} from "../media/l
 import {assertPlanClaimsAreSourced} from "../plan/claims.ts";
 import {byFamily, FORMATS, type OutputFormat} from "../plan/formats.ts";
 import type {ContentLanguage} from "../plan/language.ts";
-import {planDurationMs, savePlan, type Intent, type VideoPlan} from "../plan/schema.ts";
+import {
+  narrationProfileForIntent,
+  planDurationMs,
+  savePlan,
+  type Intent,
+  type NarrationProfileId,
+  type VideoPlan,
+} from "../plan/schema.ts";
 import {OUT_DIR, rel, videoDir} from "../paths.ts";
 import {buildContactSheet, buildCover, writeProvenance} from "../render/artifacts.ts";
 import {checkComposition, formatFindings, type CheckReport} from "../render/check.ts";
@@ -35,6 +42,7 @@ export const MAX_REPAIR_ATTEMPTS = 3;
 export interface RunOptions {
   brief: string;
   intent: Intent;
+  narrationProfile?: NarrationProfileId;
   formats: OutputFormat[];
   language: ContentLanguage;
   composerId: string;
@@ -57,8 +65,10 @@ export interface RunResult {
 
 export async function runPipeline(options: RunOptions): Promise<RunResult> {
   const log = options.onLog ?? ((line: string) => console.log(line));
+  // Reject incompatible intent/profile combinations before planning or TTS.
+  const narrationProfile = narrationProfileForIntent(options.intent, options.narrationProfile);
   const kit = await loadBrandKit();
-  const videoId = `${options.intent}-${hash({brief: options.brief, at: Date.now()}, 6)}`;
+  const videoId = `${options.intent}-${hash({brief: options.brief, narrationProfile, at: Date.now()}, 6)}`;
   const dir = videoDir(videoId);
   await fs.mkdir(dir, {recursive: true});
 
@@ -74,12 +84,13 @@ export async function runPipeline(options: RunOptions): Promise<RunResult> {
     log(`ledger        ${prior.length} related video(s): ${prior.map((entry) => entry.id).join(", ")}`);
   }
 
-  log(`plan          ${options.intent} · ${options.formats.join(", ")} · ${options.language}`);
+  log(`plan          ${options.intent} · ${narrationProfile} · ${options.formats.join(", ")} · ${options.language}`);
   const planned = await planVideo(
     {
       id: videoId,
       brief: options.brief,
       intent: options.intent,
+      narrationProfile,
       formats: options.formats,
       language: options.language,
       kit,
@@ -290,6 +301,10 @@ export async function runPipeline(options: RunOptions): Promise<RunResult> {
         voice: plan.narration.voice,
         cloned: false,
         phrases: narration.clipCount,
+        profileId: narration.profileId,
+        timingTreatment: narration.timingTreatment,
+        sectionGapMs: narration.sectionGapMs,
+        sectionGapsShortened: narration.sectionGapsShortened,
       },
       visualEngine: "HyperFrames",
       hyperframesVersion: await hyperframesVersion(),

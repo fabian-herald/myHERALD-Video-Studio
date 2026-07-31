@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import {test} from "node:test";
 import {arcDirection} from "./energy.ts";
-import {buildTakePrompt} from "./gemini.ts";
+import {buildTakePrompt, buildThoughtLeadershipTakePrompt} from "./gemini.ts";
 import type {TakeRequest} from "./provider.ts";
 
 const SHIPPED = ["edge", "settled", "settled", "quiet", "lift", "settled"] as const;
@@ -119,4 +119,27 @@ test("a brand with no register stated says nothing about a speaker", () => {
 
 test("the language is named, so a German video is not read in English", () => {
   assert.match(buildTakePrompt({...REQUEST, language: "de"}), /Language: German\./);
+});
+
+test("thought leadership uses the approved B886 profile and only section pause tags", () => {
+  const request: TakeRequest = {
+    ...REQUEST,
+    intent: "thought-leadership",
+    blocks: [
+      {direction: "", lines: ["Opening thought."]},
+      {direction: "", lines: ["The argument develops."]},
+      {direction: "", lines: ["Here is the turn."]},
+      {direction: "", lines: ["The conclusion lands."]},
+    ],
+  };
+  const prompt = buildTakePrompt(request);
+  assert.equal(prompt, buildThoughtLeadershipTakePrompt(request));
+  assert.match(prompt, /Thought leadership with calm authority/);
+  assert.match(prompt, /Measured forward motion/);
+  assert.equal(prompt.match(/\[short pause\]/g)?.length, 3);
+  assert.deepEqual(prompt.match(/\[(?:observant|conviction|confident)\]/g), [
+    "[observant]", "[conviction]", "[confident]",
+  ]);
+  assert.doesNotMatch(prompt, /Conviction, never enthusiasm/);
+  assert.ok(prompt.trimEnd().endsWith("[confident] The conclusion lands."));
 });

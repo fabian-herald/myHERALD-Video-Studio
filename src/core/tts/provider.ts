@@ -33,6 +33,10 @@ export interface SynthesisRequest {
  * never arises. What it costs is the free per-phrase timing, which `align.ts` recovers.
  */
 export interface TakeRequest extends Omit<SynthesisRequest, "style"> {
+  /** Content intent, so a provider can use an approved intent-specific performance profile. */
+  intent?: string;
+  /** More specific delivery within an intent, such as social promotion or performance ad. */
+  profileId?: string;
   /** The brand's narration style, without any per-section direction appended. */
   style: string;
   /** Where the performance opens, turns and lands. See `arcDirection`. */

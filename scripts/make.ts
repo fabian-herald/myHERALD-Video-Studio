@@ -1,7 +1,13 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import {intentPreset} from "../src/core/intents/index.ts";
-import {INTENTS, type Intent} from "../src/core/plan/schema.ts";
+import {
+  INTENTS,
+  NARRATION_PROFILE_IDS,
+  narrationProfileForIntent,
+  type Intent,
+  type NarrationProfileId,
+} from "../src/core/plan/schema.ts";
 import {OUTPUT_FORMATS, type OutputFormat} from "../src/core/plan/formats.ts";
 import {CONTENT_LANGUAGES, isContentLanguage, languageName} from "../src/core/plan/language.ts";
 import {readSettings} from "../src/core/settings.ts";
@@ -25,6 +31,7 @@ if (!brief) {
   console.error(`Usage: npm run make -- "<what the video is about>" [options]
 
   --intent      ${INTENTS.join(" | ")}   (default: thought-leadership)
+  --narration-profile  ${NARRATION_PROFILE_IDS.join(" | ")}  (promotional defaults to performance-ad)
   --formats     comma-separated from ${OUTPUT_FORMATS.join(",")}  (default: the intent's own)
   --language    ${CONTENT_LANGUAGES.join(" | ")}   (default: the studio setting)
   --composer    claude | codex           (default: the studio setting; both use a CLI subscription)
@@ -41,6 +48,18 @@ if (!INTENTS.includes(intent)) {
 }
 
 const preset = intentPreset(intent);
+const narrationProfileFlag = flag("narration-profile") as NarrationProfileId | undefined;
+if (narrationProfileFlag && !NARRATION_PROFILE_IDS.includes(narrationProfileFlag)) {
+  console.error(`Unknown narration profile "${narrationProfileFlag}". Choose from: ${NARRATION_PROFILE_IDS.join(", ")}.`);
+  process.exit(1);
+}
+let narrationProfile: NarrationProfileId;
+try {
+  narrationProfile = narrationProfileForIntent(intent, narrationProfileFlag);
+} catch (error) {
+  console.error((error as Error).message);
+  process.exit(1);
+}
 const formats = (flag("formats")?.split(",").map((value) => value.trim()) ?? preset.defaultFormats) as OutputFormat[];
 for (const format of formats) {
   if (!OUTPUT_FORMATS.includes(format)) {
@@ -66,6 +85,7 @@ const started = Date.now();
 const result = await runPipeline({
   brief,
   intent,
+  narrationProfile,
   formats,
   language,
   composerId: flag("composer") ?? settings.composer,

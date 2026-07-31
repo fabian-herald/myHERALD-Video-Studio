@@ -3,9 +3,10 @@
 A context-first video studio. You feed it your brand and what your product actually is,
 once. After that, one sentence produces a finished video.
 
-It is not an ad tool. Four intents share the same machinery — promotional, educational,
-thought leadership and product announcements — and only the intent decides tone,
-structure and whether there is a call to action at all.
+It is not only an ad tool. Four intents share the same machinery — promotional,
+educational, thought leadership and product announcements — and the intent decides tone,
+structure and whether there is a call to action at all. Promotional can then choose a
+performance-ad delivery or the more restrained social-promotional voice.
 
 There is no publishing. Videos come out as files; you post them yourself.
 
@@ -16,10 +17,10 @@ Brand kit + product facts + media ─┐
 Brief + intent + format            ─┼─► PLAN     → plan.json  (schema-enforced, hand-editable)
 Ledger check (already covered?)    ─┘
                 │
-plan.json ─► one TTS clip per phrase ─► ffprobe measures ─► RETIME
-                │                                            ↑
-                │                              the audio owns the timing
-                │
+plan.json ─► one continuous TTS take ─► verified alignment ─► RETIME
+                │                              │                 ↑
+                │                    intent-safe gap control     │
+                │                              └── the audio owns the timing
 retimed plan + tokens.css + blocks ─► COMPOSE   (an agent authors real HTML/CSS/GSAP)
                 │
         hyperframes check --strict ─► repair ≤3 ─► render ─► qc ─► contact sheet
@@ -42,10 +43,17 @@ for forty seconds stops reading as calm and starts reading as flat. Each section
 fast the picture moves. A lift only reads as a lift because the section before it did
 not.
 
-**The audio owns the timing.** Every phrase is synthesised as its own clip and measured,
-then the plan is rebuilt from those measurements. Nothing is ever time-stretched to fit
-a guess, and caption page boundaries come out exact for free — no ASR, no forced
-alignment.
+**Every intent has its own narration profile.** Promotional offers separate performance-ad
+and social-promotional deliveries;
+educational leaves room for comprehension; thought leadership carries calm authority;
+announcements stay brisk and concrete. They share one safe mechanism — a continuous take,
+verified alignment and silence-only section-gap control — but never one generic delivery.
+
+**The audio owns the timing.** The preferred path reads the script as one continuous
+performance, verifies every phrase through alignment, and rebuilds the plan from where
+the words actually landed. Thought-leadership takes may shorten only overlong silence at
+known section boundaries to 650 ms; speech is never time-stretched. Per-phrase synthesis
+survives only as the safety fallback when a take cannot be aligned.
 
 ## The studio
 
@@ -114,6 +122,7 @@ Options:
 | Flag | Values | Default |
 |---|---|---|
 | `--intent` | `promotional`, `educational`, `thought-leadership`, `announcement` | `thought-leadership` |
+| `--narration-profile` | `performance-ad`, `social-promotional`, or the matching non-promotional profile | `performance-ad` for promotional; otherwise the intent |
 | `--formats` | `9x16`, `4x5`, `1x1`, `16x9` (comma-separated) | the intent's own |
 | `--language` | `en`, `de`, `fr`, `es`, `it`, `nl`, `pt`, `pl` | the studio setting |
 | `--quality` | `draft`, `standard`, `high` | `high` |

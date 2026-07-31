@@ -1,5 +1,5 @@
 import type {OutputFormat} from "../plan/formats.ts";
-import type {Intent} from "../plan/schema.ts";
+import type {Intent, NarrationProfileId} from "../plan/schema.ts";
 
 export interface IntentPreset {
   id: Intent;
@@ -11,6 +11,8 @@ export interface IntentPreset {
   requiresCta: boolean;
   allowsAvatar: boolean;
   mediaPolicy: "optional" | "required" | "rare";
+  /** Voice deliveries the caller may select before synthesis, first one is the default. */
+  narrationProfiles: readonly NarrationProfileId[];
   /**
    * How hard this intent's pictures move: a multiplier on the brand's own entrance
    * timings (below 1 is quicker), and a delta on how many things may move at once.
@@ -62,6 +64,7 @@ export const INTENT_PRESETS: Record<Intent, IntentPreset> = {
     requiresCta: true,
     allowsAvatar: true,
     mediaPolicy: "optional",
+    narrationProfiles: ["performance-ad", "social-promotional"],
     motion: {
       scale: 0.7,
       simultaneousDelta: 2,
@@ -86,6 +89,7 @@ export const INTENT_PRESETS: Record<Intent, IntentPreset> = {
     requiresCta: false,
     allowsAvatar: true,
     mediaPolicy: "required",
+    narrationProfiles: ["educational"],
     motion: {
       scale: 1,
       simultaneousDelta: 0,
@@ -110,6 +114,7 @@ export const INTENT_PRESETS: Record<Intent, IntentPreset> = {
     requiresCta: false,
     allowsAvatar: true,
     mediaPolicy: "rare",
+    narrationProfiles: ["thought-leadership"],
     motion: {
       scale: 0.85,
       simultaneousDelta: 1,
@@ -140,6 +145,7 @@ export const INTENT_PRESETS: Record<Intent, IntentPreset> = {
     requiresCta: false,
     allowsAvatar: false,
     mediaPolicy: "required",
+    narrationProfiles: ["announcement"],
     motion: {
       scale: 0.85,
       simultaneousDelta: 1,

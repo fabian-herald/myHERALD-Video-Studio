@@ -4,6 +4,12 @@ import path from "node:path";
 import {languageName} from "../plan/language.ts";
 import {exists, probeDuration, run} from "../util/exec.ts";
 import {registerTtsProvider, type SynthesisRequest, type SynthesisResult, type TakeRequest, type TtsProvider, type TtsVoice} from "./provider.ts";
+import {NARRATION_PROFILES, intentNarrationProfile} from "./intent-profile.ts";
+import {
+  NARRATION_PROFILE_IDS,
+  type NarrationProfileId,
+  type VideoPlan,
+} from "../plan/schema.ts";
 
 export const GEMINI_TTS_MODEL = "gemini-3.1-flash-tts-preview";
 
@@ -78,6 +84,14 @@ export function buildPrompt(request: SynthesisRequest): string {
  * on the result instead — see `tooSlow` in narrate.ts.
  */
 export function buildTakePrompt(request: TakeRequest): string {
+  // Every current video intent has its own performance profile. The generic prompt stays
+  // only for older callers that do not yet provide intent provenance.
+  const intent = request.intent as VideoPlan["intent"] | undefined;
+  const requestedProfile = NARRATION_PROFILE_IDS.includes(request.profileId as NarrationProfileId)
+    ? request.profileId as NarrationProfileId
+    : undefined;
+  if (intent) return buildIntentTakePrompt(request, intent, requestedProfile);
+
   const style = request.style.trim().replace(/\s+/g, " ") || "Natural, unhurried, credible.";
   const register = request.register.trim().replace(/\s+/g, " ");
   const arc = request.arc.trim().replace(/\s+/g, " ");
@@ -104,6 +118,55 @@ export function buildTakePrompt(request: TakeRequest): string {
   ].join("\n");
 }
 
+/** The listener-approved thought-leadership profile, retained as a named entry point. */
+export function buildThoughtLeadershipTakePrompt(request: TakeRequest): string {
+  return buildIntentTakePrompt(request, "thought-leadership");
+}
+
+export function buildIntentTakePrompt(
+  request: TakeRequest,
+  intent: VideoPlan["intent"],
+  profileId?: NarrationProfileId,
+): string {
+  const profile = intentNarrationProfile(intent, profileId);
+  const style = request.style.trim().replace(/\s+/g, " ")
+    || "Warm, credible, founder-to-founder. Conversational and restrained.";
+  const register = request.register.trim().replace(/\s+/g, " ");
+  const wordCount = request.text.trim().split(/\s+/).filter(Boolean).length;
+  const targetSeconds = Math.max(10, Math.round((wordCount / profile.promptTargetWps) / 5) * 5);
+  const middle = Math.floor(request.blocks.length / 2);
+  const transcript = request.blocks.map((block, index) => {
+    const tag = index === 0
+      ? `[${profile.tags[0]}]`
+      : index === request.blocks.length - 1
+        ? `[${profile.tags[2]}]`
+        : index === middle
+          ? `[${profile.tags[1]}]`
+          : "";
+    return [tag, ...block.lines.map((line) => line.trim())].filter(Boolean).join(" ");
+  }).join("\n[short pause]\n");
+
+  return [
+    "Read the following transcript based on the audio profile and director's note.",
+    "",
+    "# Audio Profile",
+    style,
+    ...(register ? [`Speaker: ${register}. The same man speaks from the first word to the last.`] : []),
+    "",
+    "# Director's note",
+    profile.style,
+    profile.pace(targetSeconds),
+    profile.transition,
+    `Language: ${languageName(request.language)}.`,
+    "",
+    "## Scene:",
+    profile.scene,
+    "",
+    "## Transcript:",
+    transcript,
+  ].join("\n");
+}
+
 const wait = (ms: number, signal?: AbortSignal) =>
   new Promise<void>((resolve, reject) => {
     if (signal?.aborted) return reject(new Error("Narration cancelled."));
@@ -120,12 +183,18 @@ function retryDelay(error: unknown, attempt: number) {
   return reported?.[1] ? Math.ceil((Number(reported[1]) + 1) * 1000) : attempt * 1500;
 }
 
+export interface GeminiPromptResult extends SynthesisResult {
+  /** Provider request identifier when the SDK exposes one. */
+  requestId?: string;
+}
+
 async function synthesizePcm(
   prompt: string,
   voiceId: string,
   onLog?: (line: string) => void,
   signal?: AbortSignal,
-): Promise<Buffer> {
+  temperature?: number,
+): Promise<{audio: Buffer; requestId?: string}> {
   const apiKey = process.env.GEMINI_API_KEY?.trim();
   if (!apiKey) throw new Error("GEMINI_API_KEY is not set. Add it to .env.local.");
 
@@ -138,6 +207,7 @@ async function synthesizePcm(
         model: GEMINI_TTS_MODEL,
         contents: [{parts: [{text: prompt}]}],
         config: {
+          ...(temperature === undefined ? {} : {temperature}),
           responseModalities: ["AUDIO"],
           speechConfig: {voiceConfig: {prebuiltVoiceConfig: {voiceName: voiceId}}},
         },
@@ -145,7 +215,8 @@ async function synthesizePcm(
       const encoded = response.candidates?.[0]?.content?.parts
         ?.find((part) => part.inlineData?.data)?.inlineData?.data;
       if (!encoded) throw new Error("Gemini returned no audio bytes.");
-      return Buffer.from(encoded, "base64");
+      const metadata = response as unknown as {responseId?: string};
+      return {audio: Buffer.from(encoded, "base64"), requestId: metadata.responseId};
     } catch (error) {
       lastError = error;
       if (attempt === 4) break;
@@ -167,33 +238,47 @@ export const geminiTts: TtsProvider = {
   },
 
   async synthesizeTake(request, onLog, signal): Promise<SynthesisResult> {
-    return renderPrompt(buildTakePrompt(request), request.voiceId, request.outputPath, onLog, signal);
+    return renderGeminiPrompt(
+      buildTakePrompt(request),
+      request.voiceId,
+      request.outputPath,
+      onLog,
+      signal,
+      request.intent && (request.profileId ? request.profileId in NARRATION_PROFILES : true)
+        ? {temperature: 1}
+        : {},
+    );
   },
 
   async synthesize(request, onLog, signal): Promise<SynthesisResult> {
-    return renderPrompt(buildPrompt(request), request.voiceId, request.outputPath, onLog, signal);
+    return renderGeminiPrompt(buildPrompt(request), request.voiceId, request.outputPath, onLog, signal);
   },
 };
 
 /** One prompt to one WAV, cached by path. The two entry points differ only in the prompt. */
-async function renderPrompt(
+export async function renderGeminiPrompt(
   prompt: string,
   voiceId: string,
   outputPath: string,
   onLog?: (line: string) => void,
   signal?: AbortSignal,
-): Promise<SynthesisResult> {
-  const result = async () => ({
+  options: {temperature?: number} = {},
+): Promise<GeminiPromptResult> {
+  const result = async (requestId?: string) => ({
     outputPath,
     durationMs: Math.round(await probeDuration(outputPath) * 1000),
+    // Gemini TTS is billed by generated audio tokens. The bake-off replaces this
+    // placeholder with its duration-based list-price estimate in its provenance.
     costUsd: 0,
     model: GEMINI_TTS_MODEL,
+    requestId,
   });
   if (await exists(outputPath)) return result();
 
   await fs.mkdir(path.dirname(outputPath), {recursive: true});
   const pcmPath = `${outputPath}.pcm`;
-  await fs.writeFile(pcmPath, await synthesizePcm(prompt, voiceId, onLog, signal));
+  const generated = await synthesizePcm(prompt, voiceId, onLog, signal, options.temperature);
+  await fs.writeFile(pcmPath, generated.audio);
   await run("ffmpeg", [
     "-y",
     "-f", "s16le", "-ar", String(PCM_SAMPLE_RATE), "-ac", "1",
@@ -202,7 +287,7 @@ async function renderPrompt(
     outputPath,
   ]);
   await fs.rm(pcmPath, {force: true});
-  return result();
+  return result(generated.requestId);
 }
 
 registerTtsProvider(geminiTts);

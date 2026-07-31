@@ -1,4 +1,5 @@
 node_modules/
+dist/
 .DS_Store
 
 # Every env file is secret by default; the template is the one exception. Listing

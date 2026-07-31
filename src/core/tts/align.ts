@@ -70,8 +70,32 @@ export function alignPhrases(
     let first: number | null = null;
     let last: number | null = null;
 
-    for (const word of expected) {
-      for (let offset = 0; offset <= LOOKAHEAD && cursor + offset < heard.length; offset++) {
+    for (let expectedIndex = 0; expectedIndex < expected.length; expectedIndex++) {
+      const word = expected[expectedIndex]!;
+      if (heard[cursor]?.key === word) {
+        first ??= cursor;
+        last = cursor;
+        cursor += 1;
+        matched += 1;
+        continue;
+      }
+
+      const nextExpected = expected[expectedIndex + 1];
+      // A dropped expected word leaves the next expected word at the current heard
+      // position. Do not consume it; the next loop iteration owns it.
+      if (nextExpected && heard[cursor]?.key === nextExpected) continue;
+
+      // A substitution consumes exactly one heard word. This matters for repeated words:
+      // German "den ... den" with the first heard as "dem" used to jump to the second
+      // "den", then strand every word between them and move the phrase boundary.
+      if (nextExpected && heard[cursor + 1]?.key === nextExpected) {
+        first ??= cursor;
+        last = cursor;
+        cursor += 1;
+        continue;
+      }
+
+      for (let offset = 1; offset <= LOOKAHEAD && cursor + offset < heard.length; offset++) {
         if (heard[cursor + offset]!.key !== word) continue;
         cursor += offset + 1;
         matched += 1;

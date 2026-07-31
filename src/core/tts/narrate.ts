@@ -1,7 +1,10 @@
 import path from "node:path";
 import {assembleNarration, masterNarration, AUDIO_MASTERING_VERSION, type NarrationSegment} from "../audio/master.ts";
-import {retimeFromTake, retimePlan, SILENT_SECTION_MIN_MS, type MeasuredPhrase} from "../plan/retime.ts";
-import {allPhrases, type VideoPlan} from "../plan/schema.ts";
+import {
+  retimeFromTake, retimePlan, SILENT_SECTION_MIN_MS,
+  type MeasuredPhrase, type PlacedPhrase,
+} from "../plan/retime.ts";
+import {allPhrases, type NarrationProfileId, type VideoPlan} from "../plan/schema.ts";
 import {alignPhrases, verifyAlignment} from "./align.ts";
 import {arcDirection, deliveryFor} from "./energy.ts";
 import {fadedOut, measureFade, MAX_FADE_DB} from "./level.ts";
@@ -9,6 +12,8 @@ import {centreHz, closestToCentre, medianF0, pitchOutlier, semitones} from "./pi
 import {implausibleClip} from "./plausible.ts";
 import {ttsProvider, type SynthesisRequest, type TtsProvider} from "./provider.ts";
 import {transcribeWords, transcriptionCostUsd} from "./transcribe.ts";
+import {compactSectionGaps} from "./section-gaps.ts";
+import {intentNarrationProfile} from "./intent-profile.ts";
 import {hash, mapLimit} from "../util/exec.ts";
 
 /** Gemini's free tier throttles hard above this; higher concurrency just triggers backoff. */
@@ -34,6 +39,10 @@ export interface NarrationResult {
   model: string;
   clipCount: number;
   cachedCount: number;
+  timingTreatment: "provider-native" | "intent-section-gaps" | "phrase-clips";
+  profileId: string;
+  sectionGapMs?: number;
+  sectionGapsShortened?: number;
 }
 
 /** What a provider hands back for one continuous take, before it has been located. */
@@ -226,7 +235,9 @@ async function narrateAsTake(
   const arc = arcDirection(
     plan.sections.filter((section) => section.phrases.length).map((section) => section.energy),
   );
-  // One block, undirected. The arc above is the only delivery instruction in the prompt.
+  // Intent profiles preserve section boundaries so Gemini can place sparse transition
+  // markers. They never add a direction per phrase; exact gaps are capped only after
+  // verified alignment.
   //
   // A direction per section was tried and measured worse across twenty takes. Nothing
   // separated on duration — the medians were a tie — but per-section directions read as
@@ -237,18 +248,20 @@ async function narrateAsTake(
   // disaster — the model performs it instead of applying it, ballooning boundary pauses
   // to five times the internal ones.
   //
-  // This is the same result the rest of this file keeps arriving at: every instruction
-  // added to this prompt has cost more than it bought.
-  const blocks = [{
+  // Dense per-section direction still costs more than it buys. Every profile uses only
+  // three performance tags across the entire arc.
+  const spokenSections = plan.sections.filter((section) => section.phrases.length);
+  const narrationProfile = intentNarrationProfile(plan.intent, plan.narration.profile);
+  const blocks = spokenSections.map((section) => ({
     direction: "",
-    lines: plan.sections
-      .filter((section) => section.phrases.length)
-      .flatMap((section) => section.phrases.map((phrase) => phrase.text)),
-  }];
+    lines: section.phrases.map((phrase) => phrase.text),
+  }));
 
   const request = {
     text: script,
     blocks,
+    intent: plan.intent,
+    profileId: narrationProfile.id,
     voiceId: plan.narration.voice,
     style: plan.narration.style,
     register: plan.narration.register,
@@ -265,12 +278,11 @@ async function narrateAsTake(
   // and because the pace varies by roughly 15% between identical requests. A third buys
   // little: this is a lottery rather than a correction, so the odds do not improve.
   //
-  // Three things are checked, all on the result rather than in the prompt. Wrong voice
-  // disqualifies a take outright; slow and faded are faults it can carry, because a
-  // flawed take in the right voice still beats no take at all. Between candidates the
-  // one with fewer faults wins, and a tie goes to the shorter — which is also usually
-  // the flatter, since the takes that ran longest faded worst.
-  let best: {result: Take; faults: number; durationMs: number} | null = null;
+  // Three things are checked on the result. Wrong voice disqualifies a take outright;
+  // pace and fade are faults it may carry. Ties are resolved by proximity to the current
+  // intent's target rather than shortest duration, because shortest is not universally
+  // better: the shortest thought-leadership take was the hectic one the listener rejected.
+  let best: {result: Take; faults: number; durationMs: number; paceDistance: number} | null = null;
 
   for (let attempt = 1; attempt <= 2; attempt++) {
     const key = hash({...request, outputPath: undefined, attempt, mastering: AUDIO_MASTERING_VERSION});
@@ -287,19 +299,19 @@ async function narrateAsTake(
       continue;
     }
 
-    const slow = tooSlow(script, result.durationMs);
+    const pace = assessPace(plan.intent, script, result.durationMs, narrationProfile.id);
     const fade = await measureFade(result.outputPath);
-    const faults = (slow ? 1 : 0) + (fadedOut(fade) ? 1 : 0);
+    const faults = (pace.fault ? 1 : 0) + (fadedOut(fade) ? 1 : 0);
 
     if (!best || faults < best.faults
-      || (faults === best.faults && result.durationMs < best.durationMs)) {
-      best = {result, faults, durationMs: result.durationMs};
+      || (faults === best.faults && pace.distance < best.paceDistance)) {
+      best = {result, faults, durationMs: result.durationMs, paceDistance: pace.distance};
     }
     if (!faults) break;
 
     onLog(
       `narration    take came back ${[
-        slow ? `at ${slow.wordsPerSecond.toFixed(2)} words per second` : "",
+        pace.fault ? pace.reason : "",
         fadedOut(fade) ? `${fade!.fadeDb.toFixed(1)} dB quieter by the end` : "",
       ].filter(Boolean).join(" and ")}${attempt === 1 ? "; asking again" : ""}`,
     );
@@ -325,47 +337,75 @@ async function narrateAsTake(
     return null;
   }
 
+  let sourcePath = take.outputPath;
+  let placed: PlacedPhrase[] = aligned;
+  let timingTreatment: NarrationResult["timingTreatment"] = "provider-native";
+  let sectionGapsShortened = 0;
+  if (narrationProfile) {
+    const controlledPath = take.outputPath.replace(/\.wav$/, "-section-gaps.wav");
+    const controlled = await compactSectionGaps(
+      take.outputPath,
+      controlledPath,
+      aligned,
+      narrationProfile.sectionGapMs,
+    );
+    sourcePath = controlled.outputPath;
+    placed = controlled.placed;
+    sectionGapsShortened = controlled.cuts.length;
+    timingTreatment = "intent-section-gaps";
+    onLog(
+      `narration    ${controlled.cuts.length} section gap(s) capped at `
+      + `${narrationProfile.sectionGapMs}ms for ${narrationProfile.id} · speech speed unchanged`,
+    );
+  }
+
   const masterPath = path.join(workDir, `narration-${AUDIO_MASTERING_VERSION}.m4a`);
-  const durationSeconds = await masterNarration(take.outputPath, masterPath);
+  const durationSeconds = await masterNarration(sourcePath, masterPath);
   onLog(
     `narration    one take · ${entries.length} phrases located · ${provider.label} · `
     + `${plan.narration.voice} · ${asrModel}`,
   );
 
   return {
-    plan: retimeFromTake(plan, aligned),
+    plan: retimeFromTake(plan, placed),
     masterPath,
     durationMs: Math.round(durationSeconds * 1000),
     costUsd,
     model: take.model,
     clipCount: 1,
     cachedCount: 0,
+    timingTreatment,
+    profileId: narrationProfile.id,
+    ...(timingTreatment === "intent-section-gaps" ? {
+      sectionGapMs: narrationProfile.sectionGapMs,
+      sectionGapsShortened,
+    } : {}),
   };
 }
 
 /**
- * Words per second below which a listener called the reading not engaging.
- *
- * Measured, not chosen. The take a listener picked ran 2.33 words per second; the ones
- * called slow ran 1.77 and 1.59. The floor sits just under the good one because the same
- * prompt varies by about 15% between requests, and a threshold above that variance would
- * reject good takes as often as bad ones.
+ * Score the raw performance against its intent before shortening section silence.
+ * Each profile owns a range and centre; shortest duration never substitutes for the
+ * delivery the video is supposed to have.
  */
-const SLOWEST_ENGAGING_WPS = 2.0;
-
-/**
- * Is this take slow enough to be worth asking again?
- *
- * Checked rather than instructed, because instructing it does not work. Asking for a
- * quicker read produced 1.77 words per second against 2.33 for asking nothing at all,
- * and adding "momentum over polish" took a take from 52.8 seconds to 59.7. Every attempt
- * to steer the pace from inside the prompt has made it slower.
- */
-function tooSlow(script: string, durationMs: number): {wordsPerSecond: number} | null {
-  if (durationMs <= 0) return null;
+export function assessPace(
+  intent: VideoPlan["intent"],
+  script: string,
+  durationMs: number,
+  profileId?: NarrationProfileId,
+) {
   const words = script.trim().split(/\s+/).filter(Boolean).length;
-  const wordsPerSecond = words / (durationMs / 1000);
-  return wordsPerSecond < SLOWEST_ENGAGING_WPS ? {wordsPerSecond} : null;
+  const wordsPerSecond = durationMs > 0 ? words / (durationMs / 1000) : 0;
+  const profile = intentNarrationProfile(intent, profileId);
+  const [minimum, maximum] = profile.rawPaceRange;
+  const fault = wordsPerSecond < minimum || wordsPerSecond > maximum;
+  return {
+    wordsPerSecond,
+    distance: Math.abs(wordsPerSecond - profile.rawTargetWps),
+    fault,
+    reason: `${wordsPerSecond.toFixed(2)} words per second outside the ${profile.id} `
+      + `${minimum.toFixed(2)}–${maximum.toFixed(2)} range`,
+  };
 }
 
 /**
@@ -537,5 +577,7 @@ async function narrateAsClips(
     model,
     clipCount: clips.length,
     cachedCount,
+    timingTreatment: "phrase-clips",
+    profileId: "phrase-clips-fallback",
   };
 }

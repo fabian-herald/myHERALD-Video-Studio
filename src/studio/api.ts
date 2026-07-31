@@ -80,7 +80,7 @@ export interface VideoPlan {
   language: string;
   sections: PlanSection[];
   alternates: {thesis: string; angle: string; why: string}[];
-  narration: {provider: string; voice: string; style: string};
+  narration: {provider: string; voice: string; profile?: string; style: string};
   cta?: {label: string; url: string};
 }
 

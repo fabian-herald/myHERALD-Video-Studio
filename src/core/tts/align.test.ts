@@ -76,6 +76,16 @@ test("a repeated word does not drag a boundary backwards", () => {
   assert.ok(verifyAlignment(aligned, 20_000).ok);
 });
 
+test("a substitution before a repeated word does not jump to the later occurrence", () => {
+  const words = speak("Veröffentliche dem Gedanken nicht den Versuch");
+  const [phrase] = alignPhrases(words, [
+    {sectionId: "close", phraseId: "publish", text: "Veröffentliche den Gedanken, nicht den Versuch."},
+  ]);
+  assert.equal(phrase?.confidence, 5 / 6);
+  assert.equal(phrase?.startMs, 0);
+  assert.equal(phrase?.durationMs, 2350);
+});
+
 test("an alignment running past the end of the audio is rejected", () => {
   const aligned = alignPhrases(speak(SCRIPT), TARGETS);
   const verdict = verifyAlignment(aligned, 1_000);

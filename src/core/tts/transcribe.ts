@@ -46,6 +46,7 @@ export interface Transcript {
  * that are discarded on arrival. FLAC keeps it lossless while roughly halving the size.
  */
 async function prepare(audioPath: string, scratchDir: string): Promise<string> {
+  await fs.mkdir(scratchDir, {recursive: true});
   const prepared = path.join(scratchDir, `${path.basename(audioPath, path.extname(audioPath))}-16k.flac`);
   await run("ffmpeg", ["-y", "-v", "error", "-i", audioPath,
     "-ar", "16000", "-ac", "1", "-c:a", "flac", prepared]);
