@@ -29,11 +29,7 @@
 }
 .cta-seal:has(img) img { width: 100%; height: 100%; }
 
-.cta-lockup .wordmark {
-  font-size: calc(var(--brand-size-kicker) * 1.8);
-  font-weight: 900;
-  letter-spacing: -0.01em;
-}
+.cta-wordmark { width: min(72%, 34rem); height: auto; object-fit: contain; }
 
 .cta-lockup h1 em { color: var(--brand-aubergine); }
 

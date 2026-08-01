@@ -3,6 +3,9 @@ import type {VideoPlan} from "./schema.ts";
 /** A section with no spoken phrases still needs to be on screen long enough to read. */
 export const SILENT_SECTION_MIN_MS = 1600;
 
+/** A thought must be allowed to land after the last spoken word. */
+export const NARRATION_END_HOLD_MS = 650;
+
 export interface MeasuredPhrase {
   sectionId: string;
   phraseId: string;
@@ -69,7 +72,11 @@ export interface PlacedPhrase {
  * silence that is really there. That keeps the field honest for anything downstream
  * that reads it, without it ever being used to place anything.
  */
-export function retimeFromTake(plan: VideoPlan, placed: readonly PlacedPhrase[]): VideoPlan {
+export function retimeFromTake(
+  plan: VideoPlan,
+  placed: readonly PlacedPhrase[],
+  timelineDurationMs = 0,
+): VideoPlan {
   const byKey = new Map(placed.map((item) => [`${item.sectionId}/${item.phraseId}`, item]));
   const takeEndMs = placed.reduce((end, item) => Math.max(end, item.startMs + item.durationMs), 0);
 
@@ -124,6 +131,22 @@ export function retimeFromTake(plan: VideoPlan, placed: readonly PlacedPhrase[])
     cursorMs = startMs + durationMs;
     return {...section, phrases, startMs: round(startMs), durationMs};
   });
+
+  // AAC encoders round by a few milliseconds and the provider may already include a
+  // natural tail. The mastered track is the final authority: let the last visual scene
+  // own that tail instead of truncating the file at the last ASR word boundary.
+  const measuredEndMs = sections.reduce(
+    (end, section) => Math.max(end, section.startMs + section.durationMs),
+    0,
+  );
+  const missingTailMs = Math.max(0, timelineDurationMs - measuredEndMs);
+  if (missingTailMs > 0 && sections.length) {
+    const last = sections.at(-1)!;
+    sections[sections.length - 1] = {
+      ...last,
+      durationMs: round(last.durationMs + missingTailMs),
+    };
+  }
 
   return {...plan, sections, narration: {...plan.narration, timing: "aligned-take"}};
 }

@@ -4,7 +4,7 @@ import path from "node:path";
 import {z} from "zod";
 import {loadBrandKit} from "../brand/kit.ts";
 import {intentPreset, INTENT_PRESETS} from "../intents/index.ts";
-import {recordQuery, recordSource, saveBrief} from "../knowledge/brief.ts";
+import {loadResearch, recordQuery, recordSource, saveBrief, type ResearchRecord} from "../knowledge/brief.ts";
 import {approvedStatements, readFacts, writeFacts} from "../knowledge/facts.ts";
 import {fetchPublic} from "../knowledge/fetch.ts";
 import {extractFigures, type Figure} from "../knowledge/figures.ts";
@@ -61,6 +61,76 @@ export interface ToolContext {
 }
 
 const ok = (text: string) => ({content: [{type: "text" as const, text}]});
+
+export function researchReadinessFault(record: ResearchRecord | null): string | null {
+  if (!record) {
+    return "Research has not been recorded for this video yet. Search for the relevant "
+      + "evidence, read the useful pages, and save the brief before making the video.";
+  }
+  if (!record.queries.length && !record.sources.length) {
+    return "The research brief has no observable research behind it. Run search_web and "
+      + "read_source (or research_web for a named site), then save the brief again.";
+  }
+  if (!record.brief) {
+    return "Research was run, but its conclusion was not saved. Call save_brief with both "
+      + "what the sources support and what could not be sourced before making the video.";
+  }
+  return null;
+}
+
+const normalFactText = (value: string) => value
+  .normalize("NFKC")
+  .toLocaleLowerCase()
+  .replace(/[’‘]/g, "'")
+  .replace(/[^\p{L}\p{N}%.,]+/gu, " ")
+  .trim();
+
+const numericSignature = (value: string) =>
+  (value.match(/\b\d+(?:[.,]\d+)?%?/g) ?? [])
+    .map((number) => number.replace(",", "."))
+    .sort()
+    .join("|");
+
+export function sameProposedFact(
+  current: {statement: string; source: string; evidence: string},
+  candidate: {statement: string; source: string; evidence: string},
+) {
+  if (normalFactText(current.statement) === normalFactText(candidate.statement)) return true;
+  const source = current.source.trim().replace(/\/$/, "");
+  if (!source || source !== candidate.source.trim().replace(/\/$/, "")) return false;
+  const currentNumbers = numericSignature(current.statement);
+  const candidateNumbers = numericSignature(candidate.statement);
+  return Boolean(currentNumbers) && currentNumbers === candidateNumbers;
+}
+
+export function brandResearchUrlFault(urls: readonly string[], website: string): string | null {
+  const home = new URL(website.includes("://") ? website : `https://${website}`);
+  const outside = urls.filter((value) => {
+    try {
+      const host = new URL(value).hostname.toLocaleLowerCase();
+      const brandHost = home.hostname.toLocaleLowerCase();
+      return host !== brandHost && !host.endsWith(`.${brandHost}`);
+    } catch {
+      return true;
+    }
+  });
+  return outside.length
+    ? `research_web is reserved for ${home.hostname} and its subdomains. Read third-party `
+      + `evidence with read_source instead: ${outside.join(", ")}`
+    : null;
+}
+
+export function formatsFromBrief(brief: string): OutputFormat[] {
+  const found: OutputFormat[] = [];
+  const add = (format: OutputFormat) => {
+    if (!found.includes(format)) found.push(format);
+  };
+  if (/\b16\s*[:x×]\s*9\b|\blandscape\b/i.test(brief)) add("16x9");
+  if (/\b9\s*[:x×]\s*16\b|\bvertical\b/i.test(brief)) add("9x16");
+  if (/\b4\s*[:x×]\s*5\b/i.test(brief)) add("4x5");
+  if (/\b1\s*[:x×]\s*1\b|\bsquare\b/i.test(brief)) add("1x1");
+  return found;
+}
 
 /**
  * What the agent is told about search results before it reads any.
@@ -204,24 +274,35 @@ export function studioTools(context: ToolContext) {
 
       tool(
         "make_video",
-        "Plan, narrate, compose, render and QC a complete video. This is the main tool. It runs unattended and costs nothing beyond model usage. Returns the video id and QC result.",
+        "Plan, narrate, compose, render and QC a complete video. This is the main tool. If the owner names a format or aspect ratio, pass it in formats; intent defaults apply only when they did not. It runs unattended and costs nothing beyond model usage. Returns the video id and QC result.",
         {
           brief: z.string().describe("What the video is about, in one or two sentences"),
           intent: z.enum(INTENTS).describe("Which kind of video this is"),
           narrationProfile: z.enum(NARRATION_PROFILE_IDS).optional()
             .describe("Delivery profile. Promotional defaults to performance-ad; pass social-promotional for organic campaigns or challenges."),
-          formats: z.array(z.enum(OUTPUT_FORMATS)).optional().describe("Defaults to the intent's own formats"),
+          formats: z.array(z.enum(OUTPUT_FORMATS)).optional()
+            .describe("Required when the owner names a format or aspect ratio; otherwise defaults to the intent's own formats"),
           language: z.enum(CONTENT_LANGUAGES).optional()
             .describe("Language the video is written and spoken in. Omit to use the studio's setting; only pass it when the owner asked for this one video in a different language."),
         },
         async ({brief, intent, narrationProfile, formats, language}) => {
+          const researchFault = researchReadinessFault(await loadResearch(context.threadId));
+          if (researchFault) {
+            context.onLog(`research      blocked video build — ${researchFault}`, "make_video");
+            return ok(researchFault);
+          }
           const preset = intentPreset(intent as Intent);
           try {
             narrationProfileForIntent(intent as Intent, narrationProfile as NarrationProfileId | undefined);
           } catch (error) {
             return ok((error as Error).message);
           }
-          const chosen = (formats?.length ? formats : preset.defaultFormats) as OutputFormat[];
+          const inferredFormats = formatsFromBrief(brief);
+          const chosen = (formats?.length
+            ? formats
+            : inferredFormats.length
+              ? inferredFormats
+              : preset.defaultFormats) as OutputFormat[];
           const invalid = chosen.filter((format) => !preset.formats.includes(format));
           if (invalid.length) {
             return ok(`${preset.label} does not support ${invalid.join(", ")}. Allowed: ${preset.formats.join(", ")}.`);
@@ -317,6 +398,7 @@ export function studioTools(context: ToolContext) {
             onLog: (line) => context.onLog(line, "edit_video"),
             signal: context.signal,
           });
+          context.setVideoId(id);
           return ok(JSON.stringify({
             videoId: id,
             durationChanged: result.durationChanged,
@@ -368,7 +450,7 @@ export function studioTools(context: ToolContext) {
         async ({facts}) => {
           const existing = await readFacts();
           const additions = facts
-            .filter((fact) => !existing.some((current) => current.statement.trim() === fact.statement.trim()))
+            .filter((fact) => !existing.some((current) => sameProposedFact(current, fact)))
             .map((fact, index) => ({
               id: `f-${Date.now().toString(36)}-${index}`,
               kind: fact.kind,
@@ -631,11 +713,17 @@ export function studioTools(context: ToolContext) {
 
       tool(
         "research_web",
-        "Read public web pages the owner names — usually their own product site — and extract candidate product facts plus the colours and fonts the site presents itself in. Everything is saved as `proposed` and never used in generation until the owner approves it. Local and private addresses are refused.",
+        "Read pages on the brand's own website and extract candidate product facts plus its colours and fonts. This tool refuses third-party evidence pages: use read_source for those. Everything extracted here is saved as `proposed` and never used in generation until the owner approves it. Local and private addresses are refused.",
         {
           urls: z.array(z.string()).min(1).max(6).describe("Full URLs including https://"),
         },
         async ({urls}) => {
+          const kit = await loadBrandKit();
+          const domainFault = brandResearchUrlFault(urls, kit.website);
+          if (domainFault) {
+            context.onLog(`research      refused third-party page — use read_source`, "research_web");
+            return ok(domainFault);
+          }
           const result = await researchSite(urls);
           const saved = await saveResearch(result);
 

@@ -220,8 +220,206 @@
     "kind": "problem",
     "statement": "Only 39.2% of brand marketers measure whether their work is delivering business outcomes, so roughly six in ten do not.",
     "evidence": "\"Marketing Week's 2025 Language of Effectiveness survey, in partnership with Kantar and Google, finds just two-fifths (39.2%) of brand marketers measure whether their work is delivering business outcomes.\" The same article notes the survey covered more than 1,000 brand marketers, and that the most-used effectiveness metrics are conversion rates (60.8%), ROI (57.5%) and click-through rates (57.5%). Caveat: respondents are brand marketers, predominantly UK-based per Marketing Week's own description of the Language of Effectiveness sample, not B2B content teams specifically.",
-    "source": "https://www.marketingweek.com/marketers-measure-business-outcomes/",
     "state": "proposed",
+    "source": "https://www.marketingweek.com/marketers-measure-business-outcomes/",
     "updatedAt": "2026-07-30T19:17:08.038Z"
+  },
+  {
+    "id": "f-msadtdga-0",
+    "kind": "problem",
+    "statement": "In Marketing Week’s 2025 Language of Effectiveness survey, 39.2% of brand marketers said they measure whether their work is delivering business outcomes.",
+    "evidence": "Marketing Week's 2025 Language of Effectiveness survey, in partnership with Kantar and Google, finds just two-fifths (39.2%) of brand marketers measure whether their work is delivering business outcomes. Caveat: this is outcome measurement, not a direct measure of creative judgment.",
+    "state": "proposed",
+    "source": "https://www.marketingweek.com/marketers-measure-business-outcomes/",
+    "updatedAt": "2026-08-01T13:03:02.746Z"
+  },
+  {
+    "id": "f-msagdm11-0",
+    "kind": "capability",
+    "statement": "The cost of poor feedback",
+    "evidence": "",
+    "state": "rejected",
+    "source": "https://www.betterbriefs.com/library/the-cost-of-poor-feedback",
+    "updatedAt": "2026-08-01T14:18:01.406Z"
+  },
+  {
+    "id": "f-msagdm12-1",
+    "kind": "outcome",
+    "statement": "Every extra round of feedback doesn't just frustrate teams – it costs time, money and momentum. The longer work sits in review cycles, the slower campaigns get to market, and the harder it is to keep creative energy high.",
+    "evidence": "",
+    "state": "rejected",
+    "source": "https://www.betterbriefs.com/library/the-cost-of-poor-feedback",
+    "updatedAt": "2026-08-01T14:18:03.063Z"
+  },
+  {
+    "id": "f-msagdm12-2",
+    "kind": "capability",
+    "statement": "Right now, the norm is five rounds before approval (source: the BetterIdeas Project ). And every one of them chips away at focus, budgets and the quality of the final idea.",
+    "evidence": "",
+    "state": "rejected",
+    "source": "https://www.betterbriefs.com/library/the-cost-of-poor-feedback",
+    "updatedAt": "2026-08-01T14:18:04.708Z"
+  },
+  {
+    "id": "f-msagdm12-3",
+    "kind": "problem",
+    "statement": "When the starting point is a weak or unclear brief, these feedback rounds multiply quickly. Without clear direction, even the most talented teams end up reworking ideas that were never properly framed from the beginning.",
+    "evidence": "",
+    "state": "rejected",
+    "source": "https://www.betterbriefs.com/library/the-cost-of-poor-feedback",
+    "updatedAt": "2026-08-01T14:18:06.354Z"
+  },
+  {
+    "id": "f-msagdm12-4",
+    "kind": "outcome",
+    "statement": "If you've ever wondered why creating a strong brief can feel harder with more experience, you're not alone. It's a well-known paradox across the industry, and we explore it in depth in this article 'Why writing briefs doesn't get easier with experience'.",
+    "evidence": "",
+    "state": "rejected",
+    "source": "https://www.betterbriefs.com/library/the-cost-of-poor-feedback",
+    "updatedAt": "2026-08-01T14:18:07.992Z"
+  },
+  {
+    "id": "f-msagdm12-5",
+    "kind": "outcome",
+    "statement": "So, why do agencies and marketers need so many rounds to get to the final result?",
+    "evidence": "",
+    "state": "rejected",
+    "source": "https://www.betterbriefs.com/library/the-cost-of-poor-feedback",
+    "updatedAt": "2026-08-01T14:18:12.724Z"
+  },
+  {
+    "id": "f-msagdm12-6",
+    "kind": "capability",
+    "statement": "Ironically, the main causes of extra rounds of feedback and rework are found closer to home:",
+    "evidence": "",
+    "state": "rejected",
+    "source": "https://www.betterbriefs.com/library/the-cost-of-poor-feedback",
+    "updatedAt": "2026-08-01T14:18:14.361Z"
+  },
+  {
+    "id": "f-msagdm12-7",
+    "kind": "capability",
+    "statement": "- Too many stakeholders involved in sign-off;",
+    "evidence": "",
+    "state": "rejected",
+    "source": "https://www.betterbriefs.com/library/the-cost-of-poor-feedback",
+    "updatedAt": "2026-08-01T14:18:16.011Z"
+  },
+  {
+    "id": "f-msagdm12-8",
+    "kind": "capability",
+    "statement": "- Briefs that lack clear strategic direction;",
+    "evidence": "",
+    "state": "rejected",
+    "source": "https://www.betterbriefs.com/library/the-cost-of-poor-feedback",
+    "updatedAt": "2026-08-01T14:18:17.664Z"
+  },
+  {
+    "id": "f-msagdm12-9",
+    "kind": "capability",
+    "statement": "- No agreed-upon criteria for evaluating ideas;",
+    "evidence": "",
+    "state": "rejected",
+    "source": "https://www.betterbriefs.com/library/the-cost-of-poor-feedback",
+    "updatedAt": "2026-08-01T14:18:17.826Z"
+  },
+  {
+    "id": "f-msagdm12-10",
+    "kind": "capability",
+    "statement": "- Uncertainty about which brief should guide the evaluation.",
+    "evidence": "",
+    "state": "rejected",
+    "source": "https://www.betterbriefs.com/library/the-cost-of-poor-feedback",
+    "updatedAt": "2026-08-01T14:18:18.210Z"
+  },
+  {
+    "id": "f-msagdm12-11",
+    "kind": "capability",
+    "statement": "How to actually take control of the controllable factors",
+    "evidence": "",
+    "state": "rejected",
+    "source": "https://www.betterbriefs.com/library/the-cost-of-poor-feedback",
+    "updatedAt": "2026-08-01T14:18:18.592Z"
+  },
+  {
+    "id": "f-msagdm12-12",
+    "kind": "capability",
+    "statement": "These factors can be overcome - it just takes a little discipline. Here are four guidelines:",
+    "evidence": "",
+    "state": "rejected",
+    "source": "https://www.betterbriefs.com/library/the-cost-of-poor-feedback",
+    "updatedAt": "2026-08-01T14:18:18.976Z"
+  },
+  {
+    "id": "f-msagdm12-13",
+    "kind": "capability",
+    "statement": "1. Limit the decision-making committee",
+    "evidence": "",
+    "state": "rejected",
+    "source": "https://www.betterbriefs.com/library/the-cost-of-poor-feedback",
+    "updatedAt": "2026-08-01T14:18:19.360Z"
+  },
+  {
+    "id": "f-msagdm12-14",
+    "kind": "capability",
+    "statement": "2. Make the strategic direction crystal clear",
+    "evidence": "",
+    "state": "rejected",
+    "source": "https://www.betterbriefs.com/library/the-cost-of-poor-feedback",
+    "updatedAt": "2026-08-01T14:18:19.743Z"
+  },
+  {
+    "id": "f-msagdm12-15",
+    "kind": "capability",
+    "statement": "3. Agree on evaluation criteria upfront",
+    "evidence": "",
+    "state": "rejected",
+    "source": "https://www.betterbriefs.com/library/the-cost-of-poor-feedback",
+    "updatedAt": "2026-08-01T14:18:20.108Z"
+  },
+  {
+    "id": "f-msagdm12-16",
+    "kind": "capability",
+    "statement": "4. Clarify which brief is the reference point",
+    "evidence": "",
+    "state": "rejected",
+    "source": "https://www.betterbriefs.com/library/the-cost-of-poor-feedback",
+    "updatedAt": "2026-08-01T14:18:20.493Z"
+  },
+  {
+    "id": "f-msagdm12-17",
+    "kind": "capability",
+    "statement": "The upsides of fewer rounds",
+    "evidence": "",
+    "state": "rejected",
+    "source": "https://www.betterbriefs.com/library/the-cost-of-poor-feedback",
+    "updatedAt": "2026-08-01T14:18:20.914Z"
+  },
+  {
+    "id": "f-msagdm12-18",
+    "kind": "capability",
+    "statement": "Better briefs mean better ideas. Better feedback means better collaboration. Together, they create a smoother, more efficient process. And most importantly, a greater return on investment.",
+    "evidence": "",
+    "state": "rejected",
+    "source": "https://www.betterbriefs.com/library/the-cost-of-poor-feedback",
+    "updatedAt": "2026-08-01T14:18:21.277Z"
+  },
+  {
+    "id": "f-msagdm12-19",
+    "kind": "capability",
+    "statement": "Image 'Upstairs and Downstairs' by M.C. Escher (1960; lithography).",
+    "evidence": "",
+    "state": "rejected",
+    "source": "https://www.betterbriefs.com/library/the-cost-of-poor-feedback",
+    "updatedAt": "2026-08-01T14:18:21.661Z"
+  },
+  {
+    "id": "f-msagdrty-0",
+    "kind": "proof",
+    "statement": "The norm is five rounds before approval.",
+    "evidence": "Right now, the norm is five rounds before approval (source: the BetterIdeas Project). And every one of them chips away at focus, budgets and the quality of the final idea.",
+    "state": "approved",
+    "source": "https://www.betterbriefs.com/library/the-cost-of-poor-feedback",
+    "updatedAt": "2026-08-01T14:17:35.131Z"
   }
 ]

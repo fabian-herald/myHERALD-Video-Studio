@@ -153,6 +153,13 @@ test("the brand name set as type on its own is a finding", async () => {
   );
 });
 
+test("a typed brand name inside the persistent rail is still a finding", async () => {
+  await withHtml(
+    '<html><body><header id="brand-rail"><strong>myHERALD</strong><small>TAGLINE</small></header></body></html>',
+    async (dir) => assert.equal((await checkWordmark(dir, branded)).length, 1),
+  );
+});
+
 test("splitting the name across spans does not evade the rule", async () => {
   await withHtml(
     '<html><body><p><span>my</span><span>HERALD</span></p></body></html>',

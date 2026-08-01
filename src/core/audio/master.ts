@@ -26,18 +26,29 @@ export async function masterNarration(
   inputPath: string,
   outputPath: string,
   volume = 1,
+  minimumDurationMs = 0,
 ): Promise<number> {
   const boundedVolume = Number.isFinite(volume) ? Math.max(0, Math.min(1, volume)) : 1;
+  const boundedMinimumMs = Number.isFinite(minimumDurationMs)
+    ? Math.max(0, Math.round(minimumDurationMs))
+    : 0;
   const stampPath = `${outputPath}.source`;
-  const stamp = `${await fileHash(inputPath)} ${boundedVolume}`;
+  const stamp = `${await fileHash(inputPath)} ${boundedVolume} ${boundedMinimumMs}`;
 
   if (stamp !== await sourceOf(stampPath) || !await exists(outputPath)) {
     await fs.mkdir(path.dirname(outputPath), {recursive: true});
+    const inputDurationMs = Math.round(await probeDuration(inputPath) * 1000);
+    const padMs = Math.max(0, boundedMinimumMs - inputDurationMs);
+    const filters = [
+      `loudnorm=I=${NARRATION_TARGET_LUFS}:TP=${NARRATION_TRUE_PEAK_DB}:LRA=7`,
+      `volume=${boundedVolume}`,
+      ...(padMs > 0 ? [`apad=pad_dur=${(padMs / 1000).toFixed(3)}`] : []),
+    ];
     await run("ffmpeg", [
       "-y",
       "-i", inputPath,
       "-vn",
-      "-af", `loudnorm=I=${NARRATION_TARGET_LUFS}:TP=${NARRATION_TRUE_PEAK_DB}:LRA=7,volume=${boundedVolume}`,
+      "-af", filters.join(","),
       "-c:a", "aac",
       "-b:a", NARRATION_BITRATE,
       outputPath,

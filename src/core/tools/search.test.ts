@@ -1,7 +1,18 @@
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
 import {test} from "node:test";
-import {SEARCH_FENCE, SOURCE_FENCE, STUDIO_TOOL_NAMES, studioTools, type ToolContext} from "./index.ts";
+import {
+  brandResearchUrlFault,
+  formatsFromBrief,
+  researchReadinessFault,
+  sameProposedFact,
+  SEARCH_FENCE,
+  SOURCE_FENCE,
+  STUDIO_TOOL_NAMES,
+  studioTools,
+  type ToolContext,
+} from "./index.ts";
+import type {ResearchRecord} from "../knowledge/brief.ts";
 import {NO_PROVIDER_MESSAGE} from "../search/provider.ts";
 
 const context: ToolContext = {
@@ -104,6 +115,23 @@ test("read_source tells the agent it writes nothing and approves nothing", () =>
   assert.match(description, /research_web/);
 });
 
+test("third-party evidence cannot be imported as brand product facts", () => {
+  assert.equal(brandResearchUrlFault(["https://myherald.io/product"], "myherald.io"), null);
+  assert.equal(brandResearchUrlFault(["https://docs.myherald.io/guide"], "myherald.io"), null);
+  assert.match(
+    brandResearchUrlFault(["https://www.betterbriefs.com/research"], "myherald.io") ?? "",
+    /read_source/,
+  );
+  assert.match(toolsByName().get("research_web")?.description ?? "", /refuses third-party/i);
+});
+
+test("an explicit aspect ratio in the brief survives a missing tool parameter", () => {
+  assert.deepEqual(formatsFromBrief("Build this as a 16:9 landscape composition."), ["16x9"]);
+  assert.deepEqual(formatsFromBrief("Deliver 9x16 and 4:5."), ["9x16", "4x5"]);
+  assert.deepEqual(formatsFromBrief("Use the normal thought-leadership formats."), []);
+  assert.match(toolsByName().get("make_video")?.description ?? "", /owner names a format/i);
+});
+
 test("the figure fence says a well-formed figure is not a verified one", () => {
   // SEARCH_FENCE covers a page that chose to rank for a query. This one covers a step further
   // on: a model has already read the page and quoted it, so the output *looks* checked. Both
@@ -124,6 +152,42 @@ test("save_brief says what a brief is and is not", () => {
   // nothing about what a video may claim — otherwise it reads like a way to bless a figure.
   assert.match(description, /approves nothing/i);
   assert.match(description, /could not source/i, "gaps are half the point of a brief");
+});
+
+test("video creation cannot skip observable research or its conclusion", () => {
+  assert.match(researchReadinessFault(null) ?? "", /not been recorded/i);
+  const empty = {
+    schemaVersion: 1,
+    threadId: "t",
+    updatedAt: "2026-08-01T00:00:00.000Z",
+    queries: [],
+    sources: [],
+  } satisfies ResearchRecord;
+  assert.match(researchReadinessFault(empty) ?? "", /no observable research/i);
+  assert.match(researchReadinessFault({
+    ...empty,
+    queries: [{at: empty.updatedAt, query: "creative judgment evidence", provider: "exa", hits: 3}],
+  }) ?? "", /conclusion was not saved/i);
+  assert.equal(researchReadinessFault({
+    ...empty,
+    queries: [{at: empty.updatedAt, query: "creative judgment evidence", provider: "exa", hits: 3}],
+    brief: {question: "What supports the claim?", findings: [], gaps: ["No direct figure."], writtenAt: empty.updatedAt},
+  }), null);
+});
+
+test("the same sourced figure is not proposed twice with cosmetic rewording", () => {
+  assert.equal(sameProposedFact(
+    {
+      statement: "Only 39.2% of brand marketers measure business outcomes in 2025.",
+      source: "https://example.com/study/",
+      evidence: "Long evidence with other numbers.",
+    },
+    {
+      statement: "In 2025, 39.2% of brand marketers measured business outcomes.",
+      source: "https://example.com/study",
+      evidence: "Shorter evidence.",
+    },
+  ), true);
 });
 
 test("the research record cannot set a fact's state", () => {

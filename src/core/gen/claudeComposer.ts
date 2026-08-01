@@ -3,11 +3,13 @@ import path from "node:path";
 import type {CheckReport} from "../render/check.ts";
 import {compatibleNode} from "../render/node.ts";
 import {
+  actionableRepairFindings,
   assertCompositionWritten,
   registerComposer,
   type ComposeContext,
   type ComposeResult,
   type Composer,
+  type VisualReviewRequest,
 } from "./composer.ts";
 
 /**
@@ -31,22 +33,15 @@ The bar you are held to is not "it validates". It is: when every rendered scene 
 out side by side, each must read as a deliberate composition and the sequence must not
 collapse into similar centred layouts, even if every check passes.
 
-Verify with \`npx hyperframes check . --json --strict\` and fix every error before you
-finish. Look at snapshots and judge the frames honestly.
+The Studio pipeline runs HyperFrames checks and renders representative snapshots outside
+your session after you return. It then opens a separate visual-review turn with those
+exact images. Do not run HyperFrames or open a local server while authoring or repairing.
 
-Run that command exactly as written, on its own. Node is already the right version on
-your PATH — do not probe for one, and do not prefix the command with \`cd\`, \`export\` or
-anything else. Only a command that *begins* with \`hyperframes\` or \`npx hyperframes\` is
-permitted; a prefixed one is refused, and you are already in the right directory.
-
-The shell is for that CLI and nothing else. \`ls\`, \`cat\`, \`find\`, \`head\` and \`grep\` are
-refused, so use \`Read\` and \`Glob\` instead — and before reaching for either, read the
-manifest at the top of BRIEF.md, which lists every file in this directory. You do not
-need to explore. One composition ran out of turns doing exactly that: four shell probes,
-all refused, none of them telling it anything the brief had not already said.
+Use \`Read\` and \`Glob\` for supplied files, not shell discovery. Read the manifest at
+the top of BRIEF.md first; it lists the directory, so you do not need to explore.
 
 Your turns are finite and mostly want spending on the composition itself. Read what you
-need, write the three files, then check.
+need, write the three files, then return so the shared validation pipeline can run.
 
 The read-only Skill tool is available for the installed HyperFrames and media-use skills.
 Load hyperframes-core first, then animation, keyframes, creative, CLI or media-use only
@@ -290,15 +285,24 @@ export const claudeComposer: Composer = {
         "2. Decide a distinct spatial archetype for every section, and write them down",
         "   before you write markup. Two adjacent scenes must never share an archetype.",
         "3. Write index.html, styles.css and animation.js.",
-        "4. Run `npx hyperframes check . --json --strict` and fix every error.",
-        "5. Snapshot, look at the frames, and rework anything that reads as a repeat.",
+        "4. Return immediately. The pipeline runs authoritative checks and supplies the",
+        "   rendered frames in a separate visual-review turn.",
       ].join("\n"),
       context,
       "compose",
     );
   },
 
-  async repair(context, report: CheckReport, attempt) {
+  async review(context, request: VisualReviewRequest) {
+    return drive(
+      request.prompt,
+      {...context, effort: "high"},
+      "visual",
+    );
+  },
+
+  async repair(context, report: CheckReport, attempt, evidencePaths = []) {
+    const findings = actionableRepairFindings(report);
     return drive(
       [
         `Composition attempt ${attempt} failed validation. Fix it with a minimal diff —`,
@@ -306,13 +310,19 @@ export const claudeComposer: Composer = {
         "",
         "Findings:",
         "",
-        report.findings
+        findings
           .map((finding) => `- [${finding.severity}] ${finding.code ?? "issue"}: ${finding.message}`
             + (finding.selector ? ` (selector: ${finding.selector})` : "")
             + (finding.fixHint ? `\n  hint: ${finding.fixHint}` : ""))
           .join("\n"),
+        ...(evidencePaths.length ? [
+          "",
+          "Rendered checker evidence (overview frames and focused finding crops):",
+          ...evidencePaths.map((file) => `- ${file}`),
+          "Read these exact images before editing. Do not change warning-only elements.",
+        ] : []),
         "",
-        "Re-run `npx hyperframes check . --json --strict` afterwards and confirm it is clean.",
+        "Return after the edit. The shared pipeline reruns all authoritative checks.",
       ].join("\n"),
       {...context, effort: "high"},
       "repair",

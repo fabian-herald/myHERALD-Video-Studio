@@ -71,3 +71,30 @@ export function assertPlanClaimsAreSourced(
     );
   }
 }
+
+/**
+ * Facts visibly or audibly used by a plan, including prose proof that is not expressed
+ * as a chart. Chart ids remain authoritative; exact statement matching covers a planner
+ * that quotes an approved fact in narration or display copy.
+ */
+export function factIdsUsedByPlan(
+  plan: VideoPlan,
+  facts: readonly ProductFact[],
+): string[] {
+  const used = new Set(plan.sections.flatMap((section) =>
+    (section.data?.points ?? []).map((point) => point.factId)));
+  const copy = normalizeClaimText(planCopy(plan));
+
+  for (const fact of facts) {
+    if (fact.state !== "approved") continue;
+    const statement = normalizeClaimText(fact.statement);
+    if (statement && copy.includes(statement)) used.add(fact.id);
+  }
+  return [...used];
+}
+
+const normalizeClaimText = (value: string) => value
+  .toLocaleLowerCase()
+  .replace(/[^\p{L}\p{N}]+/gu, " ")
+  .replace(/\s+/g, " ")
+  .trim();

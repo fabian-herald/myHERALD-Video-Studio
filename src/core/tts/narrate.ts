@@ -1,7 +1,7 @@
 import path from "node:path";
 import {assembleNarration, masterNarration, AUDIO_MASTERING_VERSION, type NarrationSegment} from "../audio/master.ts";
 import {
-  retimeFromTake, retimePlan, SILENT_SECTION_MIN_MS,
+  NARRATION_END_HOLD_MS, retimeFromTake, retimePlan, SILENT_SECTION_MIN_MS,
   type MeasuredPhrase, type PlacedPhrase,
 } from "../plan/retime.ts";
 import {allPhrases, type NarrationProfileId, type VideoPlan} from "../plan/schema.ts";
@@ -360,16 +360,26 @@ async function narrateAsTake(
   }
 
   const masterPath = path.join(workDir, `narration-${AUDIO_MASTERING_VERSION}.m4a`);
-  const durationSeconds = await masterNarration(sourcePath, masterPath);
+  const speechEndMs = placed.reduce(
+    (end, phrase) => Math.max(end, phrase.startMs + phrase.durationMs),
+    0,
+  );
+  const durationSeconds = await masterNarration(
+    sourcePath,
+    masterPath,
+    1,
+    speechEndMs + NARRATION_END_HOLD_MS,
+  );
+  const durationMs = Math.round(durationSeconds * 1000);
   onLog(
     `narration    one take · ${entries.length} phrases located · ${provider.label} · `
     + `${plan.narration.voice} · ${asrModel}`,
   );
 
   return {
-    plan: retimeFromTake(plan, placed),
+    plan: retimeFromTake(plan, placed, durationMs),
     masterPath,
-    durationMs: Math.round(durationSeconds * 1000),
+    durationMs,
     costUsd,
     model: take.model,
     clipCount: 1,

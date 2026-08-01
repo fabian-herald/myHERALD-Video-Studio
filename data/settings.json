@@ -1,4 +1,11 @@
 {
   "contentLanguage": "en",
-  "composer": "claude"
+  "agent": "codex",
+  "planner": "codex",
+  "composer": "codex",
+  "marketingSkills": {
+    "adCreative": true,
+    "social": true,
+    "marketingPsychology": true
+  }
 }

@@ -81,6 +81,13 @@ test("the final spoken section runs to the end of the audio", () => {
   assert.equal(unit.durationMs, SILENT_SECTION_MIN_MS, "1_180ms of speech still needs reading time");
 });
 
+test("the mastered post-roll belongs to the last scene instead of being cut off", () => {
+  const retimed = retimeFromTake(plan(), PLACED, 11_400);
+  const last = retimed.sections.at(-1)!;
+  assert.equal(last.startMs + last.durationMs, 11_400);
+  assert.equal(retimed.sections[1]!.phrases[0]!.durationMs, 1_180, "speech is never stretched");
+});
+
 test("a wordless section still gets time on screen", () => {
   const retimed = retimeFromTake(plan(), PLACED);
   const signature = retimed.sections[2]!;

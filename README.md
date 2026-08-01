@@ -136,10 +136,10 @@ Options:
 | `--quality` | `draft`, `standard`, `high` | `high` |
 | `--planner` | `claude`, `codex` | the studio setting |
 | `--composer` | `claude`, `codex` | the studio setting |
-| `--baseline` | skip the model, use the deterministic fallback | off |
+| `--baseline` | skip the model, use the deterministic diagnostic composition | off |
 
-`--baseline` renders a hand-written composition instead of calling the agent. It is the
-fallback when the repair budget runs out, and it makes the whole render/QC path testable
+`--baseline` renders a hand-written composition instead of calling the agent. It is a
+diagnostic when explicitly requested, and it makes the whole render/QC path testable
 for free.
 
 Output lands in `out/<video-id>/`: one MP4 per format, a cover, an 8-up contact sheet,

@@ -3,8 +3,8 @@ import path from "node:path";
 import {run} from "../util/exec.ts";
 
 /**
- * The contact sheet is the fastest honest review in the system: eight frames side
- * by side answer "are these scenes structurally different?" in about three seconds,
+ * The contact sheet is the fastest honest review in the system: representative frames
+ * side by side answer "are these scenes structurally different?" in about three seconds,
  * which is the one question no automated check can settle.
  */
 export async function buildContactSheet(

@@ -2,9 +2,10 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import {loadBrandKit} from "../brand/kit.ts";
 import {FPS, NARRATION_FILE, sectionSnapshotTimes} from "../compose/workdir.ts";
-import {amendLedgerEntry} from "../ledger.ts";
+import {amendLedgerEntry, upsertLedgerEntry} from "../ledger.ts";
 import {byFamily, FORMATS, familyOf, type OutputFormat} from "../plan/formats.ts";
 import {assertPlanCopyRules} from "../plan/copyRules.ts";
+import {factIdsUsedByPlan} from "../plan/claims.ts";
 import {loadPlan, planDurationMs, savePlan, videoPlanZ, type Energy, type VideoPlan} from "../plan/schema.ts";
 import {OUT_DIR, rel, videoDir} from "../paths.ts";
 import {buildContactSheet, buildCover} from "../render/artifacts.ts";
@@ -13,6 +14,8 @@ import {emitFormat, renderSnapshots, renderVideo, type Quality} from "../render/
 import {runQc, writeQc, type QcReport} from "../render/qc.ts";
 import {buildCaptions, writeCaptionData} from "../tts/captions.ts";
 import {narrate} from "../tts/narrate.ts";
+import {AUDIO_MASTERING_VERSION} from "../audio/master.ts";
+import {readFacts} from "../knowledge/facts.ts";
 
 export interface PlanEdit {
   sectionId: string;
@@ -131,9 +134,17 @@ export async function applyPlanEdits(options: {
   // copy contract here before any TTS request, file write, or render can incur cost.
   assertPlanCopyRules(edited, kit.voice);
 
-  // Re-narrate: cached clips make every untouched phrase free.
-  const narration = await narrate(edited, dir, log, signal);
-  const plan = narration.plan;
+  // Display copy does not affect speech. Reusing the measured plan and mastered track
+  // avoids uploading an identical take to ASR again (and, for providers without a local
+  // cache, avoids paying to synthesise it again). Delivery, phrase, gap, language or
+  // section changes still take the full verified narration path.
+  const existingMasterPath = path.join(dir, `narration-${AUDIO_MASTERING_VERSION}.m4a`);
+  const canReuseNarration = narrationInputsMatch(current, edited)
+    && await fs.access(existingMasterPath).then(() => true).catch(() => false);
+  const narration = canReuseNarration ? null : await narrate(edited, dir, log, signal);
+  const plan = narration?.plan ?? edited;
+  const masterPath = narration?.masterPath ?? existingMasterPath;
+  if (canReuseNarration) log("narration    reused unchanged mastered take and measured timings");
   await savePlan(plan, path.join(dir, "plan.json"));
 
   const durationMs = planDurationMs(plan);
@@ -151,7 +162,7 @@ export async function applyPlanEdits(options: {
       throw new Error(`No composition to edit for ${family}. Generate the video first.`);
     }
 
-    await fs.copyFile(narration.masterPath, path.join(authoringDir, NARRATION_FILE));
+    await fs.copyFile(masterPath, path.join(authoringDir, NARRATION_FILE));
     await writeCaptionData(buildCaptions(plan), path.join(authoringDir, "caption-data.js"));
 
     if (durationChanged && !await animationReadsDomTimings(authoringDir)) {
@@ -211,6 +222,25 @@ export async function applyPlanEdits(options: {
   return {plan, outputs, contactSheet, needsCompose, durationChanged};
 }
 
+/** The inputs that can change how the spoken track sounds or where its words land. */
+export function narrationInputsMatch(before: VideoPlan, after: VideoPlan): boolean {
+  const signature = (plan: VideoPlan) => ({
+    intent: plan.intent,
+    language: plan.language,
+    narration: plan.narration,
+    sections: plan.sections.map((section) => ({
+      id: section.id,
+      energy: section.energy,
+      phrases: section.phrases.map((phrase) => ({
+        id: phrase.id,
+        text: phrase.text,
+        gapAfterMs: phrase.gapAfterMs,
+      })),
+    })),
+  });
+  return JSON.stringify(signature(before)) === JSON.stringify(signature(after));
+}
+
 /**
  * Write the result of an edit back to the studio's memory.
  *
@@ -233,6 +263,7 @@ async function recordEdit(options: {
   const {videoId, plan, outputs, needsCompose, log} = options;
   const passed = outputs.every((output) => output.qc.passed);
   const status = !passed ? "failed" : needsCompose.length ? "stale" : "ready";
+  const factIds = factIdsUsedByPlan(plan, await readFacts());
 
   const amended = await amendLedgerEntry(videoId, {
     status,
@@ -241,14 +272,29 @@ async function recordEdit(options: {
     spokenScript: plan.sections.flatMap((section) => section.phrases.map((phrase) => phrase.text)).join(" "),
     // Recomputed, not merged: removing a section can drop the only chart carrying a figure,
     // and leaving it listed would keep a fact retired that this video no longer spends.
-    factIds: [...new Set(plan.sections.flatMap((section) =>
-      (section.data?.points ?? []).map((point) => point.factId)))],
+    factIds,
     outputs: outputs.map((output) => ({format: output.format, path: rel(output.path)})),
   });
 
-  log(amended
-    ? `ledger        ${status}`
-    : "ledger        no entry for this video, so nothing was updated");
+  if (!amended) {
+    await upsertLedgerEntry({
+      id: videoId,
+      title: plan.title,
+      thesis: plan.thesis,
+      intent: plan.intent,
+      formats: plan.formats,
+      language: plan.language,
+      createdAt: plan.createdAt,
+      status,
+      spokenScript: plan.sections.flatMap((section) =>
+        section.phrases.map((phrase) => phrase.text)).join(" "),
+      mediaIds: [],
+      factIds,
+      outputs: outputs.map((output) => ({format: output.format, path: rel(output.path)})),
+    });
+  }
+
+  log(`ledger        ${status}${amended ? "" : " (recovered missing entry)"}`);
 }
 
 /**
@@ -293,6 +339,12 @@ async function rewriteComposition(
     html = rewriteSceneTiming(html, section.id, section.startMs, section.durationMs);
 
     if (before && before.onScreen !== section.onScreen && before.onScreen.trim()) {
+      // A composer may already have applied the requested wording while preserving
+      // typographic markup (a line break or a highlighted word). Treat that as applied
+      // instead of looking only for one contiguous HTML string and falsely marking the
+      // otherwise-correct video stale.
+      if (sceneDisplaysCopy(html, section.id, section.onScreen)) continue;
+
       const swapped = swapCopy(html, section.id, before.onScreen, section.onScreen);
       if (swapped) html = swapped;
       else {
@@ -356,6 +408,35 @@ function swapCopy(html: string, sectionId: string, before: string, after: string
   const replacement = target === before ? after : escapeHtml(after);
   return html.slice(0, sceneStart) + scene.replace(target, replacement) + html.slice(sceneEnd);
 }
+
+/**
+ * Compare visible scene text, not HTML source. This deliberately answers only whether
+ * the requested copy is already present: it never rewrites markup or guesses how a
+ * styled heading should be split across elements.
+ */
+export function sceneDisplaysCopy(html: string, sectionId: string, copy: string): boolean {
+  const anchor = html.indexOf(`id="scene-${sectionId}"`);
+  if (anchor < 0) return false;
+  const sceneStart = html.lastIndexOf("<", anchor);
+  const sceneEnd = findSceneEnd(html, sceneStart);
+  const visible = decodeBasicEntities(html.slice(sceneStart, sceneEnd)
+    .replace(/<script\b[^>]*>[\s\S]*?<\/script\s*>/gi, " ")
+    .replace(/<style\b[^>]*>[\s\S]*?<\/style\s*>/gi, " ")
+    .replace(/<[^>]+>/g, " "));
+  const haystack = normalizeVisibleText(visible);
+  const needle = normalizeVisibleText(copy);
+  return needle.length > 0 && ` ${haystack} `.includes(` ${needle} `);
+}
+
+const normalizeVisibleText = (value: string) => value.replace(/\s+/g, " ").trim();
+
+const decodeBasicEntities = (value: string) => value
+  .replaceAll("&amp;", "&")
+  .replaceAll("&lt;", "<")
+  .replaceAll("&gt;", ">")
+  .replaceAll("&quot;", '"')
+  .replaceAll("&#39;", "'")
+  .replaceAll("&nbsp;", " ");
 
 function findSceneEnd(html: string, sceneStart: number): number {
   const pattern = /<section\b|<\/section\s*>/gi;

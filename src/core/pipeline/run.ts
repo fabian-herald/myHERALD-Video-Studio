@@ -4,14 +4,19 @@ import {loadBrandKit} from "../brand/kit.ts";
 import {renderTokensCss} from "../brand/tokens.ts";
 import {writeBaselineComposition} from "../compose/baseline.ts";
 import {FPS, prepareAuthoringDir, sectionSnapshotTimes} from "../compose/workdir.ts";
-import {composerFor, type ComposeResult} from "../gen/composer.ts";
+import {
+  COMPOSITION_FILES,
+  composerFor,
+  visualReviewRequest,
+  type ComposeResult,
+} from "../gen/composer.ts";
 import {CostLedger, formatCost, type CostSummary} from "../cost.ts";
 import {planVideo, type PlannerId} from "../gen/planner.ts";
 import {approvedStatements, readFacts} from "../knowledge/facts.ts";
 import {isCancellation, throwIfCancelled} from "../cancel.ts";
 import {factUsage, upsertLedgerEntry, similarTheses} from "../ledger.ts";
 import {aspectOf, DEVICE_PRESETS, mediaForFormat, mediaForPlan} from "../media/library.ts";
-import {assertPlanClaimsAreSourced} from "../plan/claims.ts";
+import {assertPlanClaimsAreSourced, factIdsUsedByPlan} from "../plan/claims.ts";
 import {byFamily, FORMATS, type OutputFormat} from "../plan/formats.ts";
 import type {ContentLanguage} from "../plan/language.ts";
 import {
@@ -50,7 +55,7 @@ export interface RunOptions {
   plannerId: PlannerId;
   composerId: string;
   quality: Quality;
-  /** Skip the model and use the deterministic fallback composition. */
+  /** Skip the model and use the deterministic diagnostic composition. */
   baselineOnly?: boolean;
   onLog?: (line: string) => void;
   signal?: AbortSignal;
@@ -352,8 +357,7 @@ export async function runPipeline(options: RunOptions): Promise<RunResult> {
     // Recorded at the one moment the plan and the finished file are both in hand, and it is
     // what stops the next video reaching for the same figure. Deduped: a fact charted in two
     // sections of one video is still one video.
-    factIds: [...new Set(plan.sections.flatMap((section) =>
-      (section.data?.points ?? []).map((point) => point.factId)))],
+    factIds: factIdsUsedByPlan(plan, facts),
     outputs: outputs.map((output) => ({format: output.format, path: rel(output.path)})),
   });
 
@@ -365,8 +369,8 @@ export async function runPipeline(options: RunOptions): Promise<RunResult> {
 
 /**
  * Compose, validate, and repair with a minimal diff. After the budget is exhausted the
- * attempt is frozen for inspection and the deterministic baseline takes over, so the
- * autopilot always produces a video rather than nothing.
+ * attempt is frozen for inspection and the run stops. A deliberately plain diagnostic
+ * baseline must never masquerade as the model's finished visual work.
  */
 /**
  * Exported so an existing video can be re-authored without re-planning and re-narrating
@@ -390,7 +394,14 @@ export async function composeWithRepair(options: {
   if (baselineOnly) {
     log("compose       baseline (deterministic fallback requested)");
     await writeBaselineComposition(authoring, plan, kit);
-    await reportCheck(await check(), log, "baseline");
+    const baselineReport = await check();
+    await reportCheck(baselineReport, log, "baseline");
+    if (!baselineReport.ok) {
+      throw new Error(
+        `The requested baseline composition failed validation with `
+        + `${baselineReport.errorCount} error(s). Nothing was rendered.`,
+      );
+    }
     return {result: null, costUsd: 0, attempts: 0, usedBaseline: true};
   }
 
@@ -400,6 +411,7 @@ export async function composeWithRepair(options: {
   let result: ComposeResult | null = null;
   let costUsd = 0;
   let report: CheckReport | null = null;
+  let visualReviewed = false;
 
   for (let attempt = 1; attempt <= MAX_REPAIR_ATTEMPTS + 1; attempt++) {
     const context = {
@@ -416,7 +428,7 @@ export async function composeWithRepair(options: {
     try {
       result = attempt === 1 || !report
         ? await composer.compose(context)
-        : await composer.repair(context, report, attempt - 1);
+        : await composer.repair(context, report, attempt - 1, report.evidencePaths);
       costUsd += result.costUsd;
     } catch (error) {
       // A cancelled attempt is not a failed one. Retrying it was the bug: cancelling left
@@ -431,6 +443,59 @@ export async function composeWithRepair(options: {
     report = await check();
     await reportCheck(report, log, `attempt ${attempt}`);
     if (report.ok) {
+      if (!visualReviewed) {
+        // The model sandboxes intentionally do not own the browser process. Rendering here
+        // gives Claude and Codex the same frames from the same HyperFrames/Node runtime;
+        // only the transport differs (Claude Read versus Codex --image).
+        for (let visualPass = 1; visualPass <= 2; visualPass++) {
+          throwIfCancelled(signal, "visual review");
+          const evidenceDir = path.join(authoring.dir, ".visual-review");
+          await fs.rm(evidenceDir, {recursive: true, force: true});
+          const frames = await renderSnapshots({
+            dir: authoring.dir,
+            durationSeconds: authoring.durationSeconds,
+            at: sectionSnapshotTimes(plan),
+            outputDir: path.join(evidenceDir, "frames"),
+            onLog: (line) => log(`  snapshots    ${line}`),
+          });
+          const expected = plan.sections.filter((section) => section.durationMs > 0).length;
+          if (frames.length !== expected) {
+            throw new Error(
+              `Visual review produced ${frames.length} section frame(s); expected ${expected}.`,
+            );
+          }
+          const contactSheet = await buildContactSheet(
+            frames,
+            path.join(evidenceDir, "contact-sheet.png"),
+          );
+          if (!contactSheet) throw new Error("Visual review could not build a contact sheet.");
+
+          const before = await compositionFingerprint(authoring.dir);
+          log(`visual        ${composer.label} · pass ${visualPass} · ${frames.length} section frame(s)`);
+          const reviewed = await composer.review(
+            {...context, effort: "high"},
+            visualReviewRequest(authoring, [contactSheet, ...frames]),
+          );
+          costUsd += reviewed.costUsd;
+          result = combineComposeResults(result, reviewed);
+
+          const changed = before !== await compositionFingerprint(authoring.dir);
+          log(`visual        ${changed ? "composition adjusted" : "approved without edits"}`);
+          report = await check();
+          await reportCheck(report, log, `visual review ${visualPass}`);
+          if (!report.ok || !changed) break;
+          if (visualPass === 1) log("visual        rendering the adjusted composition for confirmation");
+        }
+
+        if (!report.ok) {
+          await freezeAttempt(authoring.dir, attempt);
+          if (attempt <= MAX_REPAIR_ATTEMPTS) {
+            log(`compose       repairing visual-review edits (${report.errorCount} error${report.errorCount === 1 ? "" : "s"})`);
+          }
+          continue;
+        }
+        visualReviewed = true;
+      }
       if (result.notes) log(`compose       ${result.notes.split("\n")[0]}`);
       return {result, costUsd, attempts: attempt, usedBaseline: false};
     }
@@ -441,13 +506,35 @@ export async function composeWithRepair(options: {
     }
   }
 
-  // Not after a cancellation: writing a baseline would hand back a composition nobody asked
-  // for and let the caller carry on into narration and render.
+  // Do not convert either cancellation or exhausted creative work into a different design.
   throwIfCancelled(signal, "compose");
-  log(`compose       repair budget exhausted — falling back to the baseline composition`);
-  await writeBaselineComposition(authoring, plan, kit);
-  await reportCheck(await check(), log, "baseline");
-  return {result, costUsd, attempts: MAX_REPAIR_ATTEMPTS + 1, usedBaseline: true};
+  throw new Error(
+    `The ${composer.label} composition still failed validation after `
+    + `${MAX_REPAIR_ATTEMPTS + 1} attempt(s) (${report?.errorCount ?? "unknown"} remaining `
+    + `error(s)). The last attempt was kept for inspection; no fallback video was rendered.`,
+  );
+}
+
+async function compositionFingerprint(dir: string): Promise<string> {
+  const files = await Promise.all(COMPOSITION_FILES.map(async (file) => ({
+    file,
+    body: await fs.readFile(path.join(dir, file), "utf8"),
+  })));
+  return hash(files);
+}
+
+function combineComposeResults(
+  authored: ComposeResult | null,
+  reviewed: ComposeResult,
+): ComposeResult {
+  if (!authored) return reviewed;
+  return {
+    provider: reviewed.provider,
+    model: reviewed.model,
+    turns: authored.turns + reviewed.turns,
+    costUsd: authored.costUsd + reviewed.costUsd,
+    notes: [authored.notes, reviewed.notes].filter(Boolean).join("\n"),
+  };
 }
 
 async function reportCheck(report: CheckReport, log: (line: string) => void, label: string) {

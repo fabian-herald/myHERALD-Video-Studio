@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import {test} from "node:test";
 import {assertNoUnverifiedNumericClaims, type ProductFact} from "../knowledge/facts.ts";
-import {assertPlanClaimsAreSourced, planCopy} from "./claims.ts";
+import {assertPlanClaimsAreSourced, factIdsUsedByPlan, planCopy} from "./claims.ts";
 import {videoPlanZ, type VideoPlan} from "./schema.ts";
 
 const fact = (over: Partial<ProductFact> = {}): ProductFact => ({
@@ -134,4 +134,35 @@ test("planCopy covers on-screen and spoken text both", () => {
   const copy = planCopy(plan());
   assert.ok(copy.includes("A") && copy.includes("First line."));
   assert.ok(copy.includes("B") && copy.includes("Second line."));
+});
+
+test("an approved fact quoted in narration is recorded even without a chart", () => {
+  const cited = fact({
+    id: "rounds",
+    statement: "The norm is five rounds before approval.",
+    evidence: "BetterBriefs source sentence.",
+  });
+  const p = plan({
+    sections: [
+      {id: "one", kind: "proof", onScreen: "Five rounds", phrases: [{id: "p1", text: cited.statement}]},
+      {id: "two", kind: "payoff", onScreen: "B", phrases: [{id: "p2", text: "Second line."}]},
+    ],
+  } as Partial<VideoPlan>);
+
+  assert.deepEqual(factIdsUsedByPlan(p, [cited]), ["rounds"]);
+});
+
+test("chart citations and exact prose citations are deduplicated", () => {
+  const p = plan({
+    sections: [
+      {
+        id: "one", kind: "proof", onScreen: "40% faster",
+        phrases: [{id: "p1", text: "Teams cut drafting time by 40%."}],
+        data: {shape: "bars", unit: "%", caption: "Source", points: [{label: "After", value: 40, factId: "f1"}]},
+      },
+      {id: "two", kind: "payoff", onScreen: "B", phrases: [{id: "p2", text: "Second line."}]},
+    ],
+  } as Partial<VideoPlan>);
+
+  assert.deepEqual(factIdsUsedByPlan(p, [fact()]), ["f1"]);
 });

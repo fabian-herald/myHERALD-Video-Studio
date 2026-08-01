@@ -7,10 +7,10 @@ import {BLOCK_FILES, FPS, NARRATION_FILE, type AuthoringDir} from "./workdir.ts"
 /**
  * A hand-written, format-parametric composition that consumes the plan directly.
  *
- * It exists so the autopilot always produces a watchable video even when the
- * composer fails validation three times — and so the render, check and QC path can
- * be exercised without spending a model call. It rotates four archetypes rather
- * than repeating one, because even the fallback should not be six identical cards.
+ * It exists so the render, check and QC path can be exercised without spending a model
+ * call. It is opt-in diagnostic output, never an automatic substitute for failed creative
+ * work. It rotates four archetypes rather than repeating one, because even a diagnostic
+ * should expose the whole composition contract.
  */
 export async function writeBaselineComposition(
   authoring: AuthoringDir,
@@ -19,7 +19,7 @@ export async function writeBaselineComposition(
 ): Promise<void> {
   await fs.writeFile(path.join(authoring.dir, "index.html"), buildHtml(authoring, plan, kit), "utf8");
   await fs.writeFile(path.join(authoring.dir, "styles.css"), BASELINE_CSS, "utf8");
-  await fs.writeFile(path.join(authoring.dir, "animation.js"), buildAnimation(authoring, plan), "utf8");
+  await fs.writeFile(path.join(authoring.dir, "animation.js"), buildAnimation(authoring, plan, kit), "utf8");
 }
 
 const ARCHETYPES = ["display", "artifact", "field", "split"] as const;
@@ -43,6 +43,23 @@ function headline(text: string): string {
 
 const seconds = (ms: number) => (ms / 1000).toFixed(3);
 
+function logoId(kit: BrandKit, role: "seal" | "wordmark" | "lockup", theme: "light" | "dark") {
+  return kit.logos.find((logo) => logo.role === role && logo.theme === theme)?.id
+    ?? kit.logos.find((logo) => logo.role === role && logo.theme === "any")?.id
+    ?? kit.logos.find((logo) => logo.role === role)?.id;
+}
+
+const isBrandName = (copy: string, kit: BrandKit) =>
+  copy.trim().toLocaleLowerCase() === kit.name.trim().toLocaleLowerCase();
+
+function displayCopy(copy: string, kit: BrandKit, theme: "light" | "dark") {
+  if (!isBrandName(copy, kit)) return `<h1 class="line">${headline(copy)}</h1>`;
+  const id = logoId(kit, "wordmark", theme);
+  return id
+    ? `<img class="standalone-wordmark" src="./media/logo-${id}.png" alt="${escape(kit.name)}" />`
+    : `<h1 class="line">${headline(copy)}</h1>`;
+}
+
 function buildScene(section: PlanSection, index: number, plan: VideoPlan, kit: BrandKit): string {
   const archetype = archetypeFor(section, index);
   const light = archetype === "field";
@@ -57,7 +74,7 @@ function buildScene(section: PlanSection, index: number, plan: VideoPlan, kit: B
   const body = {
     display: `
         <div class="scene-body body-display">
-          <h1 class="line">${headline(copy)}</h1>
+          ${displayCopy(copy, kit, "dark")}
           ${slot}
         </div>`,
     artifact: `
@@ -70,10 +87,9 @@ function buildScene(section: PlanSection, index: number, plan: VideoPlan, kit: B
         </div>`,
     field: `
         <div class="scene-body body-field">
-          <h1 class="line">${headline(copy)}</h1>
+          ${displayCopy(copy, kit, "light")}
           ${section.kind === "cta" && plan.cta
-            ? `<div class="cta-lockup"><div class="cta-seal"><img src="./media/logo-${kit.logos[0]?.id ?? "badge"}.png" alt="" /></div>`
-              + `<p class="wordmark">${escape(kit.name)}</p>`
+            ? `<div class="cta-lockup"><img class="cta-wordmark" src="./media/logo-${logoId(kit, "lockup", "light") ?? logoId(kit, "wordmark", "light")}.png" alt="${escape(kit.name)}" />`
               + `<div class="cta-url">${escape(plan.cta.url)} <b>&#8599;</b></div></div>`
             : ""}
           ${slot}
@@ -117,7 +133,8 @@ const truncate = (value: string, max: number) =>
 function buildHtml(authoring: AuthoringDir, plan: VideoPlan, kit: BrandKit): string {
   const duration = authoring.durationSeconds;
   const scenes = plan.sections.map((section, index) => buildScene(section, index, plan, kit)).join("\n");
-  const logoId = kit.logos[0]?.id ?? "badge";
+  const sealId = logoId(kit, "seal", "dark") ?? "badge";
+  const darkWordmarkId = logoId(kit, "wordmark", "dark") ?? sealId;
 
   return `<!doctype html>
 <html lang="${plan.language}">
@@ -145,8 +162,8 @@ ${BLOCK_FILES.map((block) => `  <link rel="stylesheet" href="./blocks/${block}" 
     </div>
 
     <header id="brand-rail" class="brand-rail clip" data-start="0" data-duration="${duration}" data-track-index="80">
-      <div class="brand-seal"><img src="./media/logo-${logoId}.png" alt="" /></div>
-      <strong>${escape(kit.name)}</strong>
+      <div class="brand-seal"><img src="./media/logo-${sealId}.png" alt="" /></div>
+      <img class="rail-wordmark" src="./media/logo-${darkWordmarkId}.png" alt="${escape(kit.name)}" />
       <div class="rail-rule"></div>
       <small>${escape(kit.tagline.toUpperCase())}</small>
     </header>
@@ -165,11 +182,14 @@ ${scenes}
 `;
 }
 
-function buildAnimation(authoring: AuthoringDir, plan: VideoPlan): string {
+function buildAnimation(authoring: AuthoringDir, plan: VideoPlan, kit: BrandKit): string {
   const entries = plan.sections.map((section, index) => ({
     selector: `#scene-${section.id}`,
     archetype: archetypeFor(section, index),
+    light: archetypeFor(section, index) === "field",
   }));
+  const darkWordmark = logoId(kit, "wordmark", "dark");
+  const lightWordmark = logoId(kit, "wordmark", "light") ?? darkWordmark;
 
   return `(() => {
   const gsap = window.gsap;
@@ -206,6 +226,10 @@ function buildAnimation(authoring: AuthoringDir, plan: VideoPlan): string {
 
   for (const scene of scenes) {
     const motion = enter[scene.archetype] || enter.display;
+    timeline.set("#brand-rail", {className: scene.light ? "brand-rail clip on-light" : "brand-rail clip"}, scene.at);
+    timeline.set(".rail-wordmark", {attr: {src: scene.light
+      ? "./media/logo-${lightWordmark}.png"
+      : "./media/logo-${darkWordmark}.png"}}, scene.at);
     timeline.set(scene.selector, {autoAlpha: 1}, scene.at);
     if (scene.archetype === "field") {
       timeline.fromTo(scene.selector + " .accent-field",
@@ -272,8 +296,8 @@ function buildAnimation(authoring: AuthoringDir, plan: VideoPlan): string {
 
 const BASELINE_CSS = `/*
  * Baseline composition styles.
- * Deliberately restrained: this is the guaranteed-renderable fallback, not the
- * showcase. Colours come exclusively from tokens.css.
+ * Deliberately restrained: this is a diagnostic baseline, not the showcase. Colours
+ * come exclusively from tokens.css.
  */
 
 .backdrop { inset: 0; }
@@ -308,6 +332,7 @@ const BASELINE_CSS = `/*
 .on-light-scene .rule i { background: var(--brand-aubergine); }
 
 .body-field { justify-items: start; align-content: center; gap: calc(var(--gutter) * 0.7); }
+.standalone-wordmark { width: min(46%, 31rem); height: auto; object-fit: contain; }
 
 .body-split {
   grid-template-columns: 1.35fr auto 0.65fr;

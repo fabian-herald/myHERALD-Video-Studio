@@ -405,15 +405,12 @@ ${kit.doDont.dont.map((rule) => `- ${rule}`).join("\n")}
 
 Banned words (must not appear on screen): ${kit.voice.bannedWords.join(", ")}.
 
-## Before you finish
+## After authoring
 
-\`\`\`bash
-npx hyperframes check . --json --strict
-npx hyperframes snapshot . --at ${snapshotTimes(durationSeconds)} --no-end --describe false --output snapshots
-\`\`\`
-
-Read \`CONTRACT.md\` first — especially section 6. Then look at the snapshots and answer
-honestly: **are these frames structurally different from one another?**
+Return after writing the three composition files. The Studio pipeline runs the strict
+HyperFrames check and renders one representative frame per section outside the model
+sandbox. It then supplies those exact images in a separate visual-review turn using the
+same rubric for every composer backend. Do not start a server or create snapshots here.
 `;
 }
 

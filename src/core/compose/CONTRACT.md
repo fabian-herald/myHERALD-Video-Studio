@@ -299,14 +299,20 @@ constraints. They are not suggestions. In particular:
 - One continuous accent element should carry through the whole piece.
 - Never centre every scene.
 
-## 8. Validate before you finish
+## 8. Validation and visual review
+
+In a managed Studio run, return after writing the three composition files. The Studio
+pipeline performs the authoritative check, renders one representative image per section,
+and sends the exact same evidence and visual rubric back to every composer backend. Do not
+start a server or render your own snapshots inside the model sandbox.
+
+When authoring a composition manually outside the Studio pipeline, use:
 
 ```bash
 npx hyperframes check . --json --strict
 ```
 
-Fix every error, then run it again. Do not report the composition as done while any
-error remains. Warnings should be read and consciously accepted.
+Fix every error, then run it again. Warnings should be read and consciously accepted.
 
 Useful during authoring:
 

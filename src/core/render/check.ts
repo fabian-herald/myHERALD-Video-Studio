@@ -18,6 +18,8 @@ export interface CheckFinding {
   message: string;
   selector?: string;
   fixHint?: string;
+  /** Rendered evidence that shows this finding, when the gate produced it. */
+  evidencePaths?: string[];
   source: "hyperframes" | "tokens" | "plan";
 }
 
@@ -26,6 +28,8 @@ export interface CheckReport {
   errorCount: number;
   warningCount: number;
   findings: CheckFinding[];
+  /** Absolute image paths safe to attach to a composer repair call. */
+  evidencePaths?: string[];
   raw?: unknown;
 }
 
@@ -56,8 +60,9 @@ export async function checkComposition(options: {
   onLog?: (line: string) => void;
 }): Promise<CheckReport> {
   const {dir, plan, kit, family, fps, sampleMotion: motion = true, onLog} = options;
+  const hyperframes = await runHyperframesCheck(dir, family);
   const findings: CheckFinding[] = [
-    ...await runHyperframesCheck(dir, family),
+    ...hyperframes.findings,
     ...await checkTokens(dir, kit),
     ...await checkBannedWords(dir, kit),
     ...await checkPlanConformance(dir, plan, fps),
@@ -69,7 +74,11 @@ export async function checkComposition(options: {
 
   const errorCount = findings.filter((finding) => finding.severity === "error").length;
   const warningCount = findings.filter((finding) => finding.severity === "warning").length;
-  return {ok: errorCount === 0, errorCount, warningCount, findings};
+  const evidencePaths = [...new Set([
+    ...hyperframes.evidencePaths,
+    ...findings.flatMap((finding) => finding.evidencePaths ?? []),
+  ])];
+  return {ok: errorCount === 0, errorCount, warningCount, findings, evidencePaths};
 }
 
 /**
@@ -103,16 +112,21 @@ async function checkMotion(
     fixHint:
       "Give this scene one sustained motion with area behind it, running for as long as the "
       + "scene is on screen — see CONTRACT.md §6.",
+    evidencePaths: [...frozen.frames],
     source: "plan",
   }));
 }
 
-async function runHyperframesCheck(dir: string, family: FormatFamily): Promise<CheckFinding[]> {
+async function runHyperframesCheck(
+  dir: string,
+  family: FormatFamily,
+): Promise<{findings: CheckFinding[]; evidencePaths: string[]}> {
   const zone = captionZone(family);
   const node = await compatibleNode();
   const args = [
     CLI, "check", ".",
     "--json",
+    "--snapshots",
     "--at-transitions",
     "--caption-zone",
     `x0=${zone.x0};y0=${zone.y0};x1=${zone.x1};y1=${zone.y1};severity=error;seek=.5,1`,
@@ -128,12 +142,12 @@ async function runHyperframesCheck(dir: string, family: FormatFamily): Promise<C
 
   const report = parseJson(stdout);
   if (!report) {
-    return [{
+    return {findings: [{
       severity: "error",
       code: "check_unreadable",
       message: "hyperframes check produced no parseable JSON report.",
       source: "hyperframes",
-    }];
+    }], evidencePaths: []};
   }
 
   const findings: CheckFinding[] = [];
@@ -141,17 +155,28 @@ async function runHyperframesCheck(dir: string, family: FormatFamily): Promise<C
     const section = (report as Record<string, {findings?: unknown[]}>)[group];
     for (const raw of section?.findings ?? []) {
       const finding = raw as Record<string, string>;
+      const time = Number(finding.time);
+      const bbox = finding.bbox as unknown as {x?: number; y?: number; width?: number; height?: number} | undefined;
+      const coordinates = bbox && [bbox.x, bbox.y, bbox.width, bbox.height].every(Number.isFinite)
+        ? ` at x=${bbox.x}, y=${bbox.y}, ${bbox.width}×${bbox.height}`
+        : "";
       findings.push({
         severity: (finding.severity as Severity) ?? "warning",
         code: finding.code,
-        message: `${group}: ${finding.message}`,
+        message: `${group}: ${finding.message}`
+          + (Number.isFinite(time) ? ` at ${time.toFixed(2)}s` : "")
+          + coordinates,
         selector: finding.selector,
         fixHint: finding.fixHint,
         source: "hyperframes",
       });
     }
   }
-  return findings;
+  const snapshots = (report as {snapshots?: {files?: unknown[]; findingFiles?: unknown[]}}).snapshots;
+  const evidencePaths = [...(snapshots?.findingFiles ?? []), ...(snapshots?.files ?? [])]
+    .filter((file): file is string => typeof file === "string")
+    .map((file) => path.resolve(dir, file));
+  return {findings, evidencePaths};
 }
 
 function parseJson(stdout: string): unknown {
@@ -221,7 +246,14 @@ async function checkPlanConformance(dir: string, plan: VideoPlan, fps: number): 
     assertTiming(findings, section.id, "data-duration", duration, section.durationMs, frameMs);
 
     if (section.onScreen.trim()) {
-      const rendered = normalise(stripTags(element.inner));
+      // A standalone brand name is correctly rendered as the supplied image. Treat its
+      // alt text as the visual label for conformance without turning every asset alt into
+      // ordinary on-screen copy elsewhere in the checker.
+      const withImageLabels = element.inner.replace(
+        /<img\b[^>]*\balt="([^"]*)"[^>]*>/gi,
+        " $1 ",
+      );
+      const rendered = normalise(stripTags(withImageLabels));
       if (!rendered.includes(normalise(section.onScreen))) {
         findings.push({
           severity: "error",
@@ -366,9 +398,26 @@ export async function checkWordmark(dir: string, kit: BrandKit): Promise<CheckFi
   // Inline wrappers come off first. Splitting the name into `<span>my</span>` plus
   // `<span>HERALD</span>` to style the two faces separately is precisely how a
   // composition hand-sets the mark, so flattening them is what closes that door.
-  const body = bodyOf(html).replace(/<\/?(?:span|em|strong|b|i|small|sup|sub|a)\b[^>]*>/gi, "");
+  const originalBody = bodyOf(html);
+  const body = originalBody.replace(/<\/?(?:span|em|strong|b|i|small|sup|sub|a)\b[^>]*>/gi, "");
 
   const findings: CheckFinding[] = [];
+  // Catch the ordinary mistake directly. The flattened pass below is still needed for
+  // hand-built marks split across inline wrappers.
+  for (const element of originalBody.matchAll(
+    /<(h1|h2|h3|h4|p|div|figcaption|li|td|span|strong|b|em)\b[^>]*>([^<]*)<\/\1>/gi,
+  )) {
+    if (normalise(stripTags(element[2] ?? "")) === name) {
+      findings.push({
+        severity: "error",
+        code: "typeset_wordmark",
+        message: `"${kit.name}" is set as type on its own. Use the supplied wordmark image.`,
+        fixHint: `Place the supplied mark instead: <img src="media/logo-${marks[0]?.id}.png" alt="${kit.name}">.`,
+        source: "tokens",
+      });
+      break;
+    }
+  }
   // Leaf elements only: a wrapper legitimately contains the name via its children.
   for (const element of body.matchAll(/<(h1|h2|h3|h4|p|div|figcaption|li|td)\b[^>]*>([^<]*)<\/\1>/gi)) {
     const inner = normalise(stripTags(element[2] ?? ""));

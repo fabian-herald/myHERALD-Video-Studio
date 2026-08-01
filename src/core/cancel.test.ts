@@ -62,13 +62,12 @@ test("every long stage checks for cancellation before it starts", () => {
   }
 });
 
-test("a cancelled run does not fall back to the baseline composition", () => {
-  // The fallback exists for an exhausted repair budget. Reaching it after a cancellation
-  // would hand back a composition nobody asked for and let the caller carry on rendering.
+test("a cancelled run and an exhausted repair budget never render an automatic baseline", () => {
   const source = readFileSync(new URL("./pipeline/run.ts", import.meta.url), "utf8");
-  const fallback = source.indexOf("repair budget exhausted");
-  const guard = source.lastIndexOf("throwIfCancelled", fallback);
-  assert.ok(guard > 0 && fallback - guard < 400, "the baseline fallback is reachable after a cancel");
+  const exhausted = source.indexOf("still failed validation after");
+  const guard = source.lastIndexOf("throwIfCancelled", exhausted);
+  assert.ok(guard > 0 && exhausted - guard < 500, "the exhausted path has no cancellation guard");
+  assert.doesNotMatch(source.slice(guard, exhausted + 600), /writeBaselineComposition/);
 });
 
 test("the run is cancelled by the response closing, not the request", () => {

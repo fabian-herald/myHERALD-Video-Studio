@@ -63,6 +63,18 @@ test("the same input twice does not re-encode", async (t) => {
   assert.equal(second.mtimeMs, first.mtimeMs, "the master was re-encoded for no reason");
 });
 
+test("a requested end hold is materialised in the mastered audio", async (t) => {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), "master-"));
+  t.after(() => fs.rm(dir, {recursive: true, force: true}));
+
+  const input = path.join(dir, "in.wav");
+  const master = path.join(dir, "narration.m4a");
+  await tone(input, 2);
+
+  const duration = await masterNarration(input, master, 1, 2_650);
+  assert.ok(duration >= 2.6, `the 650ms landing space was cut to ${duration.toFixed(3)}s`);
+});
+
 test("the same audio at a different volume is re-encoded", async (t) => {
   // The input file is identical, so hashing it alone would say "already done" and hand back
   // a master mixed at the wrong level.
