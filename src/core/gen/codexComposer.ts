@@ -78,8 +78,8 @@ const PREAMBLE = [
   `Read CONTRACT.md and BRIEF.md in ${path.sep === "/" ? "this directory" : "the working directory"} first. The contract is binding.`,
   "Write exactly three files: index.html, styles.css, animation.js. Nothing else.",
   "",
-  "The bar is not that it validates. It is that the eight rendered frames read as eight",
-  "structurally different compositions. Six variations of one layout is a failure.",
+  "The bar is not that it validates. It is that every rendered scene reads as a deliberate",
+  "composition and the sequence does not collapse into variations of one repeated layout.",
 ].join("\n");
 
 export const codexComposer: Composer = {

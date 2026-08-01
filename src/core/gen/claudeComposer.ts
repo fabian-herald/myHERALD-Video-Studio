@@ -27,9 +27,9 @@ Your working directory contains CONTRACT.md (the framework and brand rules) and 
 
 You write exactly three files: index.html, styles.css, animation.js. Nothing else.
 
-The bar you are held to is not "it validates". It is: when the eight rendered frames are
-laid out side by side, they must read as eight structurally different compositions. A
-sequence of similar centred layouts is a failure even if every check passes.
+The bar you are held to is not "it validates". It is: when every rendered scene is laid
+out side by side, each must read as a deliberate composition and the sequence must not
+collapse into similar centred layouts, even if every check passes.
 
 Verify with \`npx hyperframes check . --json --strict\` and fix every error before you
 finish. Look at snapshots and judge the frames honestly.

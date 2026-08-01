@@ -180,6 +180,54 @@ The video is **not approved**. Final QC failed because a completely static frame
 - Follow-up: Never use full MCP config listing for health checks. Add a redacted status
   endpoint that returns server name, transport, connection state, and tool count only.
 
+### LT-13 — Codex composition passed structural checks but failed visual quality
+
+- Owner assessment: The Codex visuals are materially weaker than the previous Claude
+  compositions. Elements were at times outside the visible area or poorly placed, and the
+  16:9 canvas often felt conspicuously empty.
+- Contact-sheet evidence:
+  - `why-it-works` ("Now there is tension") leaves most of the landscape canvas without a
+    meaningful visual anchor; its balance graphic reads as a small peripheral decoration.
+  - `closing-takeaway` concentrates the message and step graphic into separate low-density
+    islands instead of resolving them into one strong final composition.
+  - The opening disc, territory bands, target rings and clue label all rely on cropped or
+    edge-adjacent geometry. Some of those crops were intentional, but the collection reads
+    less controlled than the previous Claude work.
+  - Across nine scenes, the model delivered nine named archetypes, but variety did not
+    produce consistent hierarchy, density or a coherent landscape rhythm.
+- Automated evidence: The first central check independently reported text overflow,
+  out-of-canvas panels, container overflow and escaped positioned geometry. Codex repaired
+  the hard errors, but a technically legal final frame can still be weakly composed.
+- Comparison limit: Existing Claude contact sheets are predominantly 9:16 and cover other
+  scripts, so this is not a controlled provider benchmark. It is still strong product
+  evidence because the owner's preference and the observable density/hierarchy differences
+  point in the same direction.
+- Causes:
+  1. Codex never visually reviewed its rendered frames. Its sandbox could not run the
+     browser-based check, while the central pipeline judged rules and motion rather than
+     aesthetic balance.
+  2. The composition contract strongly rewards a different archetype in every scene. Codex
+     satisfied that literally, sometimes prioritising novelty over visual hierarchy and
+     landscape coherence.
+  3. The contact sheet is generated after the composition loop, so neither provider receives
+     the actual frames as feedback before the final render.
+  4. The composer preamble said "eight rendered frames" even though this plan had nine
+     sections. The contract should never hardcode a scene count.
+  5. Intentional-overflow annotations can make a crop technically acceptable without making
+     it visually convincing.
+- Current status: Open; Codex visual composition should not become the production default on
+  the strength of this run.
+- Follow-up:
+  1. Run a controlled Claude-versus-Codex 16:9 comparison with the same plan, narration,
+     assets and quality gates.
+  2. Add a visual-review pass that gives representative rendered frames back to the composer
+     and asks for a minimal hierarchy, density, alignment and crop correction.
+  3. Add landscape-specific review criteria: deliberate focal mass, balanced negative space,
+     readable secondary type and no isolated decorative island.
+  4. Remove hardcoded scene counts from both composer prompts.
+  5. Do not allow a model to silence an overflow finding with an annotation unless the
+     resulting crop is also present in an owner-approved contact sheet.
+
 ## Recommended implementation order
 
 1. Add `repair_video`/`recompose_video`, reject no-op edits, and refuse rerender when the
@@ -193,6 +241,8 @@ The video is **not approved**. Final QC failed because a completely static frame
    attachment.
 6. Align pre-render motion sampling with final freeze detection.
 7. Add end-to-end regression coverage for the MCP handshake and one real Studio tool call.
+8. Add a frame-based visual review loop and run a controlled 16:9 Claude/Codex bake-off
+   before enabling Codex as the default visual composer.
 
 ## Approval status
 
