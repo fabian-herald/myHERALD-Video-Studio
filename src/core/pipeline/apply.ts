@@ -116,6 +116,17 @@ export async function applyPlanEdits(options: {
       }),
   });
 
+  // `edit_video` is deliberately the cheap copy/timing path. A no-op cannot repair a
+  // visual defect, yet it used to re-enter narration and render the same failed frames
+  // again. Refuse it before TTS, writes, or machine time are spent, and make the missing
+  // composition-repair capability explicit to the calling agent.
+  if (JSON.stringify(edited) === JSON.stringify(current)) {
+    throw new Error(
+      "This edit does not change the plan. edit_video cannot repair layout or motion; "
+      + "use a composition repair/recompose action instead.",
+    );
+  }
+
   // Edits are user-controlled and bypass the planner retry, so apply the exact same
   // copy contract here before any TTS request, file write, or render can incur cost.
   assertPlanCopyRules(edited, kit.voice);

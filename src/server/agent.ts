@@ -191,6 +191,28 @@ export async function* runAgentTurn(options: {
   };
 }
 
+/**
+ * One-turn, bearer-scoped MCP configuration for the subscription-backed Studio agent.
+ * Kept as data so the fail-closed and non-interactive approval guarantees are testable
+ * without launching Codex.
+ */
+export function codexStudioMcpConfig(url: string): string[] {
+  return [
+    "-c", `mcp_servers.studio.url="${url}"`,
+    "-c", "mcp_servers.studio.bearer_token_env_var=\"MYHERALD_CODEX_MCP_TOKEN\"",
+    // The studio tools are the product, not an optional convenience. Without this,
+    // Codex quietly starts with its generic tool set when the bridge fails and can only
+    // apologise after the owner has waited for a turn. Required makes startup fail closed.
+    "-c", "mcp_servers.studio.required=true",
+    // The bearer token scopes this server to one Studio turn, and the server itself
+    // exposes only STUDIO_TOOL_NAMES. `codex exec` is non-interactive, so leaving the
+    // default at prompt turns every legitimate call into "user cancelled".
+    "-c", "mcp_servers.studio.default_tools_approval_mode=\"approve\"",
+    "-c", "mcp_servers.studio.tool_timeout_sec=1800",
+    "-c", "features.shell_tool=false",
+  ];
+}
+
 async function* runCodexAgentTurn(options: {
   thread: Thread;
   prompt: string;
@@ -220,12 +242,7 @@ async function* runCodexAgentTurn(options: {
   });
 
   const model = codexModel();
-  const mcpConfig = [
-    "-c", `mcp_servers.studio.url="${options.codexMcpUrl}"`,
-    "-c", "mcp_servers.studio.bearer_token_env_var=\"MYHERALD_CODEX_MCP_TOKEN\"",
-    "-c", "mcp_servers.studio.tool_timeout_sec=1800",
-    "-c", "features.shell_tool=false",
-  ];
+  const mcpConfig = codexStudioMcpConfig(options.codexMcpUrl);
   const args = sessionId
     ? ["exec", "resume", "--ignore-user-config", "--ignore-rules", "--model", model, ...mcpConfig, "--json", sessionId, "-"]
     : ["exec", "--ignore-user-config", "--ignore-rules", "--sandbox", "read-only", "--cd", ROOT,

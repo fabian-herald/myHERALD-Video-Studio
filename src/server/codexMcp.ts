@@ -7,7 +7,11 @@ const transports = new Map<string, StreamableHTTPServerTransport>();
 
 export async function registerCodexStudioTools(context: ToolContext) {
   const token = crypto.randomBytes(24).toString("base64url");
-  const transport = new StreamableHTTPServerTransport({sessionIdGenerator: undefined});
+  // Codex performs the Streamable HTTP handshake over multiple requests: initialize,
+  // initialized, then tools/list and calls. A stateless transport is one-request-only;
+  // reusing it made the second request fail with HTTP 500. This transport lives exactly
+  // as long as the turn's bearer token, so a real MCP session is the correct boundary.
+  const transport = new StreamableHTTPServerTransport({sessionIdGenerator: () => crypto.randomUUID()});
   await studioTools(context).instance.connect(transport);
   transports.set(token, transport);
   return {

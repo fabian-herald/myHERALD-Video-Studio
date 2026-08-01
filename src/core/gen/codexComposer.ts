@@ -2,6 +2,7 @@ import {spawn} from "node:child_process";
 import fs from "node:fs/promises";
 import path from "node:path";
 import type {CheckReport} from "../render/check.ts";
+import {compatibleNode} from "../render/node.ts";
 import {
   assertCompositionWritten,
   registerComposer,
@@ -23,6 +24,8 @@ async function drive(prompt: string, context: ComposeContext, label: string): Pr
   const executable = await requireCodexSubscription();
   const model = codexModel();
   const effort = context.effort === "high" ? "high" : "medium";
+  const node = await compatibleNode();
+  const toolPath = [path.dirname(node), process.env.PATH].filter(Boolean).join(path.delimiter);
 
   const args = [
     "exec",
@@ -37,7 +40,11 @@ async function drive(prompt: string, context: ComposeContext, label: string): Pr
   const notes = await new Promise<string>((resolve, reject) => {
     const child = spawn(executable, args, {
       cwd: context.authoring.dir,
-      env: codexChildEnv({HYPERFRAMES_NO_TELEMETRY: "1"}),
+      env: codexChildEnv({
+        HYPERFRAMES_NO_TELEMETRY: "1",
+        HYPERFRAMES_NODE_PATH: node,
+        PATH: toolPath,
+      }),
       stdio: ["pipe", "pipe", "pipe"],
     });
 
@@ -87,8 +94,12 @@ export const codexComposer: Composer = {
         "Decide a distinct spatial archetype for every section before writing markup.",
         "Two adjacent scenes must never share an archetype.",
         "",
-        "When the files are written, run `npx hyperframes check . --json --strict` and fix",
-        "every error. Finish with one line per scene naming the archetype you used.",
+        "When the files are written, return immediately. The pipeline runs the authoritative",
+        "browser, layout, motion and strict checks outside this sandbox and will send concrete",
+        "findings back if a repair is needed. Do not run HyperFrames or open a local server here.",
+        "Finish with one line per scene naming the archetype you used.",
+        "Do not install or download Node,",
+        "HyperFrames, packages, skills, or registry items.",
       ].join("\n"),
       context,
       "compose",
@@ -107,7 +118,10 @@ export const codexComposer: Composer = {
             + (finding.selector ? ` (selector: ${finding.selector})` : ""))
           .join("\n"),
         "",
-        "Re-run `npx hyperframes check . --json --strict` and confirm it is clean.",
+        "After the edit, return immediately. The pipeline reruns the authoritative browser,",
+        "layout, motion and strict checks outside this sandbox. Do not run HyperFrames or",
+        "open a local server here. Do not install or download Node,",
+        "HyperFrames, packages, skills, or registry items.",
       ].join("\n"),
       {...context, effort: "high"},
       "repair",
