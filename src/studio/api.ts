@@ -177,14 +177,28 @@ export const api = {
   research: (urls: string[]) =>
     request<ResearchResult>("/api/research", {method: "POST", body: JSON.stringify({urls})}),
   settings: () => request<Settings>("/api/settings"),
+  providers: () => request<ProviderAvailability>("/api/providers"),
   saveSettings: (settings: Settings) =>
     request<Settings>("/api/settings", {method: "PUT", body: JSON.stringify(settings)}),
 };
 
 export interface Settings {
   contentLanguage: ContentLanguage;
+  agent: "claude" | "codex";
+  planner: "claude" | "codex";
   composer: "claude" | "codex";
+  marketingSkills: {
+    adCreative: boolean;
+    social: boolean;
+    marketingPsychology: boolean;
+  };
 }
+
+export type ProviderAvailability = Record<"claude" | "codex", {
+  available: boolean;
+  label: string;
+  reason?: string;
+}>;
 
 export interface ResearchResult {
   pages: {url: string; title: string; summary: string; blocks: number}[];

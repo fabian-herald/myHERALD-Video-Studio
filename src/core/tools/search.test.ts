@@ -11,6 +11,7 @@ const context: ToolContext = {
   getVideoId: () => undefined,
   setVideoId: () => {},
   composerId: "claude",
+  plannerId: "claude",
 };
 
 interface RegisteredTool {

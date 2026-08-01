@@ -3,8 +3,9 @@ import {api, type LedgerEntry, type Thread} from "./api.ts";
 import {BrandPage} from "./BrandPage.tsx";
 import {Canvas} from "./Canvas.tsx";
 import {ChatPane} from "./ChatPane.tsx";
+import {SettingsPage} from "./SettingsPage.tsx";
 
-type View = {kind: "thread"; id: string} | {kind: "brand"} | {kind: "videos"};
+type View = {kind: "thread"; id: string} | {kind: "brand"} | {kind: "videos"} | {kind: "settings"};
 
 export function App() {
   const [threads, setThreads] = useState<Thread[]>([]);
@@ -118,9 +119,17 @@ export function App() {
         >
           Brand &amp; product<small>Context</small>
         </button>
+        <button
+          className={`rail-item${view.kind === "settings" ? " active" : ""}`}
+          onClick={() => setView({kind: "settings"})}
+        >
+          Settings<small>AI &amp; guidance</small>
+        </button>
       </nav>
 
-      {view.kind === "brand" ? (
+      {view.kind === "settings" ? (
+        <SettingsPage />
+      ) : view.kind === "brand" ? (
         <BrandPage />
       ) : view.kind === "videos" ? (
         <VideoList videos={videos} onOpen={(id) => openVideoThread(id)} />

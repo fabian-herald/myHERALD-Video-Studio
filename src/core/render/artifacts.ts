@@ -67,6 +67,9 @@ export interface Provenance {
   createdAt: string;
   thesis: string;
   intent: string;
+  planner: {provider: string; model: string};
+  /** Optional planning aids that were actually present in the prompt for this run. */
+  marketingGuidance: readonly string[];
   composer: {provider: string; model: string; turns: number; attempts: number};
   /** How varied the finished script turned out, measured from the real audio. */
   rhythm: {

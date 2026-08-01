@@ -1,5 +1,24 @@
 # Project instructions
 
+## Model roles and marketing guidance
+
+The owner chooses Studio assistant, Strategy & script, and Visual composer independently
+in Settings. Respect `agent`, `planner`, and `composer` from `src/core/settings.ts`; do not
+collapse them into one provider choice or silently fall back between providers.
+
+Codex always means the local ChatGPT/Codex subscription. It must pass the `chatgpt` auth
+check in `src/core/gen/codexCli.ts`, and Codex child processes must not inherit
+`OPENAI_API_KEY` or `CODEX_API_KEY`. If that subscription is unavailable, report it as
+unavailable before work begins rather than using metered API billing.
+
+Only three optional marketing aids belong in planning: `ad-creative`, `social`, and
+`marketing-psychology`. Each is independently switchable. Route them through
+`src/core/marketing/guidance.ts`: ad creative only for `performance-ad`, social only for
+non-performance-ad profiles, and ethical psychology framing for all profiles. Video
+intent, narration profile, brand voice, approved facts, copy rules, and claim validation
+override every marketing heuristic. Do not add campaign budgets, targeting, analytics,
+metrics, or an A/B-test framework to the Video Studio.
+
 ## Narration production baseline
 
 The approved English thought-leadership reference is `B886-controlled` from 2026-07-31.

@@ -15,8 +15,9 @@ import {
  * The composer runs inside a throwaway authoring directory, so the blast radius
  * of a mistake is one composition attempt.
  */
-export const ALLOWED_TOOLS = ["Read", "Write", "Edit", "Glob", "Grep", "Bash", "TodoWrite"];
+export const ALLOWED_TOOLS = ["Read", "Write", "Edit", "Glob", "Grep", "Bash", "TodoWrite", "Skill"];
 export const ALLOWED_BASH = /^(npx\s+)?hyperframes\s+(check|snapshot|lint|docs)\b/;
+export const ALLOWED_COMPOSER_SKILLS = /^\/?(?:hyperframes(?:-(?:core|animation|keyframes|creative|cli|registry))?|media-use)$/;
 
 const SYSTEM_PROMPT = `You are a motion designer who writes code. You author HyperFrames
 compositions — deterministic HTML/CSS/GSAP that renders frame by frame to video.
@@ -46,6 +47,12 @@ all refused, none of them telling it anything the brief had not already said.
 
 Your turns are finite and mostly want spending on the composition itself. Read what you
 need, write the three files, then check.
+
+The read-only Skill tool is available for the installed HyperFrames and media-use skills.
+Load hyperframes-core first, then animation, keyframes, creative, CLI or media-use only
+when the brief needs them. Skills may describe broader workflows and registry commands,
+but this studio has already routed and scaffolded the job. Do not run install, update,
+catalog or add commands; author against the provided contract, blocks and media.
 
 Reply with a short summary of the scene archetypes you used — one line each.`;
 
@@ -95,6 +102,15 @@ export function permission(toolName: string, input: Record<string, unknown>): Pe
     const refusal = bashRefusal(String(input.command ?? ""));
     if (refusal) return {behavior: "deny", message: refusal};
   }
+  if (toolName === "Skill") {
+    const skill = String(input.skill ?? input.name ?? "");
+    if (!ALLOWED_COMPOSER_SKILLS.test(skill)) {
+      return {
+        behavior: "deny",
+        message: "Only installed HyperFrames and media-use skills are available while composing.",
+      };
+    }
+  }
   return {behavior: "allow", updatedInput: input};
 }
 
@@ -138,6 +154,17 @@ export function composerHooks(dir: string): Options["hooks"] {
           if (input.hook_event_name !== "PreToolUse") return {};
           const refusal = bashRefusal(String((input.tool_input as {command?: unknown}).command ?? ""));
           return refusal ? deny(refusal) : {};
+        }],
+      },
+      {
+        matcher: "Skill",
+        hooks: [async (input) => {
+          if (input.hook_event_name !== "PreToolUse") return {};
+          const toolInput = input.tool_input as {skill?: unknown; name?: unknown};
+          const skill = String(toolInput.skill ?? toolInput.name ?? "");
+          return ALLOWED_COMPOSER_SKILLS.test(skill)
+            ? {}
+            : deny("Only installed HyperFrames and media-use skills are available while composing.");
         }],
       },
       // One exact matcher per tool rather than `Write|Edit`. Whether the SDK reads a

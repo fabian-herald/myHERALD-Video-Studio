@@ -32,6 +32,11 @@ export const threadZ = z.object({
   updatedAt: z.string(),
   /** Agent SDK session, so a reopened thread keeps its context. */
   sessionId: z.string().optional(),
+  /** Separate histories let the owner switch providers without one corrupting the other. */
+  sessions: z.object({
+    claude: z.string().optional(),
+    codex: z.string().optional(),
+  }).default({}),
   messages: z.array(threadMessageZ).default([]),
 });
 
@@ -76,6 +81,7 @@ export async function studioThread(): Promise<Thread> {
     title: "Studio",
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
+    sessions: {},
     messages: [],
   });
 }
@@ -100,6 +106,7 @@ export async function createVideoThread(
     ...(videoId ? {videoId} : {}),
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
+    sessions: {},
     messages: [],
   });
 }

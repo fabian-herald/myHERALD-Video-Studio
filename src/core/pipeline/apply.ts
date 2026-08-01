@@ -4,7 +4,8 @@ import {loadBrandKit} from "../brand/kit.ts";
 import {FPS, NARRATION_FILE, sectionSnapshotTimes} from "../compose/workdir.ts";
 import {amendLedgerEntry} from "../ledger.ts";
 import {byFamily, FORMATS, familyOf, type OutputFormat} from "../plan/formats.ts";
-import {loadPlan, planDurationMs, savePlan, type Energy, type VideoPlan} from "../plan/schema.ts";
+import {assertPlanCopyRules} from "../plan/copyRules.ts";
+import {loadPlan, planDurationMs, savePlan, videoPlanZ, type Energy, type VideoPlan} from "../plan/schema.ts";
 import {OUT_DIR, rel, videoDir} from "../paths.ts";
 import {buildContactSheet, buildCover} from "../render/artifacts.ts";
 import {checkComposition} from "../render/check.ts";
@@ -75,7 +76,7 @@ export async function applyPlanEdits(options: {
     throw new Error("A video needs at least two sections. Remove fewer, or rebuild it in chat.");
   }
 
-  const edited: VideoPlan = {
+  const edited = videoPlanZ.parse({
     ...current,
     sections: current.sections
       .filter((section) => !removed.includes(section))
@@ -113,7 +114,11 @@ export async function applyPlanEdits(options: {
           phrases,
         };
       }),
-  };
+  });
+
+  // Edits are user-controlled and bypass the planner retry, so apply the exact same
+  // copy contract here before any TTS request, file write, or render can incur cost.
+  assertPlanCopyRules(edited, kit.voice);
 
   // Re-narrate: cached clips make every untouched phrase free.
   const narration = await narrate(edited, dir, log, signal);

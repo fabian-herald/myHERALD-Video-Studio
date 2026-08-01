@@ -1,10 +1,14 @@
 import {query, type Options, type PermissionResult} from "@anthropic-ai/claude-agent-sdk";
+import {spawn} from "node:child_process";
+import readline from "node:readline";
 import {loadBrandKit} from "../core/brand/kit.ts";
 import {isCancellation} from "../core/cancel.ts";
 import {billingMode} from "../core/cost.ts";
 import {ROOT} from "../core/paths.ts";
 import {STUDIO_TOOL_NAMES, studioTools} from "../core/tools/index.ts";
-import {appendMessage, saveThread, type Thread} from "../core/threads.ts";
+import {appendMessage, conversationOnly, saveThread, type Thread} from "../core/threads.ts";
+import {codexChildEnv, codexModel, requireCodexSubscription} from "../core/gen/codexCli.ts";
+import {registerCodexStudioTools} from "./codexMcp.ts";
 
 export interface AgentEvent {
   type: "message" | "event" | "done" | "error";
@@ -68,10 +72,18 @@ function permission(toolName: string): PermissionResult {
 export async function* runAgentTurn(options: {
   thread: Thread;
   prompt: string;
+  agentId: "claude" | "codex";
+  plannerId: "claude" | "codex";
   composerId: string;
+  codexMcpUrl: string;
   signal?: AbortSignal;
 }): AsyncGenerator<AgentEvent> {
-  const {thread, prompt, composerId, signal} = options;
+  if (options.agentId === "codex") {
+    yield* runCodexAgentTurn(options);
+    return;
+  }
+
+  const {thread, prompt, plannerId, composerId, signal} = options;
   const kit = await loadBrandKit().catch(() => null);
 
   let videoId = thread.videoId;
@@ -83,6 +95,7 @@ export async function* runAgentTurn(options: {
     setVideoId: (next: string) => {
       videoId = next;
     },
+    plannerId,
     composerId,
     signal,
   };
@@ -102,10 +115,12 @@ export async function* runAgentTurn(options: {
     canUseTool: async (toolName) => permission(toolName),
     maxTurns: 40,
     abortController: controller,
-    ...(thread.sessionId ? {resume: thread.sessionId} : {}),
+    ...(thread.sessions.claude ?? thread.sessionId
+      ? {resume: thread.sessions.claude ?? thread.sessionId}
+      : {}),
   };
 
-  let sessionId = thread.sessionId;
+  let sessionId = thread.sessions.claude ?? thread.sessionId;
   let costUsd = 0;
 
   // Held rather than iterated anonymously, so it can be closed. Aborting the controller
@@ -162,7 +177,7 @@ export async function* runAgentTurn(options: {
     }
   }
 
-  await saveThread({...thread, sessionId, videoId});
+  await saveThread({...thread, sessionId, sessions: {...thread.sessions, claude: sessionId}, videoId});
   const mode = billingMode();
   yield {
     type: "done",
@@ -174,6 +189,131 @@ export async function* runAgentTurn(options: {
       billingMode: mode,
     },
   };
+}
+
+async function* runCodexAgentTurn(options: {
+  thread: Thread;
+  prompt: string;
+  agentId: "claude" | "codex";
+  plannerId: "claude" | "codex";
+  composerId: string;
+  codexMcpUrl: string;
+  signal?: AbortSignal;
+}): AsyncGenerator<AgentEvent> {
+  const {thread, plannerId, composerId, signal} = options;
+  const executable = await requireCodexSubscription();
+  const kit = await loadBrandKit().catch(() => null);
+  const pending: AgentEvent[] = [];
+  let videoId = thread.videoId;
+  let sessionId = thread.sessions.codex;
+
+  const registration = await registerCodexStudioTools({
+    threadId: thread.id,
+    onLog: (line: string, tool?: string) => pending.push({type: "event", text: line, tool}),
+    getVideoId: () => videoId,
+    setVideoId: (next: string) => {
+      videoId = next;
+    },
+    plannerId,
+    composerId,
+    signal,
+  });
+
+  const model = codexModel();
+  const mcpConfig = [
+    "-c", `mcp_servers.studio.url="${options.codexMcpUrl}"`,
+    "-c", "mcp_servers.studio.bearer_token_env_var=\"MYHERALD_CODEX_MCP_TOKEN\"",
+    "-c", "mcp_servers.studio.tool_timeout_sec=1800",
+    "-c", "features.shell_tool=false",
+  ];
+  const args = sessionId
+    ? ["exec", "resume", "--ignore-user-config", "--ignore-rules", "--model", model, ...mcpConfig, "--json", sessionId, "-"]
+    : ["exec", "--ignore-user-config", "--ignore-rules", "--sandbox", "read-only", "--cd", ROOT,
+        "--model", model, ...mcpConfig, "--json", "-"];
+
+  const history = !sessionId && conversationOnly(thread).length
+    ? `\n\nConversation before this provider was selected:\n${conversationOnly(thread)
+        .map((message) => `${message.role === "user" ? "Owner" : "Studio"}: ${message.text}`)
+        .join("\n")}`
+    : "";
+  const system = kit
+    ? `${BASE_PROMPT}\n\nThe brand is ${kit.name} — ${kit.tagline} (${kit.website}).`
+    : BASE_PROMPT;
+  const input = sessionId ? options.prompt : `${system}${history}\n\nOwner: ${options.prompt}`;
+
+  let failure = "";
+  try {
+    const child = spawn(executable, args, {
+      cwd: ROOT,
+      env: codexChildEnv({MYHERALD_CODEX_MCP_TOKEN: registration.token}),
+      stdio: ["pipe", "pipe", "pipe"],
+    });
+    const exit = new Promise<number | null>((resolve, reject) => {
+      child.once("close", resolve);
+      child.once("error", reject);
+    });
+    const abort = () => child.kill("SIGTERM");
+    signal?.addEventListener("abort", abort, {once: true});
+    child.stderr.on("data", (chunk: Buffer) => {
+      failure = `${failure}${chunk.toString("utf8")}`.slice(-4000);
+    });
+    child.stdin.end(input);
+
+    const lines = readline.createInterface({input: child.stdout});
+    for await (const line of lines) {
+      while (pending.length) yield pending.shift() as AgentEvent;
+      const event = parseCodexEvent(line);
+      if (!event) continue;
+      if (event.threadId) sessionId = event.threadId;
+      if (event.message) yield {type: "message", text: event.message};
+      if (event.tool) {
+        const label = describe(`mcp__studio__${event.tool}`);
+        if (label) yield {type: "event", text: label, tool: event.tool};
+      }
+      if (event.error) failure = event.error;
+    }
+    const code = await exit;
+    while (pending.length) yield pending.shift() as AgentEvent;
+    if (code !== 0 && !signal?.aborted) yield {type: "error", text: failure.trim() || `Codex stopped with code ${code}.`};
+    else if (signal?.aborted) yield {type: "event", text: "run stopped"};
+    signal?.removeEventListener("abort", abort);
+  } catch (error) {
+    if (isCancellation(error) || signal?.aborted) yield {type: "event", text: "run stopped"};
+    else yield {type: "error", text: (error as Error).message};
+  } finally {
+    await registration.close();
+  }
+
+  await saveThread({...thread, sessions: {...thread.sessions, codex: sessionId}, videoId});
+  yield {
+    type: "done",
+    text: "",
+    videoId,
+    cost: {chargedUsd: 0, apiEquivalentUsd: 0, billingMode: "subscription"},
+  };
+}
+
+export function parseCodexEvent(line: string): {
+  threadId?: string;
+  message?: string;
+  tool?: string;
+  error?: string;
+} | null {
+  let event: Record<string, unknown>;
+  try {
+    event = JSON.parse(line) as Record<string, unknown>;
+  } catch {
+    return null;
+  }
+  if (event.type === "thread.started" && typeof event.thread_id === "string") return {threadId: event.thread_id};
+  if (event.type === "error") return {error: String(event.message ?? "Codex reported an error.")};
+  if (event.type !== "item.completed") return {};
+  const item = event.item as Record<string, unknown> | undefined;
+  if (item?.type === "agent_message" && typeof item.text === "string") return {message: item.text};
+  if ((item?.type === "mcp_tool_call" || item?.type === "tool_call") && typeof item.tool === "string") {
+    return {tool: item.tool.replace(/^studio\//, "")};
+  }
+  return {};
 }
 
 /** Only tools that do not narrate their own progress get an announcement line. */

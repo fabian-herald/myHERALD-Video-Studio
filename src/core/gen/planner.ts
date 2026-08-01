@@ -1,11 +1,19 @@
 import {query} from "@anthropic-ai/claude-agent-sdk";
+import {spawn} from "node:child_process";
+import fs from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
 import type {BrandKit} from "../brand/kit.ts";
 import {intentPreset} from "../intents/index.ts";
 import type {OutputFormat} from "../plan/formats.ts";
 import {languageName, type ContentLanguage} from "../plan/language.ts";
+import {copyRulesViolation} from "../plan/copyRules.ts";
 import {seedGaps} from "../plan/retime.ts";
 import {videoPlanZ, type Intent, type NarrationProfileId, type VideoPlan} from "../plan/schema.ts";
 import {CAPTION_MAX_CHARS, CAPTION_MAX_WORDS} from "../render/qc.ts";
+import {codexChildEnv, codexModel, requireCodexSubscription} from "./codexCli.ts";
+
+export type PlannerId = "claude" | "codex";
 
 export interface PlanRequest {
   id: string;
@@ -35,6 +43,10 @@ export interface PlanRequest {
    * screenshot cannot be invented or pointed somewhere it should not go.
    */
   media?: readonly {id: string; aspect: string; device: string; caption: string; tags: string[]}[];
+  /** The local subscription CLI responsible for strategy, script and plan JSON. */
+  plannerId?: PlannerId;
+  /** Already routed and guarded by intent; empty means no marketing aid is active. */
+  marketingGuidance?: {ids: readonly string[]; prompt: string};
 }
 
 export interface PlanResult {
@@ -112,12 +124,14 @@ export async function planVideo(
   signal?: AbortSignal,
 ): Promise<PlanResult> {
   const prompt = buildPrompt(request);
+  const plannerId = request.plannerId ?? "claude";
   let lastError = "";
   let costUsd = 0;
   let model = "claude";
 
   for (let attempt = 1; attempt <= 3; attempt++) {
     const text = await ask(
+      plannerId,
       attempt === 1 ? prompt : `${prompt}\n\nYour previous answer was rejected:\n${lastError}\n\nReturn corrected JSON only.`,
       signal,
       (usage) => {
@@ -143,7 +157,7 @@ export async function planVideo(
       continue;
     }
 
-    const violation = checkCopyRules(result.data, request.kit);
+    const violation = copyRulesViolation(result.data, request.kit.voice);
     if (violation) {
       lastError = violation;
       onLog(`plan          attempt ${attempt} broke a copy rule; retrying.`);
@@ -157,10 +171,13 @@ export async function planVideo(
 }
 
 async function ask(
+  plannerId: PlannerId,
   prompt: string,
   signal: AbortSignal | undefined,
   onUsage: (usage: {costUsd: number; model: string}) => void,
 ): Promise<string> {
+  if (plannerId === "codex") return askCodex(prompt, signal, onUsage);
+
   const controller = new AbortController();
   signal?.addEventListener("abort", () => controller.abort(), {once: true});
 
@@ -191,6 +208,52 @@ async function ask(
     }
   }
   return text;
+}
+
+async function askCodex(
+  prompt: string,
+  signal: AbortSignal | undefined,
+  onUsage: (usage: {costUsd: number; model: string}) => void,
+): Promise<string> {
+  const executable = await requireCodexSubscription();
+  const model = codexModel();
+  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "myherald-codex-plan-"));
+  const outputPath = path.join(tempDir, "plan.json");
+
+  try {
+    await new Promise<void>((resolve, reject) => {
+      const child = spawn(executable, [
+        "exec",
+        "--ignore-user-config",
+        "--sandbox", "read-only",
+        "--skip-git-repo-check",
+        "--model", model,
+        "-c", "features.shell_tool=false",
+        "--output-last-message", outputPath,
+        "-",
+      ], {
+        cwd: tempDir,
+        env: codexChildEnv(),
+        stdio: ["pipe", "ignore", "pipe"],
+      });
+      let errorTail = "";
+      child.stderr.on("data", (chunk: Buffer) => {
+        errorTail = `${errorTail}${chunk.toString("utf8")}`.slice(-4000);
+      });
+      child.on("error", reject);
+      child.on("close", (code) => {
+        if (code === 0) resolve();
+        else reject(new Error(`Codex planning stopped with code ${code}: ${errorTail.trim()}`));
+      });
+      const abort = () => child.kill("SIGTERM");
+      signal?.addEventListener("abort", abort, {once: true});
+      child.stdin.end(`${SYSTEM_PROMPT}\n\n${prompt}`);
+    });
+    onUsage({costUsd: 0, model});
+    return await fs.readFile(outputPath, "utf8");
+  } finally {
+    await fs.rm(tempDir, {recursive: true, force: true});
+  }
 }
 
 function buildPrompt(request: PlanRequest): string {
@@ -228,6 +291,8 @@ ${request.knowledge.length ? `# Approved product facts\n\nThese are the only pro
 ${citableBlock(request)}
 ${mediaBlock(request)}
 ${request.priorTheses.length ? `# Already covered\n\nThese videos exist. Do not repeat a thesis; either sharpen it into something new or take a different angle, and say which in your \`alternates\`.\n\n${request.priorTheses.map((prior) => `- ${prior.id}: ${prior.thesis}`).join("\n")}` : ""}
+
+${request.marketingGuidance?.prompt ?? ""}
 
 # Output
 
@@ -320,45 +385,6 @@ function parseJson(text: string): unknown {
   } catch {
     return null;
   }
-}
-
-/** Rules the schema cannot express but that must never reach the composer. */
-function checkCopyRules(plan: VideoPlan, kit: BrandKit): string | null {
-  const problems: string[] = [];
-
-  const rawCopy = plan.sections
-    .flatMap((section) => [section.onScreen, ...section.phrases.map((phrase) => phrase.text)])
-    .join(" ");
-  const allCopy = rawCopy.toLowerCase();
-
-  for (const word of kit.voice.bannedWords) {
-    if (new RegExp(`\\b${word.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`).test(allCopy)) {
-      problems.push(`- the banned word "${word}" appears in the copy`);
-    }
-  }
-  if (rawCopy.includes("—")) {
-    problems.push('- an em-dash (—) appears in the copy; the brand guide forbids it');
-  }
-
-  for (const section of plan.sections) {
-    for (const phrase of section.phrases) {
-      const words = phrase.text.trim().split(/\s+/).length;
-      if (words > CAPTION_MAX_WORDS || phrase.text.length > CAPTION_MAX_CHARS) {
-        problems.push(
-          `- ${section.id}/${phrase.id} is ${words} words / ${phrase.text.length} chars `
-          + `(max ${CAPTION_MAX_WORDS} / ${CAPTION_MAX_CHARS}): "${phrase.text}"`,
-        );
-      }
-    }
-    if (section.onScreen.trim().split(/\s+/).length > 6 && section.onScreen.trim()) {
-      problems.push(`- ${section.id} onScreen copy is longer than six words: "${section.onScreen}"`);
-    }
-  }
-
-  const ids = plan.sections.map((section) => section.id);
-  if (new Set(ids).size !== ids.length) problems.push("- section ids are not unique");
-
-  return problems.length ? problems.join("\n") : null;
 }
 
 /** The planner proposes; the pipeline owns identity, formats and provider config. */

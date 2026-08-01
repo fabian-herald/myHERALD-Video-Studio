@@ -1,5 +1,4 @@
 import {spawn} from "node:child_process";
-import {constants as fsConstants} from "node:fs";
 import fs from "node:fs/promises";
 import path from "node:path";
 import type {CheckReport} from "../render/check.ts";
@@ -10,6 +9,7 @@ import {
   type ComposeResult,
   type Composer,
 } from "./composer.ts";
+import {codexChildEnv, codexModel, requireCodexSubscription} from "./codexCli.ts";
 
 /**
  * The alternate backend. Same contract, same authoring directory, same repair loop —
@@ -19,38 +19,9 @@ import {
  * 500-line stylesheet does not survive JSON escaping intact, and the sandbox is
  * scoped to the throwaway directory anyway.
  */
-const CODEX_CANDIDATES = [
-  process.env.CODEX_CLI_PATH,
-  "/Applications/Codex.app/Contents/Resources/codex",
-  "/Applications/ChatGPT.app/Contents/Resources/codex",
-];
-
-async function resolveCodex(): Promise<string> {
-  for (const candidate of CODEX_CANDIDATES.filter(Boolean) as string[]) {
-    if (await fs.access(candidate, fsConstants.X_OK).then(() => true).catch(() => false)) {
-      return candidate;
-    }
-  }
-  const onPath = await new Promise<string | null>((resolve) => {
-    const child = spawn("which", ["codex"], {stdio: ["ignore", "pipe", "ignore"]});
-    let output = "";
-    child.stdout.on("data", (chunk: Buffer) => {
-      output += chunk.toString("utf8");
-    });
-    child.on("close", () => resolve(output.trim() || null));
-    child.on("error", () => resolve(null));
-  });
-  if (onPath) return onPath;
-
-  throw new Error(
-    "The codex CLI could not be found. Set CODEX_CLI_PATH in .env.local to its absolute "
-    + "path, or use the default `--composer claude`.",
-  );
-}
-
 async function drive(prompt: string, context: ComposeContext, label: string): Promise<ComposeResult> {
-  const executable = await resolveCodex();
-  const model = process.env.CODEX_MODEL ?? "gpt-5.6-terra";
+  const executable = await requireCodexSubscription();
+  const model = codexModel();
   const effort = context.effort === "high" ? "high" : "medium";
 
   const args = [
@@ -66,7 +37,7 @@ async function drive(prompt: string, context: ComposeContext, label: string): Pr
   const notes = await new Promise<string>((resolve, reject) => {
     const child = spawn(executable, args, {
       cwd: context.authoring.dir,
-      env: {...process.env, HYPERFRAMES_NO_TELEMETRY: "1"},
+      env: codexChildEnv({HYPERFRAMES_NO_TELEMETRY: "1"}),
       stdio: ["pipe", "pipe", "pipe"],
     });
 

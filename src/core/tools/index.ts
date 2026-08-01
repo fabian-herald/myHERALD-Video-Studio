@@ -55,6 +55,7 @@ export interface ToolContext {
   /** Set once a video exists in this thread, so later tools default to it. */
   getVideoId: () => string | undefined;
   setVideoId: (videoId: string) => void;
+  plannerId: "claude" | "codex";
   composerId: string;
   signal?: AbortSignal;
 }
@@ -233,6 +234,7 @@ export function studioTools(context: ToolContext) {
             narrationProfile: narrationProfile as NarrationProfileId | undefined,
             formats: chosen,
             language: language ?? settings.contentLanguage,
+            plannerId: context.plannerId,
             composerId: context.composerId,
             quality: "high",
             onLog: (line) => context.onLog(line, "make_video"),

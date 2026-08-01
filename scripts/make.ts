@@ -34,6 +34,7 @@ if (!brief) {
   --narration-profile  ${NARRATION_PROFILE_IDS.join(" | ")}  (promotional defaults to performance-ad)
   --formats     comma-separated from ${OUTPUT_FORMATS.join(",")}  (default: the intent's own)
   --language    ${CONTENT_LANGUAGES.join(" | ")}   (default: the studio setting)
+  --planner     claude | codex           (default: the studio setting; both use a CLI subscription)
   --composer    claude | codex           (default: the studio setting; both use a CLI subscription)
   --quality     draft | standard | high  (default: high)
   --baseline    skip the model and use the deterministic fallback composition
@@ -88,6 +89,7 @@ const result = await runPipeline({
   narrationProfile,
   formats,
   language,
+  plannerId: (flag("planner") ?? settings.planner) as "claude" | "codex",
   composerId: flag("composer") ?? settings.composer,
   quality: (flag("quality") ?? "high") as Quality,
   baselineOnly: has("baseline"),

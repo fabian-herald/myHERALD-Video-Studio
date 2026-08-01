@@ -1,7 +1,12 @@
 import assert from "node:assert/strict";
 import {test} from "node:test";
 import {readFileSync} from "node:fs";
-import {ALLOWED_BASH, composerHooks, permission} from "./claudeComposer.ts";
+import {
+  ALLOWED_BASH,
+  ALLOWED_COMPOSER_SKILLS,
+  composerHooks,
+  permission,
+} from "./claudeComposer.ts";
 
 const bash = (command: string) => permission("Bash", {command});
 
@@ -47,6 +52,19 @@ test("a tool outside the allow-list never reaches the model's hands", () => {
     assert.equal(permission(tool, {}).behavior, "deny", tool);
   }
   assert.equal(permission("Edit", {file_path: "styles.css"}).behavior, "allow");
+});
+
+test("the composer may read HyperFrames skills but no unrelated user skill", () => {
+  for (const skill of [
+    "hyperframes", "/hyperframes-core", "hyperframes-animation", "hyperframes-keyframes",
+    "hyperframes-creative", "hyperframes-cli", "hyperframes-registry", "media-use",
+  ]) {
+    assert.equal(ALLOWED_COMPOSER_SKILLS.test(skill), true, skill);
+    assert.equal(permission("Skill", {skill}).behavior, "allow", skill);
+  }
+  for (const skill of ["graphify", "youtube-summary", "general-video", "../hyperframes-core", ""]) {
+    assert.equal(permission("Skill", {skill}).behavior, "deny", skill);
+  }
 });
 
 test("the pattern cannot be satisfied by a lookalike command name", () => {
@@ -100,6 +118,20 @@ test("the hook still lets the one permitted command through", async () => {
   const gate = preToolUse("/w/authoring");
   assert.equal(await gate("Bash", {command: "npx hyperframes check . --json --strict"}), null);
   assert.equal(await gate("Bash", {command: "hyperframes snapshot . --at 3"}), null);
+});
+
+test("the Skill hook enforces the same HyperFrames-only boundary", async () => {
+  const gate = preToolUse("/w/authoring");
+  assert.equal(await gate("Skill", {skill: "hyperframes-core"}), null);
+  assert.equal(await gate("Skill", {skill: "/media-use"}), null);
+  assert.ok(await gate("Skill", {skill: "graphify"}));
+});
+
+test("registry installation remains outside the composer even when its skill is readable", async () => {
+  const gate = preToolUse("/w/authoring");
+  assert.equal(await gate("Skill", {skill: "hyperframes-registry"}), null);
+  assert.ok(await gate("Bash", {command: "hyperframes add data-chart"}));
+  assert.ok(await gate("Bash", {command: "npx hyperframes skills update general-video"}));
 });
 
 test("the hook and the callback cannot drift apart", async () => {

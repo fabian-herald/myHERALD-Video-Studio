@@ -14,7 +14,16 @@ import {CONTENT_LANGUAGES} from "./plan/language.ts";
 export const settingsZ = z.object({
   /** The default language new videos are written and narrated in. */
   contentLanguage: z.enum(CONTENT_LANGUAGES).default("en"),
+  /** The conversational studio agent. Both values refer to local subscription CLIs. */
+  agent: z.enum(["claude", "codex"]).default("claude"),
+  /** The one-shot strategy, script and VideoPlan generator. */
+  planner: z.enum(["claude", "codex"]).default("claude"),
   composer: z.enum(["claude", "codex"]).default("claude"),
+  marketingSkills: z.object({
+    adCreative: z.boolean().default(true),
+    social: z.boolean().default(true),
+    marketingPsychology: z.boolean().default(true),
+  }).default({adCreative: true, social: true, marketingPsychology: true}),
 });
 
 export type Settings = z.infer<typeof settingsZ>;

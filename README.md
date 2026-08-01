@@ -91,6 +91,13 @@ a separate choice**, set next to the Send button and remembered — so writing t
 agent in German does not quietly produce a German video, and asking in English for a
 German one works.
 
+**Settings** separates the three model roles: Studio assistant, Strategy & script, and
+Visual composer. Each can use Claude or Codex independently. The same screen controls
+three optional planning aids — Ad creative, Social and Marketing psychology — and each
+can be disabled without affecting the others. Routing is intent-aware: Ad creative is
+only used for performance ads, Social is kept out of performance ads, and the selected
+intent, narration profile, brand rules and approved facts always win.
+
 Threads are split on purpose. One studio thread for global work, one per video. Neither
 is the memory — that is `data/videos/index.json`, a structured ledger, because a long
 transcript gets compacted and loses exactly the detail that prevents a duplicate.
@@ -107,9 +114,10 @@ Requires Node 22+ for rendering (HyperFrames) and `ffmpeg`/`ffprobe` on PATH. If
 default `node` is older, set `HYPERFRAMES_NODE_PATH` — `/usr/local/bin/node` is probed
 automatically.
 
-The composer authenticates through your local `claude` CLI subscription — no API key.
-`--composer codex` uses the Codex CLI instead, on your ChatGPT subscription; it is
-usually not on `PATH`, so set `CODEX_CLI_PATH` in `.env.local` before selecting it.
+Claude roles authenticate through the local Claude subscription. Codex roles use the
+local ChatGPT/Codex subscription and refuse to run unless that login is present; OpenAI
+API keys are removed from Codex child processes and are never a fallback. The bundled
+ChatGPT CLI is detected automatically; `CODEX_CLI_PATH` is only needed for a custom install.
 
 ## Make a video
 
@@ -126,6 +134,7 @@ Options:
 | `--formats` | `9x16`, `4x5`, `1x1`, `16x9` (comma-separated) | the intent's own |
 | `--language` | `en`, `de`, `fr`, `es`, `it`, `nl`, `pt`, `pl` | the studio setting |
 | `--quality` | `draft`, `standard`, `high` | `high` |
+| `--planner` | `claude`, `codex` | the studio setting |
 | `--composer` | `claude`, `codex` | the studio setting |
 | `--baseline` | skip the model, use the deterministic fallback | off |
 
@@ -240,13 +249,14 @@ src/core/
   intents/     the four presets — tone, duration band, CTA policy, allowed formats
   tts/         provider interface, Gemini adapter, narration assembly, caption building
   compose/     CONTRACT.md, block primitives, the exemplar, the baseline fallback
-  gen/         composer interface, planner, Claude Agent SDK adapter
+  gen/         composer interface, planner, Claude and Codex subscription adapters
+  marketing/   intent-routed, independently switchable planning guidance
   render/      hyperframes CLI, the three-gate check, QC, contact sheet
   pipeline/    orchestration and the repair loop
   knowledge/   product facts, the numeric-claim gate, SSRF-safe research, figure extraction,
                the source library every read is filed into
   search/      provider interface, Brave and Exa adapters, the excerpt store
-  settings.ts  the two studio-wide preferences: content language, composer
+  settings.ts  content language, three model roles and creative-guidance switches
 data/
   brand/       kit.json, logos, generated tokens.css
   knowledge/   approved product facts, and the source library: every page ever read

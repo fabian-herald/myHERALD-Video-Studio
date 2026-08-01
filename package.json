@@ -15,7 +15,7 @@
     "tokens": "tsx scripts/tokens.ts",
     "build": "tsc --noEmit && vite build",
     "typecheck": "tsc --noEmit",
-    "test": "node --import tsx --test src/core/*.test.ts src/core/*/*.test.ts src/core/*/*/*.test.ts src/studio/*.test.ts",
+    "test": "node --import tsx --test src/core/*.test.ts src/core/*/*.test.ts src/core/*/*/*.test.ts src/server/*.test.ts src/studio/*.test.ts",
     "capture": "tsx scripts/capture.ts",
     "research": "tsx scripts/research.ts",
     "wordmark": "tsx scripts/wordmark.ts",

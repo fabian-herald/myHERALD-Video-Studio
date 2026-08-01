@@ -6,7 +6,7 @@ import {writeBaselineComposition} from "../compose/baseline.ts";
 import {FPS, prepareAuthoringDir, sectionSnapshotTimes} from "../compose/workdir.ts";
 import {composerFor, type ComposeResult} from "../gen/composer.ts";
 import {CostLedger, formatCost, type CostSummary} from "../cost.ts";
-import {planVideo} from "../gen/planner.ts";
+import {planVideo, type PlannerId} from "../gen/planner.ts";
 import {approvedStatements, readFacts} from "../knowledge/facts.ts";
 import {isCancellation, throwIfCancelled} from "../cancel.ts";
 import {factUsage, upsertLedgerEntry, similarTheses} from "../ledger.ts";
@@ -31,6 +31,8 @@ import {buildCaptions} from "../tts/captions.ts";
 import {measureRhythm} from "../plan/rhythm.ts";
 import {narrate} from "../tts/narrate.ts";
 import {hash} from "../util/exec.ts";
+import {readSettings} from "../settings.ts";
+import {marketingGuidanceFor} from "../marketing/guidance.ts";
 
 // Registering the adapters here is what keeps every seam swappable from one place.
 import "../gen/claudeComposer.ts";
@@ -45,6 +47,7 @@ export interface RunOptions {
   narrationProfile?: NarrationProfileId;
   formats: OutputFormat[];
   language: ContentLanguage;
+  plannerId: PlannerId;
   composerId: string;
   quality: Quality;
   /** Skip the model and use the deterministic fallback composition. */
@@ -68,6 +71,8 @@ export async function runPipeline(options: RunOptions): Promise<RunResult> {
   // Reject incompatible intent/profile combinations before planning or TTS.
   const narrationProfile = narrationProfileForIntent(options.intent, options.narrationProfile);
   const kit = await loadBrandKit();
+  const settings = await readSettings();
+  const marketingGuidance = marketingGuidanceFor(settings, options.intent, narrationProfile);
   const videoId = `${options.intent}-${hash({brief: options.brief, narrationProfile, at: Date.now()}, 6)}`;
   const dir = videoDir(videoId);
   await fs.mkdir(dir, {recursive: true});
@@ -119,11 +124,17 @@ export async function runPipeline(options: RunOptions): Promise<RunResult> {
         caption: item.caption,
         tags: item.tags,
       })),
+      plannerId: options.plannerId,
+      marketingGuidance,
     },
     log,
     options.signal,
   );
-  ledger.model(planned.model.split("-")[0] ?? "claude", "plan", planned.costUsd);
+  if (options.plannerId === "codex") {
+    ledger.free("codex", "plan", "covered by the local ChatGPT subscription");
+  } else {
+    ledger.model("claude", "plan", planned.costUsd);
+  }
   log(`plan          "${planned.plan.thesis}"`);
   log(`plan          ${planned.plan.sections.length} sections · ${planned.plan.sections.reduce((sum, section) => sum + section.phrases.length, 0)} phrases`);
   await savePlan(planned.plan, path.join(dir, "plan.draft.json"));
@@ -288,6 +299,8 @@ export async function runPipeline(options: RunOptions): Promise<RunResult> {
       createdAt: new Date().toISOString(),
       thesis: plan.thesis,
       intent: plan.intent,
+      planner: {provider: options.plannerId, model: planned.model},
+      marketingGuidance: marketingGuidance.ids,
       composer: {
         provider: usedBaseline ? "baseline" : composeResult?.provider ?? "unknown",
         model: composeResult?.model ?? "n/a",

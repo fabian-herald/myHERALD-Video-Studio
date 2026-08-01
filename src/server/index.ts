@@ -21,11 +21,15 @@ import {applyPlanEdits} from "../core/pipeline/apply.ts";
 import {createVideoThread, listThreads, loadThread, studioThread} from "../core/threads.ts";
 import {run} from "../core/util/exec.ts";
 import {runAgentTurn, recordTurn, type AgentEvent} from "./agent.ts";
+import {handleCodexMcp} from "./codexMcp.ts";
+import {codexSubscriptionStatus} from "../core/gen/codexCli.ts";
 import {z} from "zod";
 
 const PORT = Number(process.env.STUDIO_API_PORT ?? 5174);
 /** An env override still wins, so a one-off run can pin the composer without editing state. */
 const COMPOSER_OVERRIDE = process.env.STUDIO_COMPOSER;
+const AGENT_OVERRIDE = process.env.STUDIO_AGENT;
+const PLANNER_OVERRIDE = process.env.STUDIO_PLANNER;
 
 /** Files the browser may read. Everything else is off limits. */
 const SERVABLE = [OUT_DIR, path.join(ROOT, "data", "brand")];
@@ -45,6 +49,12 @@ async function route(request: http.IncomingMessage, response: http.ServerRespons
   const method = request.method ?? "GET";
 
   if (method === "OPTIONS") return json(response, 204, {});
+
+  // The Codex CLI receives a short-lived bearer token for exactly this turn. This route
+  // must run before any generic body parser because the MCP transport owns the stream.
+  if (pathname === "/api/internal/codex-mcp") {
+    return handleCodexMcp(request, response);
+  }
 
   // — threads —————————————————————————————————————————————
   if (pathname === "/api/threads" && method === "GET") {
@@ -195,6 +205,18 @@ async function route(request: http.IncomingMessage, response: http.ServerRespons
     return json(response, 200, await writeSettings(settings));
   }
 
+  if (pathname === "/api/providers" && method === "GET") {
+    const codex = await codexSubscriptionStatus();
+    return json(response, 200, {
+      claude: {available: true, label: "Claude subscription"},
+      codex: {
+        available: codex.available,
+        label: "Codex subscription",
+        ...(codex.reason ? {reason: codex.reason} : {}),
+      },
+    });
+  }
+
   if (pathname === "/api/research" && method === "POST") {
     const body = await readJson(request, z.object({urls: z.array(z.string()).min(1).max(6)}));
     const result = await researchSite(body.urls);
@@ -336,10 +358,14 @@ async function streamTurn(request: http.IncomingMessage, response: http.ServerRe
   response.on("close", () => controller.abort());
 
   const collected: AgentEvent[] = [];
+  const settings = await readSettings();
   for await (const event of runAgentTurn({
     thread,
     prompt: body.text,
-    composerId: COMPOSER_OVERRIDE ?? (await readSettings()).composer,
+    agentId: (AGENT_OVERRIDE ?? settings.agent) as "claude" | "codex",
+    plannerId: (PLANNER_OVERRIDE ?? settings.planner) as "claude" | "codex",
+    composerId: COMPOSER_OVERRIDE ?? settings.composer,
+    codexMcpUrl: `http://127.0.0.1:${PORT}/api/internal/codex-mcp`,
     signal: controller.signal,
   })) {
     collected.push(event);
@@ -415,6 +441,8 @@ server.listen(PORT, "127.0.0.1", async () => {
   const settings = await readSettings();
   console.log(
     `studio api    http://127.0.0.1:${PORT}`
+    + `  ·  agent ${AGENT_OVERRIDE ?? settings.agent}`
+    + `  ·  planner ${PLANNER_OVERRIDE ?? settings.planner}`
     + `  ·  composer ${COMPOSER_OVERRIDE ?? settings.composer}`
     + `  ·  content ${languageName(settings.contentLanguage)}`,
   );
