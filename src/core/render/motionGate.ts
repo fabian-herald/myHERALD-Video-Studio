@@ -14,11 +14,12 @@ import {run} from "../util/exec.ts";
 import {renderSnapshots} from "./hyperframes.ts";
 
 /**
- * Peak-signal-to-noise ratio, in dB, at or above which half a second of the composition
+ * Peak-signal-to-noise ratio, in dB, at or above which the sampled part of a long hold
  * counts as standing still.
  *
- * Calibrated against every composition in `data/videos`, comparing two frames 500ms apart
- * at the middle of each still window:
+ * Calibrated against every composition in `data/videos`. The original calibration used
+ * frames 500ms apart; the current wider pair preserves the same conservative boundary for
+ * detecting an unchanged state while allowing a discrete visual beat between samples:
  *
  * | composition | QC verdict | highest reading |
  * |---|---|---|
@@ -37,7 +38,8 @@ import {renderSnapshots} from "./hyperframes.ts";
  * A derived threshold was tried first and was simply wrong. `freezedetect=n=0.001` reads
  * as 52–53dB between *consecutive* frames, not the 60dB the filter's documented noise
  * figure suggests, and consecutive frames are far too noisy to sample at all — the encoder's
- * own floor sits on top of any real motion. Half a second apart is where the two separate.
+ * own floor sits on top of any real motion. The wider current sample is intentionally about
+ * visual state change, not continuous per-frame motion.
  */
 export const FROZEN_PSNR_DB = 38;
 
@@ -61,15 +63,15 @@ export interface MotionSample {
 }
 
 /**
- * Does anything actually move where the caption layer has gone quiet?
+ * Does the picture meaningfully evolve where the caption layer has gone quiet?
  *
  * The composition is checked here rather than the finished file because by the time QC
  * runs, the render has been paid for. `checkComposition`'s other gates read the source;
  * this one has to look at pixels, since the defect is precisely that markup which passes
  * every structural rule can still paint the same frame for two seconds.
  *
- * Sound, not complete: two frames half a second apart cannot prove a scene never stalls,
- * only that this stretch of it did. The post-render freeze check stays where it is.
+ * Sound, not complete: two sampled frames cannot prove a scene never stalls, only that this
+ * stretch of it evolved. The post-render freeze check stays where it is.
  */
 export async function sampleMotion(options: {
   dir: string;
@@ -159,10 +161,10 @@ export function describeFrozen({window, psnrDb, frames}: FrozenWindow): string {
   const reading = psnrDb === Number.POSITIVE_INFINITY
     ? "the two frames are pixel-identical"
     : `they differ by ${psnrDb.toFixed(1)}dB PSNR, where a moving scene reads under 33`;
-  return `scene-${window.sectionId} holds still ${describeWindow(window)}. Two frames `
+  return `scene-${window.sectionId} does not visibly evolve ${describeWindow(window)}. Two frames `
     + `${SAMPLE_SPACING_MS / 1000}s apart in the middle of it were compared and ${reading}. `
-    + `Look at ${path.basename(frames[0])} and ${path.basename(frames[1])}: whatever you `
-    + "animated there is too small to register. The measure averages change across the whole "
-    + "frame, so it rewards area — a field, a card, a mask, a counter — not a hairline, "
-    + "however far it travels.";
+    + `Look at ${path.basename(frames[0])} and ${path.basename(frames[1])}. Add one meaningful `
+    + "visual beat inside this span, such as a reveal, count, comparison, connection, progress "
+    + "step or transition. It may hold after that beat. Do not add perpetual drift merely to "
+    + "satisfy the check; the change should communicate something and affect meaningful area.";
 }

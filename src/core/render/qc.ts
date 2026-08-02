@@ -42,7 +42,7 @@ export async function runQc(options: {
   const audio = probe.streams.filter((stream) => stream.codec_type === "audio");
   const durationSeconds = Number(probe.format.duration);
 
-  const freeze = await filterLog(videoPath, "freezedetect=n=0.001:d=1.5");
+  const freeze = await filterLog(videoPath, "freezedetect=n=0.001:d=2.5");
   const black = await filterLog(videoPath, "blackdetect=d=0.15:pix_th=0.05");
   const loudness = await filterLog(videoPath, null, ["-af", "ebur128=peak=true"]);
 
@@ -143,9 +143,9 @@ export async function writeQc(report: QcReport, target: string) {
  */
 const COMPOSER_FIXABLE: Record<string, string> = {
   noLongFreeze:
-    "The rendered video holds a completely static frame for over 1.5 seconds. Give every "
-    + "scene continuous motion after its entrance, and make sure one element animates "
-    + "across the full duration.",
+    "The rendered video holds a completely static frame for over 2.5 seconds. Add a "
+    + "meaningful visual beat inside that span, then hold the resolved state. Do not add "
+    + "perpetual drift solely to satisfy the check.",
   noBlackSection:
     "The rendered video goes fully black for a stretch. A scene is leaving before the next "
     + "one arrives — overlap the transition instead of cutting to nothing.",

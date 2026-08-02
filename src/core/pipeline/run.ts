@@ -3,7 +3,7 @@ import path from "node:path";
 import {loadBrandKit} from "../brand/kit.ts";
 import {renderTokensCss} from "../brand/tokens.ts";
 import {writeBaselineComposition} from "../compose/baseline.ts";
-import {FPS, prepareAuthoringDir, sectionSnapshotTimes} from "../compose/workdir.ts";
+import {FPS, prepareAuthoringDir, sectionReviewTimes, sectionSnapshotTimes} from "../compose/workdir.ts";
 import {
   COMPOSITION_FILES,
   composerFor,
@@ -454,11 +454,11 @@ export async function composeWithRepair(options: {
           const frames = await renderSnapshots({
             dir: authoring.dir,
             durationSeconds: authoring.durationSeconds,
-            at: sectionSnapshotTimes(plan),
+            at: sectionReviewTimes(plan),
             outputDir: path.join(evidenceDir, "frames"),
             onLog: (line) => log(`  snapshots    ${line}`),
           });
-          const expected = plan.sections.filter((section) => section.durationMs > 0).length;
+          const expected = plan.sections.filter((section) => section.durationMs > 0).length * 2;
           if (frames.length !== expected) {
             throw new Error(
               `Visual review produced ${frames.length} section frame(s); expected ${expected}.`,

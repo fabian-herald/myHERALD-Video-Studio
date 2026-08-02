@@ -60,7 +60,7 @@ test("the thresholds sit under the bar the finished file is measured against", (
   // post-render check. A threshold at or above the freeze bar would only ever report a
   // window that had already failed QC, which is the situation this replaces.
   assert.ok(STILL_GAP_MS < FREEZE_BAR_MS, "the gap threshold does not warn before the freeze check");
-  assert.equal(FREEZE_BAR_MS, 1500, "the freeze bar drifted from qc.ts's freezedetect d=1.5");
+  assert.equal(FREEZE_BAR_MS, 2500, "the freeze bar drifted from qc.ts's freezedetect d=2.5");
 });
 
 test("a short gap between phrases is not a still window", () => {
@@ -88,7 +88,7 @@ test("a long gap between phrases is a still window", () => {
       durationMs: 6000,
       phrases: [
         {text: "One.", startMs: 0, durationMs: 1000},
-        {text: "Two.", startMs: 3000, durationMs: 3000},
+        {text: "Two.", startMs: 3500, durationMs: 2500},
       ],
     },
     {id: "b", startMs: 6000, durationMs: 1000, phrases: []},
@@ -97,7 +97,7 @@ test("a long gap between phrases is a still window", () => {
   assert.equal(gaps.length, 1);
   assert.deepEqual(
     {from: gaps[0]?.fromMs, to: gaps[0]?.toMs, section: gaps[0]?.sectionId},
-    {from: 1000, to: 3000, section: "a"},
+    {from: 1000, to: 3500, section: "a"},
   );
 });
 
@@ -246,14 +246,14 @@ test("worst windows come back in the plan's own section order", () => {
   assert.deepEqual(worstStillWindows(plan).map((window) => window.sectionId), ["a", "b", "c"]);
 });
 
-test("the brief line names the filter the finished file is judged by", () => {
-  // "Keep it alive" has been in the contract for months and produced hairline drifts that
-  // changed too few pixels to register. The composer optimises against what it is told the
-  // measure is, so the measure goes in.
+test("the brief asks for a meaningful beat, not perpetual drift", () => {
   const line = stillBriefLine({sectionId: "a", fromMs: 0, toMs: 3800, kind: "page", text: "Held."});
-  assert.match(line, /freezedetect=n=0\.001:d=1\.5/);
+  assert.match(line, /freezedetect=n=0\.001:d=2\.5/);
   assert.match(line, /whole/i, "the line does not say the measure is whole-frame");
   assert.match(line, /area/i, "the line does not say what registers");
+  assert.match(line, /reveal, count, compare/i);
+  assert.match(line, /may hold/i);
+  assert.doesNotMatch(line, /sustained motion/i);
 });
 
 test("a window is described with both ends and its length", () => {

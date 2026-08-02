@@ -66,6 +66,17 @@ function buildScene(section: PlanSection, index: number, plan: VideoPlan, kit: B
   const number = String(index + 1).padStart(2, "0");
   const copy = section.onScreen.trim() || section.phrases[0]?.text || "";
   const spoken = section.phrases.map((phrase) => phrase.text).join(" ");
+  const isEndCard = section.kind === "cta" || section.kind === "outro";
+  const endCardLockup = logoId(kit, "lockup", "light") ?? logoId(kit, "wordmark", "light");
+  const endCard = isEndCard
+    ? `<div class="cta-lockup end-card">`
+      + (endCardLockup
+        ? `<img class="cta-wordmark" src="./media/logo-${endCardLockup}.png" alt="${escape(kit.name)}" />`
+        : "")
+      + `<p class="outro-context">${escape(section.kind === "cta" && plan.cta ? plan.cta.label : kit.tagline)}</p>`
+      + `<div class="cta-url">${escape(section.kind === "cta" && plan.cta ? plan.cta.url : kit.website)}`
+      + `${section.kind === "cta" ? " <b>&#8599;</b>" : ""}</div></div>`
+    : "";
 
   const slot = section.slot
     ? `<div class="presenter-slot style-${section.slot.style} baseline-slot" data-placeholder-label="PRESENTER — ${seconds(section.durationMs)}s"></div>`
@@ -87,11 +98,7 @@ function buildScene(section: PlanSection, index: number, plan: VideoPlan, kit: B
         </div>`,
     field: `
         <div class="scene-body body-field">
-          ${displayCopy(copy, kit, "light")}
-          ${section.kind === "cta" && plan.cta
-            ? `<div class="cta-lockup"><img class="cta-wordmark" src="./media/logo-${logoId(kit, "lockup", "light") ?? logoId(kit, "wordmark", "light")}.png" alt="${escape(kit.name)}" />`
-              + `<div class="cta-url">${escape(plan.cta.url)} <b>&#8599;</b></div></div>`
-            : ""}
+          ${isEndCard ? endCard : displayCopy(copy, kit, "light")}
           ${slot}
         </div>`,
     split: `
@@ -133,8 +140,7 @@ const truncate = (value: string, max: number) =>
 function buildHtml(authoring: AuthoringDir, plan: VideoPlan, kit: BrandKit): string {
   const duration = authoring.durationSeconds;
   const scenes = plan.sections.map((section, index) => buildScene(section, index, plan, kit)).join("\n");
-  const sealId = logoId(kit, "seal", "dark") ?? "badge";
-  const darkWordmarkId = logoId(kit, "wordmark", "dark") ?? sealId;
+  const darkLockupId = logoId(kit, "lockup", "dark") ?? logoId(kit, "wordmark", "dark") ?? "badge";
 
   return `<!doctype html>
 <html lang="${plan.language}">
@@ -153,6 +159,7 @@ ${BLOCK_FILES.map((block) => `  <link rel="stylesheet" href="./blocks/${block}" 
     data-duration="${duration}"
     data-width="${authoring.width}"
     data-height="${authoring.height}"
+    data-format="${authoring.family === "landscape" ? "16x9" : "9x16"}"
     data-fps="${FPS}"
     style="--stage-w: ${authoring.width}px; --stage-h: ${authoring.height}px;"
   >
@@ -162,10 +169,8 @@ ${BLOCK_FILES.map((block) => `  <link rel="stylesheet" href="./blocks/${block}" 
     </div>
 
     <header id="brand-rail" class="brand-rail clip" data-start="0" data-duration="${duration}" data-track-index="80">
-      <div class="brand-seal"><img src="./media/logo-${sealId}.png" alt="" /></div>
-      <img class="rail-wordmark" src="./media/logo-${darkWordmarkId}.png" alt="${escape(kit.name)}" />
+      <img class="rail-lockup" src="./media/logo-${darkLockupId}.png" alt="${escape(kit.name)}" />
       <div class="rail-rule"></div>
-      <small>${escape(kit.tagline.toUpperCase())}</small>
     </header>
 ${scenes}
 
@@ -188,8 +193,8 @@ function buildAnimation(authoring: AuthoringDir, plan: VideoPlan, kit: BrandKit)
     archetype: archetypeFor(section, index),
     light: archetypeFor(section, index) === "field",
   }));
-  const darkWordmark = logoId(kit, "wordmark", "dark");
-  const lightWordmark = logoId(kit, "wordmark", "light") ?? darkWordmark;
+  const darkLockup = logoId(kit, "lockup", "dark") ?? logoId(kit, "wordmark", "dark");
+  const lightLockup = logoId(kit, "lockup", "light") ?? logoId(kit, "wordmark", "light") ?? darkLockup;
 
   return `(() => {
   const gsap = window.gsap;
@@ -201,7 +206,6 @@ function buildAnimation(authoring: AuthoringDir, plan: VideoPlan, kit: BrandKit)
 
   // Timings are read from the DOM, never hardcoded, so editing copy or pacing in the
   // plan shifts the picture with the narration instead of desynchronising it.
-  const total = parseFloat(stage.dataset.duration);
   const scenes = ${JSON.stringify(entries, null, 2)}
     .map((scene) => {
       const element = document.querySelector(scene.selector);
@@ -210,11 +214,8 @@ function buildAnimation(authoring: AuthoringDir, plan: VideoPlan, kit: BrandKit)
     });
 
   timeline.set(scenes.map((scene) => scene.selector), {autoAlpha: 0});
-  timeline.set(".spine-line", {scaleY: 0, transformOrigin: "top"});
-  timeline.to(".spine-line", {scaleY: 1, duration: total, ease: "none"}, 0);
-  // Canvas height comes from the root too, so the node travels the right distance
-  // in every format this composition is re-emitted at.
-  timeline.to(".spine-node", {y: parseFloat(stage.dataset.height), duration: total, ease: "none"}, 0);
+  timeline.set(".spine-line", {scaleY: 1, transformOrigin: "top"});
+  timeline.set(".spine-node", {autoAlpha: 0});
 
   // Entrance direction varies per archetype so the motion is not one gesture repeated.
   const enter = {
@@ -227,9 +228,9 @@ function buildAnimation(authoring: AuthoringDir, plan: VideoPlan, kit: BrandKit)
   for (const scene of scenes) {
     const motion = enter[scene.archetype] || enter.display;
     timeline.set("#brand-rail", {className: scene.light ? "brand-rail clip on-light" : "brand-rail clip"}, scene.at);
-    timeline.set(".rail-wordmark", {attr: {src: scene.light
-      ? "./media/logo-${lightWordmark}.png"
-      : "./media/logo-${darkWordmark}.png"}}, scene.at);
+    timeline.set(".rail-lockup", {attr: {src: scene.light
+      ? "./media/logo-${lightLockup}.png"
+      : "./media/logo-${darkLockup}.png"}}, scene.at);
     timeline.set(scene.selector, {autoAlpha: 1}, scene.at);
     if (scene.archetype === "field") {
       timeline.fromTo(scene.selector + " .accent-field",
@@ -249,14 +250,8 @@ function buildAnimation(authoring: AuthoringDir, plan: VideoPlan, kit: BrandKit)
       {autoAlpha: 1, scaleX: 1, duration: 0.4, ease: "power2.out"},
       scene.at + 0.22);
 
-    // A slow drift for the whole time the scene is on screen. Without it a scene is
-    // literally a still frame between caption changes, which reads as a stall and
-    // trips freeze detection on the finished file.
-    const hold = Math.max(0.6, scene.out - scene.at - 0.6);
-    timeline.fromTo(scene.selector + " .scene-body",
-      {y: 0, scale: 1},
-      {y: -14, scale: 1.012, duration: hold, ease: "none"},
-      scene.at + 0.5);
+    // The diagnostic baseline stays readable instead of drifting forever. Its staged
+    // entrances and caption changes provide discrete visual beats; resolved type holds.
 
     timeline.to(scene.selector, {autoAlpha: 0, duration: 0.24, ease: "power2.in"}, scene.out - 0.24);
   }

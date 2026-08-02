@@ -36,14 +36,14 @@ export function visualReviewRequest(
   imagePaths: readonly string[],
 ): VisualReviewRequest {
   const listed = imagePaths.map((file, index) =>
-    `- ${index === 0 ? "Contact sheet" : `Section frame ${index}`}: ${file}`).join("\n");
+    `- ${index === 0 ? "Contact sheet" : `Temporal frame ${index}`}: ${file}`).join("\n");
 
   return {
     imagePaths,
     prompt: [
       `Review the rendered ${authoring.width}x${authoring.height} composition visually.`,
-      "The first image is a contact sheet; the remaining images are one representative frame",
-      "per section, in the same order as BRIEF.md. Inspect every image before deciding.",
+      "The first image is a contact sheet; the remaining images are early/late temporal pairs",
+      "for each section, in the same order as BRIEF.md. Inspect every image and compare every pair.",
       "When your runtime exposes images as local files, use Read on the exact paths below.",
       "When it supports image attachments, the same files are attached as image inputs.",
       "",
@@ -51,12 +51,25 @@ export function visualReviewRequest(
       "",
       "Judge every section against the same rubric:",
       "- intentional visual hierarchy and a clear focal point",
-      "- purposeful use of the complete canvas, including deliberate negative space",
+      "- purposeful use of the complete canvas; a small island in a mostly empty portrait frame",
+      "  is under-composed, not deliberate negative space",
       "- balanced placement, alignment and scale for this exact aspect ratio",
       "- no clipped, cropped, overlapping or off-canvas elements; respect safe areas",
       "- readable secondary type and sufficient contrast behind the caption band",
+      "- visible breathing room above captions: labels, rules, nodes and high-contrast marks",
+      "  may not crowd the caption band even when they do not technically overlap it",
       "- distinct scene archetypes, not repeated centred layouts with swapped copy",
       "- coherent visual rhythm and no isolated decorative elements without a role",
+      "- every prominent line, connector, node or dot either anchors the composition or",
+      "  communicates a labelled relationship; reject unexplained pseudo-diagrams",
+      "- data graphics are geometrically truthful: percentages and shares occupy their stated",
+      "  proportion (25% is one quarter of its scale, never a full 100% bar)",
+      "- meaningful visual development between each early/late pair; reject perpetual drifting,",
+      "  floating, bobbing or rotation that communicates no state change or relationship",
+      "- the persistent top-left identity and brand-signature/CTA outro use a supplied full",
+      "  lockup image, not reconstructed seal plus wordmark and not the wordmark alone",
+      "- a silent non-promotional outro also gives readable brand context and website, stages",
+      "  them in, and leaves the resolved card visible long enough to register before looping",
       "",
       "If any frame is materially weak, edit only index.html, styles.css and animation.js",
       "with the smallest coherent visual/layout/motion correction. Do not change narration,",

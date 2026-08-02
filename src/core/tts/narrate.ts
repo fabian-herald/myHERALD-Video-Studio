@@ -4,7 +4,7 @@ import {
   NARRATION_END_HOLD_MS, retimeFromTake, retimePlan, SILENT_SECTION_MIN_MS,
   type MeasuredPhrase, type PlacedPhrase,
 } from "../plan/retime.ts";
-import {allPhrases, type NarrationProfileId, type VideoPlan} from "../plan/schema.ts";
+import {allPhrases, planDurationMs, type NarrationProfileId, type VideoPlan} from "../plan/schema.ts";
 import {alignPhrases, verifyAlignment} from "./align.ts";
 import {arcDirection, deliveryFor} from "./energy.ts";
 import {fadedOut, measureFade, MAX_FADE_DB} from "./level.ts";
@@ -364,11 +364,12 @@ async function narrateAsTake(
     (end, phrase) => Math.max(end, phrase.startMs + phrase.durationMs),
     0,
   );
+  const minimumTimelineMs = planDurationMs(retimeFromTake(plan, placed));
   const durationSeconds = await masterNarration(
     sourcePath,
     masterPath,
     1,
-    speechEndMs + NARRATION_END_HOLD_MS,
+    Math.max(speechEndMs + NARRATION_END_HOLD_MS, minimumTimelineMs),
   );
   const durationMs = Math.round(durationSeconds * 1000);
   onLog(
@@ -577,7 +578,7 @@ async function narrateAsClips(
   await assembleNarration(segments, rawPath);
 
   const masterPath = path.join(workDir, `narration-${AUDIO_MASTERING_VERSION}.m4a`);
-  const durationSeconds = await masterNarration(rawPath, masterPath);
+  const durationSeconds = await masterNarration(rawPath, masterPath, 1, planDurationMs(retimed));
 
   return {
     plan: retimed,

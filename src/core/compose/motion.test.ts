@@ -52,16 +52,11 @@ test("every energy in the table reaches the brief", () => {
   }
 });
 
-test("quiet is never described to the composer as holding still", () => {
-  // The regression this file exists for. The hand-written table told the composer that
-  // quiet meant "long holds" — a composition did exactly that and failed the post-render
-  // freeze check, ENERGY_MOTION was corrected, and the prose in the brief was not. It
-  // stayed wrong because it was a second copy. Generating it is what makes this hold.
+test("quiet uses readable holds without asking for perpetual motion", () => {
   for (const intent of Object.keys(INTENT_PRESETS) as Intent[]) {
     const brief = motionBrief(kit, intent);
-    for (const phrase of ["long hold", "hold still", "no motion"]) {
-      assert.ok(!brief.toLowerCase().includes(phrase), `${intent} brief still says "${phrase}"`);
-    }
+    assert.match(brief, /hold still long enough to read/i);
+    assert.doesNotMatch(brief, /continuous drift|never still|keep moving/i);
   }
 });
 
@@ -78,18 +73,23 @@ test("the simultaneous cap is a delta on the kit, not a second source of truth",
 
 
 
-test("the brief puts no number on sustained motion", () => {
-  // Load-bearing absence. Three renders of one plan specified it — as a total, then as a
-  // rate — and both moved LESS than saying nothing (median 0.058 → 0.033 → 0.045) while
-  // failing the freeze check the specification was meant to satisfy. §6 asks for "at
-  // least one sustained motion" and the post-render check enforces it; a figure in
-  // between displaces the composer's judgement and it optimises to the figure.
+test("the brief asks for staged visual development rather than perpetual drift", () => {
   for (const intent of Object.keys(INTENT_PRESETS) as Intent[]) {
     const brief = motionBrief(kit, intent);
-    const sustainedSection = brief.slice(brief.indexOf("sustained motion of §6"));
-    assert.ok(!/\d+(\.\d+)?%/.test(sustainedSection),
-      `${intent}: a sustained-motion figure is back in the brief — see the table in intents/index.ts`);
+    assert.match(brief, /meaningful staged beats/);
+    assert.match(brief, /No element is required to remain in motion/);
+    assert.match(brief, /After the beat resolves, the scene may hold/);
+    assert.doesNotMatch(brief, /sustained motion|card that drifts/i);
   }
+});
+
+test("thought leadership ends with context, not a promotional call to action", () => {
+  const guidance = INTENT_PRESETS["thought-leadership"].guidance;
+  assert.match(guidance, /No spoken or promotional call to action/);
+  assert.match(guidance, /canonical brand lockup/);
+  assert.match(guidance, /brand tagline/);
+  assert.match(guidance, /website/);
+  assert.match(guidance, /buy, try, follow, subscribe, or click/);
 });
 
 test("the area rule never appears without the rule that bounds it", () => {
@@ -99,7 +99,7 @@ test("the area rule never appears without the rule that bounds it", () => {
   // against two in the run before the area wording existed. Whoever edits one half has to
   // see the other.
   const contract = readFileSync(new URL("./CONTRACT.md", import.meta.url), "utf8");
-  const areaAt = contract.indexOf("What moves has to have area");
+  const areaAt = contract.indexOf("A meaningful visual beat has to have area");
   assert.ok(areaAt > 0, "the area rule is gone from the contract");
   const boundedAt = contract.indexOf("behind the type", areaAt);
   assert.ok(boundedAt > areaAt && boundedAt - areaAt < 1200,

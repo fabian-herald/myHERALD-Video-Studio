@@ -2,24 +2,24 @@ import {buildCaptions} from "../tts/captions.ts";
 import type {VideoPlan} from "../plan/schema.ts";
 
 /**
- * The bar the finished file is measured against: `freezedetect=n=0.001:d=1.5` in
+ * The bar the finished file is measured against: `freezedetect=n=0.001:d=2.5` in
  * `render/qc.ts`. Everything below is calibrated to sit just inside it, so the composer
  * is warned before the check fires rather than after.
  */
-export const FREEZE_BAR_MS = 1500;
+export const FREEZE_BAR_MS = 2500;
 
 /**
  * No caption on screen at all. 300ms under the freeze bar deliberately: a window that
  * only just clears this threshold is one where a small overrun becomes a real freeze.
  */
-export const STILL_GAP_MS = 1200;
+export const STILL_GAP_MS = 2200;
 
 /**
  * The same caption page held. Longer than the gap threshold because a page is itself an
  * arrival — it appeared, which changed the picture — so the genuinely static stretch
  * starts a beat after `fromMs`.
  */
-export const STILL_PAGE_MS = 1600;
+export const STILL_PAGE_MS = 2300;
 
 export interface StillWindow {
   sectionId: string;
@@ -92,9 +92,8 @@ export function stillWindows(plan: VideoPlan): StillWindow[] {
  * clears the threshold on its own. Handing the composer all of them says "the whole video"
  * in thirty lines, and sampling all of them costs sixty-odd headless frames per attempt.
  *
- * One per section is the useful unit for both. The rule being enforced is per-scene —
- * §6 asks for one sustained motion for as long as a scene is on screen — so a scene that
- * survives its own worst stretch survives the rest, and every scene is covered exactly once.
+ * One per section is the useful unit for the generated brief. The rule is per-scene: long
+ * stretches need a meaningful visual beat, not a continuously moving object.
  */
 export function worstStillWindows(plan: VideoPlan): StillWindow[] {
   const worst = new Map<string, StillWindow>();
@@ -108,8 +107,8 @@ export function worstStillWindows(plan: VideoPlan): StillWindow[] {
 }
 
 /**
- * How far apart the two sampled frames sit. Half a second, straddling the middle of the
- * window — not its ends.
+ * How far apart the two sampled frames sit. A meaningful state change may happen between
+ * them; an object does not have to keep moving for the whole interval.
  *
  * Both halves of that were settled by measurement, not taste. Sampling the *ends* of a
  * window catches the outgoing and incoming caption pages, so a frozen scene reads as a
@@ -118,7 +117,7 @@ export function worstStillWindows(plan: VideoPlan): StillWindow[] {
  * freezes fell to 27dB, indistinguishable from clean ones). A short span about the middle
  * sees only what the composition itself is doing.
  */
-export const SAMPLE_SPACING_MS = 500;
+export const SAMPLE_SPACING_MS = 1600;
 
 /** Below this a window cannot hold the pair clear of its own edges. */
 export const MIN_SAMPLED_WINDOW_MS = SAMPLE_SPACING_MS + 400;
@@ -146,9 +145,12 @@ export function describeWindow(window: StillWindow): string {
  * too few pixels to register, so the number it is actually judged against goes in.
  */
 export function stillBriefLine(window: StillWindow): string {
-  return `- **caption layer holds still ${describeWindow(window)}** — for that stretch nothing `
-    + "but your own sustained motion changes the picture. It is measured on the finished file "
+  return `- **caption layer holds still ${describeWindow(window)}** — the scene does not need `
+    + "continuous motion, and readable elements may hold. But this whole span may not remain "
+    + "one unchanged picture. Schedule a meaningful visual beat within it: reveal, count, "
+    + "compare, connect, progress or transition, then hold the resolved state. It is measured "
+    + "on the finished file "
     + `with \`freezedetect=n=0.001:d=${FREEZE_BAR_MS / 1000}\`, which averages the change across `
-    + "the *whole* frame: a hairline moving across the canvas is far too few pixels to count. "
-    + "Move something with area.";
+    + "the *whole* frame, so the visual beat must affect meaningful area rather than only a "
+    + "hairline or a tiny decorative mark.";
 }

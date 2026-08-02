@@ -41,9 +41,12 @@ body {
   --gutter: calc(var(--spine-x) + var(--spine-lane));
   --rail-top: calc(var(--stage-h) * 0.032);
   --scene-top: calc(var(--stage-h) * 0.095);
-  /* Reserved for captions. Sized for a three-line page, which is the worst case. */
-  --caption-band: calc(var(--stage-h) * 0.30);
+  /* Captions begin around 72% in portrait. The extra clear strip prevents near-overlaps. */
+  --caption-band: calc(var(--stage-h) * 0.33);
 }
+
+/* Landscape captions sit lower, so it can retain more usable vertical space. */
+#stage[data-format="16x9"] { --caption-band: calc(var(--stage-h) * 0.25); }
 
 /* Every timed element carries class="clip" — the runtime drives visibility from it. */
 .clip { position: absolute; }

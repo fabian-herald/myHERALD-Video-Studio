@@ -145,13 +145,11 @@ export function defaultCurve(count: number): Energy[] {
  * duration and stagger. Same curve as the voice, so picture and narration move together
  * instead of the voice lifting over a picture that does not.
  *
- * Note what `quiet` does *not* say: hold. An earlier version of this table asked for
- * "longer holds", which contradicts the contract's rule that nothing sits still for more
- * than a second, and a composition duly failed the post-render freeze check for doing
- * exactly what it was told. Quiet means slower continuous movement, never stillness.
+ * Quiet may include deliberate readable holds. The scene still needs visual development
+ * over time, but that comes from staged reveals or state changes rather than perpetual drift.
  */
 export const ENERGY_MOTION: Record<Energy, {pace: number; note: string}> = {
-  quiet: {pace: 1.35, note: "slower entrances and one slow continuous drift, fewer things moving at once but never nothing"},
+  quiet: {pace: 1.35, note: "slower entrances, deliberate readable holds, and one later meaningful visual beat"},
   settled: {pace: 1, note: "the brand's default pace"},
   lift: {pace: 0.8, note: "quicker entrances, tighter stagger, upward direction of travel"},
   edge: {pace: 0.66, note: "fast and flat, little easing, cuts rather than glides"},

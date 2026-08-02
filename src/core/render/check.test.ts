@@ -3,7 +3,14 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import {test} from "node:test";
-import {checkBannedWords, checkCanvasLiterals, checkWordmark} from "./check.ts";
+import {
+  checkBannedWords,
+  checkCanonicalBrandLockups,
+  checkCanvasLiterals,
+  checkDataBarProportions,
+  checkPerpetualMotionSource,
+  checkWordmark,
+} from "./check.ts";
 import type {VideoPlan} from "../plan/schema.ts";
 
 const plan = (formats: string[]) => ({formats} as unknown as VideoPlan);
@@ -17,6 +24,25 @@ async function withAnimation(source: string, run: (dir: string) => Promise<void>
     await fs.rm(dir, {recursive: true, force: true});
   }
 }
+
+test("a global full-runtime spatial tween is rejected", async () => {
+  await withAnimation(
+    'timeline.to(".spine-node", {y: HEIGHT, duration: TOTAL, ease: "none"}, 0);',
+    async (dir) => {
+      const findings = await checkPerpetualMotionSource(dir);
+      assert.equal(findings.length, 1);
+      assert.equal(findings[0]?.code, "perpetual_motion");
+      assert.match(findings[0]?.fixHint ?? "", /scene-local meaningful visual beats/);
+    },
+  );
+});
+
+test("scene-local state changes and static accents pass the perpetual-motion check", async () => {
+  await withAnimation(
+    'timeline.to(".card", {scale: 1.04, duration: .4}, at("#scene-proof") + 2.1);',
+    async (dir) => assert.deepEqual(await checkPerpetualMotionSource(dir), []),
+  );
+});
 
 test("a hardcoded canvas height is caught when the family serves several formats", async () => {
   await withAnimation(
@@ -187,5 +213,117 @@ test("with no wordmark in the kit there is nothing to enforce", async () => {
     "<html><body><p>myHERALD</p></body></html>",
     async (dir) => assert.deepEqual(
       await checkWordmark(dir, {...branded, logos: []} as unknown as import("../brand/kit.ts").BrandKit), []),
+  );
+});
+
+test("the rail and silent signature use the supplied full lockup", async () => {
+  const kit = {
+    ...branded,
+    logos: [
+      ...branded.logos,
+      {id: "lockup-light", role: "lockup", theme: "light", file: "logos/lockup-light.png", safeAreaPct: 0.25, label: ""},
+    ],
+  } as unknown as import("../brand/kit.ts").BrandKit;
+  const signaturePlan = {
+    sections: [{id: "brand-signature", kind: "outro", startMs: 0, durationMs: 1600, phrases: []}],
+  } as unknown as VideoPlan;
+
+  await withHtml(
+    '<html><body><header id="brand-rail"><img class="rail-lockup" src="media/logo-lockup-light.png"></header>'
+      + '<section id="scene-brand-signature"><img src="media/logo-lockup-light.png"></section></body></html>',
+    async (dir) => assert.deepEqual(await checkCanonicalBrandLockups(dir, kit, signaturePlan), []),
+  );
+});
+
+test("separate seal and wordmark do not count as the canonical lockup", async () => {
+  const kit = {
+    ...branded,
+    logos: [
+      ...branded.logos,
+      {id: "lockup-light", role: "lockup", theme: "light", file: "logos/lockup-light.png", safeAreaPct: 0.25, label: ""},
+    ],
+  } as unknown as import("../brand/kit.ts").BrandKit;
+  const signaturePlan = {
+    sections: [{id: "brand-signature", kind: "outro", startMs: 0, durationMs: 1600, phrases: []}],
+  } as unknown as VideoPlan;
+
+  await withHtml(
+    '<html><body><header id="brand-rail"><img src="media/logo-seal.png"><img src="media/logo-wordmark-light.png"></header>'
+      + '<section id="scene-brand-signature"><img src="media/logo-wordmark-light.png"></section></body></html>',
+    async (dir) => {
+      const findings = await checkCanonicalBrandLockups(dir, kit, signaturePlan);
+      assert.deepEqual(findings.map((finding) => finding.code), [
+        "canonical_lockup_missing_rail",
+        "canonical_lockup_missing_outro",
+      ]);
+    },
+  );
+});
+
+test("a silent signature carries non-promotional brand context", async () => {
+  const kit = {
+    ...branded,
+    tagline: "Autonomous AI Content Engine",
+    website: "myherald.io",
+    logos: [
+      ...branded.logos,
+      {id: "lockup-light", role: "lockup", theme: "light", file: "logos/lockup-light.png", safeAreaPct: 0.25, label: ""},
+    ],
+  } as unknown as import("../brand/kit.ts").BrandKit;
+  const signaturePlan = {
+    intent: "thought-leadership",
+    sections: [{id: "brand-signature", kind: "outro", startMs: 0, durationMs: 3000, phrases: []}],
+  } as unknown as VideoPlan;
+
+  await withHtml(
+    '<html><body><header id="brand-rail"><img src="media/logo-lockup-light.png"></header>'
+      + '<section id="scene-brand-signature"><img src="media/logo-lockup-light.png">'
+      + '<p>Autonomous AI Content Engine</p><p>myherald.io</p></section></body></html>',
+    async (dir) => assert.deepEqual(await checkCanonicalBrandLockups(dir, kit, signaturePlan), []),
+  );
+
+  await withHtml(
+    '<html><body><header id="brand-rail"><img src="media/logo-lockup-light.png"></header>'
+      + '<section id="scene-brand-signature"><img src="media/logo-lockup-light.png"></section></body></html>',
+    async (dir) => assert.deepEqual(
+      (await checkCanonicalBrandLockups(dir, kit, signaturePlan)).map((finding) => finding.code),
+      ["signature_tagline_missing", "signature_website_missing"],
+    ),
+  );
+});
+
+test("a percentage bar must end at its sourced proportion", async () => {
+  const dataPlan = {
+    sections: [{
+      id: "proof", kind: "proof", startMs: 0, durationMs: 3000, phrases: [],
+      data: {shape: "share", unit: "%", caption: "Source", points: [{label: "Voice slips", value: 25, factId: "f1"}]},
+    }],
+  } as unknown as VideoPlan;
+
+  await withHtml(
+    '<section id="scene-proof"><div class="data-bar" data-value="25" data-max="100" '
+      + 'style="--fill: .25"><span></span></div></section>',
+    async (dir) => assert.deepEqual(await checkDataBarProportions(dir, dataPlan), []),
+  );
+  await withHtml(
+    '<section id="scene-proof"><div class="data-bar" data-value="25" data-max="100" '
+      + 'style="--fill: 1"><span></span></div></section>',
+    async (dir) => {
+      const findings = await checkDataBarProportions(dir, dataPlan);
+      assert.equal(findings[0]?.code, "data_bar_proportion");
+    },
+  );
+});
+
+test("a non-bar data treatment is not forced into bar metadata", async () => {
+  const dataPlan = {
+    sections: [{
+      id: "proof", kind: "proof", startMs: 0, durationMs: 3000, phrases: [],
+      data: {shape: "counter", unit: "%", caption: "Source", points: [{label: "Voice slips", value: 25, factId: "f1"}]},
+    }],
+  } as unknown as VideoPlan;
+  await withHtml(
+    '<section id="scene-proof"><strong class="data-figure">25%</strong></section>',
+    async (dir) => assert.deepEqual(await checkDataBarProportions(dir, dataPlan), []),
   );
 });

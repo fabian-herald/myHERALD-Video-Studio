@@ -28,9 +28,9 @@ export interface IntentPreset {
    * `kit.motion.sceneEnterMs × motion.scale × ENERGY_MOTION[energy].pace` — so this
    * shifts the whole piece without flattening the contrast inside it.
    *
-   * What is deliberately NOT here is a sustained-motion figure, and the absence is the
-   * finding. Entrances are under a tenth of the runtime; the rest is whatever keeps
-   * moving after them, and three renders of one plan tried to specify it:
+   * What is deliberately NOT here is a perpetual-motion figure. Entrances are under a
+   * tenth of the runtime; the rest is staged visual development, and three renders of one
+   * plan tried to specify continuous travel:
    *
    * | brief                        | median | p90   | QC        |
    * |------------------------------|--------|-------|-----------|
@@ -41,8 +41,8 @@ export interface IntentPreset {
    * (median/p90 inter-frame luma difference; higher is more motion.) Every attempt to
    * put a number on it produced *less* motion than saying nothing, because a number
    * displaces the composer's own judgement about what a scene needs and it optimises
-   * to the figure. §6 asking for "at least one sustained motion" and the post-render
-   * freeze check enforcing it is the pair that works. Do not add a third.
+   * to the figure. §6 now asks for meaningful visual beats and the post-render freeze check
+   * only rejects genuinely long static holds. Do not add a travel-distance target.
    */
   motion: {
     scale: number;
@@ -124,7 +124,7 @@ export const INTENT_PRESETS: Record<Intent, IntentPreset> = {
       "This is a point of view, not a pitch. The product may be the author but is never the subject.",
       "Take an actual position — one a reasonable person could disagree with.",
       "Name the thing the industry gets wrong, then say what you do instead and why.",
-      "No call to action at all. The last frame is the brand signature and nothing more.",
+      "No spoken or promotional call to action. End with a deliberately silent outro: one canonical brand lockup, the brand tagline, and the website. This identifies the author; it must not ask the viewer to buy, try, follow, subscribe, or click.",
       "Do not mention features. If it reads as an ad, it has failed.",
       "End on the door, not the wall. The closing line is the one a viewer repeats to a"
       + " colleague, so it points at what to do differently rather than restating what is"

@@ -52,6 +52,16 @@
   flex: 0 0 auto;
 }
 
+/* Canonical identity: one supplied lockup asset, never a reconstructed seal + wordmark. */
+.rail-lockup {
+  display: block;
+  width: auto;
+  height: calc(var(--stage-h) * 0.048);
+  max-width: 52%;
+  object-fit: contain;
+  flex: 0 0 auto;
+}
+
 /*
  * A mark in the rail has a floor, whatever a composition sets on it.
  *

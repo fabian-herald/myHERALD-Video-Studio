@@ -80,7 +80,8 @@ test("a frozen finding names the scene, the reading and the frames to look at", 
   assert.match(message, /frame-04-at-62\.85s\.png/, "the composer is not told which frames to open");
   assert.match(message, /frame-05-at-63\.35s\.png/);
   assert.match(message, new RegExp(`${SAMPLE_SPACING_MS / 1000}s apart`));
-  assert.match(message, /area/, "the finding does not say what kind of motion registers");
+  assert.match(message, /meaningful visual beat/, "the finding does not ask for semantic development");
+  assert.match(message, /perpetual drift/, "the finding can still provoke meaningless continuous motion");
 });
 
 test("pixel-identical frames are described as such, not as a decibel figure", () => {

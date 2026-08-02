@@ -6,7 +6,7 @@ import {FORMATS, referenceFormat, type FormatFamily} from "../plan/formats.ts";
 import {languageName} from "../plan/language.ts";
 import {ENERGY_MOTION} from "../tts/energy.ts";
 import {intentPreset} from "../intents/index.ts";
-import {planDurationMs, type DataSeries, type Energy, type Intent, type ScreenSpec, type VideoPlan} from "../plan/schema.ts";
+import {dataBarGeometry, planDurationMs, type DataSeries, type Energy, type Intent, type ScreenSpec, type VideoPlan} from "../plan/schema.ts";
 import {ROOT} from "../paths.ts";
 import {buildCaptions, writeCaptionData} from "../tts/captions.ts";
 import {FREEZE_BAR_MS, stillBriefLine, worstStillWindows, type StillWindow} from "./still.ts";
@@ -144,20 +144,18 @@ its timings, already scaled for \`${intent}\` — ${note}. Use them as written:
 |---|---|---|---|
 ${rows}
 
-A calm piece is not a still one. The point is contrast: a lift only reads as a lift
-because the section before it did not.
-
-Keep the sustained motion of §6 in every scene regardless of energy, and scale its
-speed the same way.
+A calm piece can hold still long enough to read. The point is contrast: a lift only reads
+as a lift because the section before it did not. Long scenes still need visual development,
+but that comes from meaningful staged beats rather than an object drifting for the entire
+section. No element is required to remain in motion. A continuous brand accent means visual
+continuity, not a global spine, node, grid or field animating for the entire runtime.
 
 **How much motion is enough is not a matter of taste here — it is measured.** Each
 section above states the longest stretch in which the caption layer holds still, and the
 finished file is scanned with \`freezedetect=n=0.001:d=${FREEZE_BAR_MS / 1000}\`. That filter
-averages the change across the *entire* frame, so what it rewards is area, not distance: a
-hairline travelling the full height of the canvas changes a few thousand pixels out of two
-million and reads to it as a frozen frame. A field that shifts, a card that drifts, a large
-mask that wipes, a figure that counts — those register. A one-pixel rule does not, however
-far it goes.`;
+averages the change across the *entire* frame, so a meaningful beat needs visible area: a
+large reveal, a state change, a comparison, a counter, or a transition. A one-pixel rule
+does not register, however far it goes. After the beat resolves, the scene may hold.`;
 }
 
 /**
@@ -183,7 +181,7 @@ export function screenBrief(screen: ScreenSpec): string {
         + `x ${pct(x)}, y ${pct(y)}, w ${pct(w)}, h ${pct(h)}`
         + (focus.label ? ` — label it \`${focus.label}\`` : "");
     }).join("\n")
-    : "  - none: hold the whole shot, and keep it moving with a slow drift";
+    : "  - none: keep the shot stable for readability; use a purposeful reveal or crop change only if the section needs a later visual beat";
 
   return `- screen: \`media/${screen.mediaId}.png\` ${chrome}\n`
     + `- focus (scale \`.screen-shot\` and set \`transform-origin\` to each rect's centre):\n${moves}`;
@@ -201,15 +199,21 @@ export function dataBrief(data: DataSeries): string {
   // "62%" not "62 %": a symbol unit sits against the figure, a word unit takes a space.
   // The composer types this string verbatim, so the spacing here is the spacing on screen.
   const unit = data.unit ? (/^[%°$€£]$/.test(data.unit) ? data.unit : ` ${data.unit}`) : "";
-  const points = data.points
-    .map((point) => `  - ${point.label}: **${point.value}${unit}**`)
+  const points = dataBarGeometry(data)
+    .map((point) => {
+      return `  - ${point.label}: **${point.value}${unit}** — final bar fill **${point.fill.toFixed(3)}** `
+        + `(data-value="${point.value}" data-max="${point.max}")`;
+    })
     .join("\n");
 
   return `- data (${data.points.length} figures, suggested as \`${data.shape}\` — `
     + `choose another form if the scene reads better for it):\n${points}\n`
     + `- source note (render it, in \`.data-source\`): \`${data.caption || "source required"}\`\n`
-    + "- animate the figures in: `.data-bar > span` grows by tweening `--fill` 0 → 1, and a"
-    + " `.data-figure` counts up rather than appearing at its final value";
+    + "- if you use bars, put `data-value`, `data-max` and the declared final `--fill` on each "
+    + "`.data-bar`, for example `<div class=\"data-bar\" data-value=\"25\" data-max=\"100\" "
+    + "style=\"--fill: .25\"><span></span></div>`; animate **from 0 to that declared final fill**, "
+    + "never every bar to 1\n"
+    + "- a `.data-figure` counts up rather than appearing at its final value";
 }
 
 /**
@@ -310,6 +314,12 @@ ${directoryManifest(kit, mediaFiles)}
 - **Brief that produced it**: ${plan.brief}
 ${plan.cta ? `- **CTA**: ${plan.cta.label} → ${plan.cta.url}` : "- **CTA**: none — this piece does not pitch"}
 
+For a deliberately silent final \`outro\`, do not leave a logo floating by itself. It is an
+identity card, not a promotion: use one canonical full lockup, show the factual descriptor
+\`${kit.tagline}\` as readable text, and show \`${kit.website}\`. Do not add an instruction such
+as buy, try, follow, subscribe or click. Stage the three elements in, then leave the resolved
+card readable; the measured section timing already includes the minimum loop-safe hold.
+
 ## Canvas
 
 Reference canvas ${spec.width}×${spec.height} (${spec.label}). The same composition is
@@ -325,6 +335,7 @@ Use this root element **verbatim**:
   data-duration="${durationSeconds}"
   data-width="${spec.width}"
   data-height="${spec.height}"
+  data-format="${spec.format}"
   data-fps="${FPS}"
   style="--stage-w: ${spec.width}px; --stage-h: ${spec.height}px;"
 >
@@ -370,14 +381,18 @@ ${logos}
 - Choose by field: a \`light\` file carries dark ink and belongs on a light background,
   a \`dark\` file is cream and belongs on the deep purple field. A file marked
   **any field** carries its own background and needs no such choice.
-- Choose by size as well as field, because role decides how small a mark may go. A
-  \`wordmark\` is the name alone and survives the persistent corner slug. A \`lockup\`
-  also carries a tagline, and that tagline is illegible below roughly 9% of the frame
-  height — so a lockup belongs on a card that gives it room, never in the rail. A
-  \`seal\` is the mark alone and reads at any size.
-- Place them with \`<img>\`. Constrain one dimension and let the other follow, so the
-  mark can never distort: \`.brand-seal img { height: calc(var(--stage-h) * 0.034); width: auto; }\`.
-  In the rail, that fraction is the floor, not a target.
+- The persistent top-left brand rail must use one supplied **full lockup** file as a single
+  \`<img>\`. Do not reconstruct the identity from a separate seal and wordmark, and do not
+  add a typeset descriptor that competes with the lockup. Give the lockup enough height for
+  its tagline to remain readable; design the rail around the asset rather than shrinking it.
+- A silent brand-signature or CTA outro must also use one supplied full lockup file, never
+  the wordmark alone. Use the field-appropriate light/dark asset or the self-contained plate.
+  A non-promotional outro also shows the brand tagline and website as readable text;
+  that context identifies the author without becoming a call to action.
+- Elsewhere, choose by size and purpose: \`wordmark\` is the name alone, \`lockup\` carries
+  seal, name and tagline, and \`seal\` is the mark alone.
+- Place every mark with \`<img>\`. Constrain one dimension and let the other follow so it
+  can never distort.
 - Leave clear space around the mark of at least the fraction given, measured against its
   own width. Nothing else goes inside that margin.
 - Never crop, recolour, rotate, stretch, add effects to, or place a busy image behind
@@ -408,9 +423,9 @@ Banned words (must not appear on screen): ${kit.voice.bannedWords.join(", ")}.
 ## After authoring
 
 Return after writing the three composition files. The Studio pipeline runs the strict
-HyperFrames check and renders one representative frame per section outside the model
-sandbox. It then supplies those exact images in a separate visual-review turn using the
-same rubric for every composer backend. Do not start a server or create snapshots here.
+HyperFrames check and renders two temporal frames per section outside the model sandbox.
+It then supplies those exact images in a separate visual-review turn using the same rubric
+for every composer backend. Do not start a server or create snapshots here.
 `;
 }
 
@@ -435,6 +450,26 @@ export function sectionSnapshotTimes(plan: VideoPlan): string {
       const midpoint = section.startMs + section.durationMs * 0.55;
       return (Math.max(settled, midpoint) / 1000).toFixed(2);
     })
+    .join(",");
+}
+
+/**
+ * Two samples per section for visual review: one after the entrance and one after the
+ * section's later visual beat. Comparing the pair exposes pointless drift and scenes that
+ * never develop, neither of which a single representative still can reveal.
+ */
+export function sectionReviewTimes(plan: VideoPlan): string {
+  return plan.sections
+    .filter((section) => section.durationMs > 0)
+    .flatMap((section) => {
+      const early = section.startMs + Math.min(900, section.durationMs * 0.28);
+      const late = section.startMs + Math.max(
+        Math.min(section.durationMs - 180, section.durationMs * 0.76),
+        Math.min(section.durationMs - 120, section.durationMs * 0.58),
+      );
+      return [early, late];
+    })
+    .map((atMs) => (atMs / 1000).toFixed(2))
     .join(",");
 }
 

@@ -155,6 +155,23 @@ export type FocusRect = z.infer<typeof focusRectZ>;
 export type ScreenSpec = z.infer<typeof screenZ>;
 export type DataSeries = z.infer<typeof dataSeriesZ>;
 
+/**
+ * The geometry a bar chart must use for each sourced value.
+ * Percentages use their literal 0–100 scale; other units are normalised to the largest
+ * magnitude in that series so the visual relationship remains truthful.
+ */
+export function dataBarGeometry(data: DataSeries) {
+  const max = data.unit.trim() === "%"
+    ? 100
+    : Math.max(1, ...data.points.map((point) => Math.abs(point.value)));
+  return data.points.map((point) => ({
+    label: point.label,
+    value: point.value,
+    max,
+    fill: Math.min(1, Math.max(0, Math.abs(point.value) / max)),
+  }));
+}
+
 export const videoPlanZ = z.object({
   schemaVersion: z.literal(1),
   id: slug,

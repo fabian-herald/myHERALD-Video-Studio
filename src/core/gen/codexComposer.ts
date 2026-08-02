@@ -16,6 +16,9 @@ import {
 } from "./composer.ts";
 import {codexChildEnv, codexModel, requireCodexSubscription} from "./codexCli.ts";
 
+/** Large multi-scene file writes can legitimately produce no JSONL event for several minutes. */
+export const CODEX_IDLE_TIMEOUT_MS = 300_000;
+
 /**
  * The alternate backend. Same contract, same authoring directory, same repair loop —
  * the only difference is which subscription pays for it.
@@ -118,11 +121,11 @@ async function drive(
       if (idleTimer) clearTimeout(idleTimer);
       idleTimer = setTimeout(() => {
         acceptedIdleExit = sawFileChange;
-        context.onLog(`  ${label}      no output for 120s; ending the idle Codex session`
+        context.onLog(`  ${label}      no output for ${CODEX_IDLE_TIMEOUT_MS / 1000}s; ending the idle Codex session`
           + (acceptedIdleExit ? " and validating its written files" : ""));
         child.kill("SIGTERM");
         forceTimer = setTimeout(() => child.kill("SIGKILL"), 5_000);
-      }, 120_000);
+      }, CODEX_IDLE_TIMEOUT_MS);
     };
     armIdleTimer();
     const stdout = readline.createInterface({input: child.stdout});

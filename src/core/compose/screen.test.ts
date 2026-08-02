@@ -18,11 +18,10 @@ test("a focus rect reaches the brief as a percentage of the image", () => {
   assert.ok(brief.includes(".window-url"), "browser chrome must ask for the real URL");
 });
 
-test("a screenshot with no focus rects is told to keep moving", () => {
-  // Otherwise it is a still image held for the length of a section, which is both the
-  // weakest scene in an explainer and a post-render freeze failure.
+test("a screenshot with no focus rects stays stable instead of drifting by default", () => {
   const brief = screenBrief(screenZ.parse({mediaId: "shot"}));
-  assert.match(brief, /slow drift/);
+  assert.match(brief, /stable for readability/);
+  assert.doesNotMatch(brief, /drift/);
 });
 
 test("the brief never hands the composer a real filesystem path", () => {
@@ -43,6 +42,10 @@ test("every charted figure and its source note reach the brief", () => {
   // "62 %" on screen is a typographic error the brief would have handed it.
   assert.ok(brief.includes("Before: **62%**"), brief);
   assert.ok(brief.includes("After: **21%**"), brief);
+  assert.match(brief, /Before:.*final bar fill \*\*0\.620\*\*/);
+  assert.match(brief, /After:.*final bar fill \*\*0\.210\*\*/);
+  assert.match(brief, /data-value="62" data-max="100"/);
+  assert.match(brief, /never every bar to 1/);
   assert.ok(brief.includes("Internal cohort, Q1 2026"), "the source note must be rendered, so it must be in the brief");
   assert.ok(brief.includes(".data-source"));
 });
@@ -52,6 +55,15 @@ test("a word unit keeps its space", () => {
     unit: "hours", caption: "src", points: [{label: "Saved", value: 9, factId: "f1"}],
   }));
   assert.ok(brief.includes("**9 hours**"), brief);
+});
+
+test("non-percentage bars are normalised to the largest sourced magnitude", () => {
+  const brief = dataBrief(dataSeriesZ.parse({
+    unit: "hours", caption: "src",
+    points: [{label: "Small", value: 3, factId: "f1"}, {label: "Large", value: 12, factId: "f2"}],
+  }));
+  assert.match(brief, /Small:.*final bar fill \*\*0\.250\*\*.*data-max="12"/);
+  assert.match(brief, /Large:.*final bar fill \*\*1\.000\*\*.*data-max="12"/);
 });
 
 test("the shape is offered as a suggestion, not an instruction", () => {

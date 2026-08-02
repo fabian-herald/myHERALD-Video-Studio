@@ -3,6 +3,12 @@ import type {VideoPlan} from "./schema.ts";
 /** A section with no spoken phrases still needs to be on screen long enough to read. */
 export const SILENT_SECTION_MIN_MS = 1600;
 
+/**
+ * The final identity card needs time to register before a short-form video loops.
+ * Three seconds includes its entrance and leaves roughly two seconds on the resolved card.
+ */
+export const END_CARD_MIN_MS = 3000;
+
 /** A thought must be allowed to land after the last spoken word. */
 export const NARRATION_END_HOLD_MS = 650;
 
@@ -11,6 +17,14 @@ export interface MeasuredPhrase {
   phraseId: string;
   durationMs: number;
 }
+
+const sectionMinimumMs = (
+  section: VideoPlan["sections"][number],
+  index: number,
+  sectionCount: number,
+) => index === sectionCount - 1 && (section.kind === "outro" || section.kind === "cta")
+  ? END_CARD_MIN_MS
+  : SILENT_SECTION_MIN_MS;
 
 /**
  * Rebuild every timestamp in the plan from the narration that was actually
@@ -22,8 +36,9 @@ export function retimePlan(plan: VideoPlan, measured: readonly MeasuredPhrase[])
   const byKey = new Map(measured.map((item) => [`${item.sectionId}/${item.phraseId}`, item.durationMs]));
   let cursorMs = 0;
 
-  const sections = plan.sections.map((section) => {
+  const sections = plan.sections.map((section, index) => {
     const sectionStartMs = cursorMs;
+    const minimumMs = sectionMinimumMs(section, index, plan.sections.length);
 
     const phrases = section.phrases.map((phrase) => {
       const durationMs = byKey.get(`${section.id}/${phrase.id}`);
@@ -38,13 +53,13 @@ export function retimePlan(plan: VideoPlan, measured: readonly MeasuredPhrase[])
       return {...phrase, startMs: round(startMs), durationMs: round(durationMs)};
     });
 
-    if (!phrases.length) cursorMs += SILENT_SECTION_MIN_MS;
+    if (!phrases.length) cursorMs += minimumMs;
 
     return {
       ...section,
       phrases,
       startMs: round(sectionStartMs),
-      durationMs: round(Math.max(cursorMs - sectionStartMs, SILENT_SECTION_MIN_MS)),
+      durationMs: round(Math.max(cursorMs - sectionStartMs, minimumMs)),
     };
   });
 
@@ -94,6 +109,7 @@ export function retimeFromTake(
   // borrows the moment its neighbours leave free.
   let cursorMs = 0;
   const sections = plan.sections.map((section, index) => {
+    const minimumMs = sectionMinimumMs(section, index, plan.sections.length);
     const phrases = section.phrases.map((phrase) => {
       const found = byKey.get(`${section.id}/${phrase.id}`);
       if (!found) {
@@ -114,8 +130,8 @@ export function retimeFromTake(
 
     if (!phrases.length) {
       const startMs = cursorMs;
-      cursorMs += SILENT_SECTION_MIN_MS;
-      return {...section, phrases, startMs: round(startMs), durationMs: SILENT_SECTION_MIN_MS};
+      cursorMs += minimumMs;
+      return {...section, phrases, startMs: round(startMs), durationMs: minimumMs};
     }
 
     // Sections tile the timeline: each starts where the last one ended, and the first
@@ -127,7 +143,7 @@ export function retimeFromTake(
     const endMs = nextSpokenStart(index);
     // The floor can push a short section past where the next one was measured to begin.
     // The cursor has to follow it, or the tiling opens a hole the width of the clamp.
-    const durationMs = round(Math.max(endMs - startMs, SILENT_SECTION_MIN_MS));
+    const durationMs = round(Math.max(endMs - startMs, minimumMs));
     cursorMs = startMs + durationMs;
     return {...section, phrases, startMs: round(startMs), durationMs};
   });

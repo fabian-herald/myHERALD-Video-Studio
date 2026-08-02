@@ -31,6 +31,11 @@
 
 .cta-wordmark { width: min(72%, 34rem); height: auto; object-fit: contain; }
 
+.outro-context {
+  max-width: 30ch;
+  font: 750 var(--brand-size-lead) / 1.05 var(--brand-font-body);
+}
+
 .cta-lockup h1 em { color: var(--brand-aubergine); }
 
 .cta-url {

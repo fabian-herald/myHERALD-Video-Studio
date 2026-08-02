@@ -25,7 +25,14 @@ test("the provider-neutral review uses exact evidence and a concrete visual rubr
   assert.deepEqual(request.imagePaths, images);
   assert.match(request.prompt, /1920x1080/);
   assert.match(request.prompt, /Inspect every image/);
-  assert.match(request.prompt, /complete canvas.*negative space/);
+  assert.match(request.prompt, /small island.*empty portrait frame/s);
+  assert.match(request.prompt, /early\/late temporal pairs/);
+  assert.match(request.prompt, /perpetual drifting/);
+  assert.match(request.prompt, /full.*lockup image/s);
+  assert.match(request.prompt, /25% is one quarter/);
+  assert.match(request.prompt, /prominent line, connector, node or dot/);
+  assert.match(request.prompt, /breathing room above captions/);
+  assert.match(request.prompt, /website.*before looping/s);
   assert.match(request.prompt, /clipped, cropped, overlapping or off-canvas/);
   assert.match(request.prompt, /distinct scene archetypes/);
   assert.match(request.prompt, /Do not change narration/);
@@ -83,6 +90,12 @@ test("ordinary Codex authoring does not invent an empty image flag", () => {
   assert.equal(args.includes("--image"), false);
 });
 
+test("Codex authoring allows a full multi-scene file-write interval before idle recovery", () => {
+  const source = readFileSync(new URL("./codexComposer.ts", import.meta.url), "utf8");
+  assert.match(source, /CODEX_IDLE_TIMEOUT_MS = 300_000/);
+  assert.doesNotMatch(source, /120_000/);
+});
+
 test("the pipeline renders centrally, then invokes and rechecks the shared review", () => {
   const source = readFileSync(new URL("../pipeline/run.ts", import.meta.url), "utf8");
   const flow = source.slice(source.indexOf("export async function composeWithRepair"));
@@ -92,6 +105,7 @@ test("the pipeline renders centrally, then invokes and rechecks the shared revie
 
   assert.ok(snapshot >= 0 && review > snapshot, "review ran without centrally rendered evidence");
   assert.ok(recheck > review, "review edits were not checked again");
+  assert.match(flow, /sectionReviewTimes\(plan\)/);
   assert.match(flow, /visualReviewRequest\(authoring, \[contactSheet, \.\.\.frames\]\)/);
   assert.match(flow, /composer\.repair\(context, report, attempt - 1, report\.evidencePaths\)/);
 });

@@ -37,19 +37,21 @@ Everything else in the directory is provided and must not be modified.
    frame-accurate under seek and will render as frozen or wrong.
 7. Prefer `autoAlpha`, `x`/`y`, `scale`, `rotation`, `clipPath`, `scaleX`/`scaleY`,
    `strokeDashoffset`. Set `transformOrigin` explicitly whenever you scale or rotate.
-8. **Nothing may sit completely still for more than one second.** After a scene's
-   entrance finishes it must keep moving — a slow drift, a growing rule, a rotating
-   mark, a staggered late reveal. A held still frame reads as a stall to a viewer and
-   fails the freeze check, which no amount of passing `check` will save.
+8. **Visual development is required; perpetual motion is not.** A scene may enter, hold
+   still for readability, change meaningfully again, then hold its resolved state. No
+   element is required to keep moving for the full scene. Do not add slow drift, floating
+   cards, rotating marks or camera motion merely to avoid a static frame. A completely
+   unchanged full frame may not persist for more than 2.5 seconds.
 
-   **What moves has to have area.** The check averages the change across the whole
+   **A meaningful visual beat has to have area.** The check averages change across the whole
    frame, so a hairline crossing a 1080×1920 canvas alters a few thousand pixels out of
    two million and counts as nothing at all. A field, a card, a large mask, a counting
    figure, a shifting block of colour: those register. A one-pixel rule does not, however
    far it travels — this is measured, and a full-duration `.signal-spine` on its own has
    already failed it. BRIEF.md gives you, per scene, the longest stretch in which the
-   caption layer changes nothing; in those stretches your motion is the only thing in the
-   picture, and it is sampled **before** the video is rendered, not after.
+   caption layer changes nothing; in those stretches the composition must provide a reveal,
+   count, comparison, connection, progress step or transition. It is sampled **before** the
+   video is rendered, not after.
 
    **And that mass goes behind the type, or beside it. Never across it.** These two
    sentences are one rule, and taking only the first is a failure with its own check:
@@ -142,7 +144,10 @@ The plan is the durable artefact; your composition is keyed to it.
   between the canvas edge and `--gutter` is a reserved lane: it carries the full-height
   spine at `--spine-x` and nothing else. Never position copy, a label or the logo as a
   fraction of the gutter — that is how they end up flush against a moving accent line.
-- The bottom caption band is reserved by `.scene` padding. **Never place copy there.**
+- The bottom caption band is reserved by `.scene` padding. **Never place copy there.** Keep
+  labels, rules, nodes and other high-contrast marks above it as well; the clear strip above
+  captions is breathing room, not a place to squeeze in one more annotation. Background
+  fields may continue behind the band when contrast remains readable.
 - `position: absolute` inside a scene is fine when anchored to an edge or a percentage —
   just never to a hardcoded vertical pixel offset.
 - Add `data-layout-allow-overflow` to any element that intentionally bleeds off-canvas,
@@ -214,9 +219,11 @@ are building, and do not let a chart become the only thing in the frame.
 
 Two things are not negotiable:
 
-- **Animate the arrival.** `.data-bar > span` grows by tweening `--fill` from 0 to 1; a
-  `.data-figure` counts up. A chart that cuts in at its final value has no reason to be a
-  video.
+- **Encode the value, then animate its arrival.** A `.data-bar` carries `data-value`,
+  `data-max` and its final proportional `--fill` (`25%` means `.25`, not `1`). Its child
+  span animates **from zero to that declared final value**; never animate every bar to `1`.
+  A `.data-figure` counts up. A chart that cuts in at its final value has no reason to be a
+  video, and a 25% bar drawn as 100% states the wrong fact.
 - **Render the source note** in `.data-source`. The brief gives you the text. A figure on
   screen with no attribution is not something anyone can cite, and you cannot invent one.
 
@@ -253,7 +260,7 @@ this whole system exists to prevent.
 Motion follows the same rule: entrances differ per scene. Everything sliding up with a
 stagger is the motion equivalent of six identical cards.
 
-### Fill the frame, and keep it alive
+### Fill the frame, and let it develop
 
 A headline floating in an otherwise empty canvas is the second failure mode after
 repetition. Every scene needs **at least three visual elements working together** —
@@ -266,28 +273,44 @@ Aim for a composition that would still read as deliberate with the type removed.
 frame has one object in the middle and air everywhere else, add structure: anchor
 something to an edge, run a line across the canvas, stack a second layer behind.
 
-Movement is continuous, not a single entrance. Alongside the entrance give each scene
-**one** sustained motion for as long as it is on screen: a slow drift or scale, a line
-that keeps drawing, a mark that rotates, elements that settle in late. Silence in the
-picture is as noticeable as silence in the audio.
+In a portrait composition, the focal assembly must make deliberate use of the tall usable
+area between the brand rail and captions. A compact card floating in the upper third while
+the middle half of the frame is empty is under-composed, not purposeful negative space.
+Scale the evidence, connect layers vertically, or use edge anchors so the argument occupies
+the frame. Negative space must sharpen a focal relationship, not merely remain unused.
 
-One, not one per element. Three rules, because "sustained" has been read as licence to
-vibrate:
+Long scenes develop in **discrete visual beats**. After the entrance, schedule a reveal,
+count, comparison, connection, progress step or transition before the picture has remained
+unchanged for 2.5 seconds. Once that beat resolves, elements may hold still. The visual
+change must communicate the narration; do not move something solely because the gate exists.
 
-- **Sustained means one direction.** A drift travels; it does not return. If you cycle
-  something, the full cycle is **4 seconds or longer** — anything faster is not drift, it
-  is a shake, and fifteen of them at 0.7s across one composition is a picture that will
-  not sit still.
-- **Slow is fine; small is not.** A ramp of a fraction of a pixel per frame reads as calm
-  rather than as nothing, and the eye integrates it over seconds — but only if what is
-  ramping covers real area. The two are independent, and the failure that keeps happening
-  is a composition that got the speed right on something far too thin to see.
-- **At most two moving things per scene.** The point of motion is that something is
-  moving *against* something that is not. When everything drifts, nothing does.
+- **Stable reading is a feature.** Headlines, labels, captions and evidence hold while read.
+- **Motion needs a reason.** Translation communicates direction, scale communicates emphasis,
+  and rotation communicates an actual relationship. If the same frame would mean the same
+  thing without the tween, remove it.
+- **Structure needs a meaning too.** A prominent line, connector, node or dot either anchors
+  the layout or explains a labelled relationship. Never invent an unlabeled pseudo-diagram:
+  a line ending in a ball is not an argument. Keep connectors clear of their labels and of
+  the caption band.
+- **At most two things move at once.** Staged motion builds hierarchy; simultaneous drift
+  destroys it.
 - **Never move type while it is being read.** Headlines, on-screen copy and captions
   enter, hold still, and leave. Moving the words is the one thing the viewer cannot
   ignore and the one thing they came for. Frames, rules, fields and marks may move behind
   them.
+
+The persistent rail and every brand-signature or CTA outro use one supplied full lockup
+image. Never rebuild the identity from a separate seal plus wordmark, and never use only
+the wordmark where the full brand signature is intended.
+
+A silent non-promotional outro is not a blank logo plate. It shows the full lockup, the
+brand's factual tagline and its website, without imperative language. Give the
+entrance a meaningful staged beat and leave the resolved card readable before the loop.
+
+A continuous brand accent means visual continuity, not continuous animation. A rule,
+colour or motif may recur or remain static across scenes. Never move a global progress
+node, spine, grid or decorative field for the entire runtime unless the brief explicitly
+requires that object to encode measured progress.
 
 ## 7. Brand
 
@@ -302,7 +325,7 @@ constraints. They are not suggestions. In particular:
 ## 8. Validation and visual review
 
 In a managed Studio run, return after writing the three composition files. The Studio
-pipeline performs the authoritative check, renders one representative image per section,
+pipeline performs the authoritative check, renders two temporal images per section,
 and sends the exact same evidence and visual rubric back to every composer backend. Do not
 start a server or render your own snapshots inside the model sandbox.
 

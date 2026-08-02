@@ -4,7 +4,7 @@ import type {BrandKit} from "../brand/kit.ts";
 import {findRogueColors} from "../brand/tokens.ts";
 import {captionZone, FORMATS, type FormatFamily, type OutputFormat} from "../plan/formats.ts";
 import {checkMediaFit, readMedia} from "../media/library.ts";
-import type {VideoPlan} from "../plan/schema.ts";
+import {dataBarGeometry, type VideoPlan} from "../plan/schema.ts";
 import {run} from "../util/exec.ts";
 import {compatibleNode} from "./node.ts";
 import {describeFrozen, sampleMotion} from "./motionGate.ts";
@@ -40,7 +40,7 @@ const CLI = path.join(ROOT, "node_modules", "hyperframes", "bin", "hyperframes.m
  *   1. HyperFrames' own lint / runtime / layout / motion / WCAG contrast pass
  *   2. the token-only colour rule
  *   3. plan conformance — ids, timings and verbatim copy
- *   4. actual movement where the caption layer has gone quiet
+ *   4. actual visual development where the caption layer has gone quiet
  *
  * Together these are what make it safe to let a model author the composition.
  *
@@ -66,9 +66,12 @@ export async function checkComposition(options: {
     ...await checkTokens(dir, kit),
     ...await checkBannedWords(dir, kit),
     ...await checkPlanConformance(dir, plan, fps),
+    ...await checkDataBarProportions(dir, plan),
     ...await checkMedia(plan, family),
     ...await checkCanvasLiterals(dir, plan, family),
     ...await checkWordmark(dir, kit),
+    ...await checkCanonicalBrandLockups(dir, kit, plan),
+    ...await checkPerpetualMotionSource(dir),
     ...motion ? await checkMotion(dir, plan, onLog) : [],
   ];
 
@@ -110,8 +113,8 @@ async function checkMotion(
     message: describeFrozen(frozen),
     selector: `#scene-${frozen.window.sectionId}`,
     fixHint:
-      "Give this scene one sustained motion with area behind it, running for as long as the "
-      + "scene is on screen — see CONTRACT.md §6.",
+      "Add one meaningful visual state change inside this span, then hold the resolved state. "
+      + "Do not add perpetual drift — see CONTRACT.md §6.",
     evidencePaths: [...frozen.frames],
     source: "plan",
   }));
@@ -437,6 +440,159 @@ export async function checkWordmark(dir: string, kit: BrandKit): Promise<CheckFi
   return findings.slice(0, 1);
 }
 
+/**
+ * The persistent identity and a silent brand-signature outro use the complete supplied
+ * lockup. A seal plus wordmark is made from real files but is still a reconstructed logo,
+ * which is exactly the defect this check prevents.
+ */
+export async function checkCanonicalBrandLockups(
+  dir: string,
+  kit: BrandKit,
+  plan: VideoPlan,
+): Promise<CheckFinding[]> {
+  const lockups = kit.logos.filter((logo) => logo.role === "lockup");
+  if (!lockups.length) return [];
+
+  const html = await fs.readFile(path.join(dir, "index.html"), "utf8").catch(() => "");
+  const lockupPattern = new RegExp(
+    `logo-(?:${lockups.map((logo) => escapeRegex(logo.id)).join("|")})\\.[a-z0-9]+`,
+    "i",
+  );
+  const findings: CheckFinding[] = [];
+  const rail = extractElement(html, "brand-rail");
+  if (!rail || !lockupPattern.test(rail.inner)) {
+    findings.push({
+      severity: "error",
+      code: "canonical_lockup_missing_rail",
+      message: "The persistent brand rail does not use one supplied full lockup image.",
+      fixHint:
+        `Place <img class="rail-lockup" src="media/logo-${lockups[0]?.id}.png" alt="${kit.name}"> `
+        + "in #brand-rail. Do not reconstruct it from a seal plus wordmark.",
+      selector: "#brand-rail",
+      source: "tokens",
+    });
+  }
+
+  const final = [...plan.sections].reverse().find((section) => section.durationMs > 0);
+  const isSilentSignature = final
+    && final.kind === "outro"
+    && (final.phrases.length === 0 || /brand|signature|cta/i.test(final.id));
+  if (final && isSilentSignature) {
+    const scene = extractElement(html, `scene-${final.id}`);
+    if (!scene || !lockupPattern.test(scene.inner)) {
+      findings.push({
+        severity: "error",
+        code: "canonical_lockup_missing_outro",
+        message: `The final scene scene-${final.id} does not use one supplied full lockup image.`,
+        fixHint:
+          `Place a field-appropriate media/logo-${lockups[0]?.id}.png in the final scene. `
+          + "Do not use the wordmark alone.",
+        selector: `#scene-${final.id}`,
+        source: "tokens",
+      });
+    }
+
+    // A non-promotional signature still has to tell a new viewer whose work this is.
+    // Requiring visible text rather than an href means the website cannot exist only in
+    // metadata, and requiring the tagline prevents a bare-logo plate with no context.
+    if (scene && !plan.cta) {
+      const visible = normalise(stripTags(scene.inner));
+      for (const [field, expected] of [
+        ["tagline", kit.tagline ?? ""],
+        ["website", kit.website ?? ""],
+      ] as const) {
+        if (expected.trim() && !visible.includes(normalise(expected))) {
+          findings.push({
+            severity: "error",
+            code: `signature_${field}_missing`,
+            message: `The silent final scene does not show the brand ${field} as readable text.`,
+            fixHint:
+              `Show "${expected}" beside the canonical lockup. Keep it factual and non-promotional; `
+              + "do not add an imperative call to action.",
+            selector: `#scene-${final.id}`,
+            source: "tokens",
+          });
+        }
+      }
+    }
+  }
+
+  return findings;
+}
+
+/**
+ * A displayed percentage is a claim in geometry as well as text.
+ * The shared bar primitive therefore carries its source value and terminal fill in HTML,
+ * where this gate can compare them without trying to infer pixels from a screenshot.
+ */
+export async function checkDataBarProportions(dir: string, plan: VideoPlan): Promise<CheckFinding[]> {
+  const html = await fs.readFile(path.join(dir, "index.html"), "utf8").catch(() => "");
+  const findings: CheckFinding[] = [];
+
+  for (const section of plan.sections) {
+    if (!section.data) continue;
+    const scene = extractElement(html, `scene-${section.id}`);
+    if (!scene) continue;
+    const bars = openingTagsByClass(scene.inner, "data-bar");
+    // The shape is only a suggestion. Counters, figures and other non-bar treatments do
+    // not need bar metadata and are judged by the ordinary copy/claim checks.
+    if (!bars.length) continue;
+    const geometry = dataBarGeometry(section.data);
+
+    for (const tag of bars) {
+      const valueAttribute = attribute(tag, "data-value");
+      const maxAttribute = attribute(tag, "data-max");
+      const value = valueAttribute === null ? Number.NaN : Number(valueAttribute);
+      const max = maxAttribute === null ? Number.NaN : Number(maxAttribute);
+      const style = attribute(tag, "style") ?? "";
+      const fill = Number(/(?:^|;)\s*--fill\s*:\s*([+-]?(?:\d+\.?\d*|\.\d+))/i.exec(style)?.[1]);
+      const expected = geometry.find((point) => Number.isFinite(value) && Math.abs(point.value - value) < 1e-9);
+
+      if (!expected || !Number.isFinite(max) || !Number.isFinite(fill)
+        || Math.abs(max - (expected?.max ?? 0)) > 1e-6
+        || Math.abs(fill - (expected?.fill ?? 0)) > 0.002) {
+        findings.push({
+          severity: "error",
+          code: "data_bar_proportion",
+          message:
+            `scene-${section.id} has a data bar whose declared value, scale and final fill do not match the plan.`,
+          fixHint:
+            "Copy data-value, data-max and --fill from BRIEF.md. Animate the child span from 0 "
+            + "to that declared final fill; never animate every bar to 1.",
+          selector: `#scene-${section.id} .data-bar`,
+          source: "plan",
+        });
+      }
+    }
+  }
+
+  return findings;
+}
+
+/**
+ * A global tween that travels for TOTAL is the old freeze-gate workaround in source form.
+ * It creates the floating spine/node behaviour the temporal still review can miss because
+ * the element is small. Scene-local staged beats use explicit durations and are unaffected.
+ */
+export async function checkPerpetualMotionSource(dir: string): Promise<CheckFinding[]> {
+  const source = await fs.readFile(path.join(dir, "animation.js"), "utf8").catch(() => "");
+  const offenders = source
+    .split("\n")
+    .map((line, index) => ({line, number: index + 1}))
+    .filter(({line}) => /duration\s*:\s*TOTAL\b/.test(line))
+    .filter(({line}) => /\b(?:x|y|scale|scaleX|scaleY|rotation)\s*:/.test(line));
+
+  return offenders.map(({line, number}): CheckFinding => ({
+    severity: "error",
+    code: "perpetual_motion",
+    message: `animation.js:${number} moves a spatial property for the full video duration: ${line.trim()}`,
+    fixHint:
+      "Remove the full-runtime tween. Use scene-local meaningful visual beats and readable holds; "
+      + "a recurring brand accent may remain static.",
+    source: "plan",
+  }));
+}
+
 const escapeRegex = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 /** The part of the document a viewer can actually see. Falls back to the whole file. */
@@ -505,6 +661,11 @@ function extractElement(html: string, id: string): {openTag: string; inner: stri
 
 const attribute = (tag: string, name: string) =>
   tag.match(new RegExp(`${name}="([^"]*)"`))?.[1] ?? null;
+
+const openingTagsByClass = (html: string, className: string) =>
+  [...html.matchAll(/<[a-z][^>]*>/gi)]
+    .map((match) => match[0])
+    .filter((tag) => (attribute(tag, "class") ?? "").split(/\s+/).includes(className));
 
 const stripTags = (html: string) =>
   html.replace(/<script[\s\S]*?<\/script>/gi, " ").replace(/<[^>]*>/g, " ");

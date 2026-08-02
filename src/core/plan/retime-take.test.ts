@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import {test} from "node:test";
-import {retimeFromTake, SILENT_SECTION_MIN_MS, type PlacedPhrase} from "./retime.ts";
+import {END_CARD_MIN_MS, retimeFromTake, SILENT_SECTION_MIN_MS, type PlacedPhrase} from "./retime.ts";
 import type {VideoPlan} from "./schema.ts";
 
 /** Two spoken sections and a wordless signature, which is the shape every video has. */
@@ -20,7 +20,7 @@ function plan(): VideoPlan {
           {id: "c", text: "Those are not the same unit.", gapAfterMs: 140, startMs: 0, durationMs: 0},
         ],
       },
-      {id: "signature", energy: "settled", onScreen: [], startMs: 0, durationMs: 0, phrases: []},
+      {id: "signature", kind: "outro", energy: "settled", onScreen: [], startMs: 0, durationMs: 0, phrases: []},
     ],
   } as unknown as VideoPlan;
 }
@@ -82,9 +82,9 @@ test("the final spoken section runs to the end of the audio", () => {
 });
 
 test("the mastered post-roll belongs to the last scene instead of being cut off", () => {
-  const retimed = retimeFromTake(plan(), PLACED, 11_400);
+  const retimed = retimeFromTake(plan(), PLACED, 12_300);
   const last = retimed.sections.at(-1)!;
-  assert.equal(last.startMs + last.durationMs, 11_400);
+  assert.equal(last.startMs + last.durationMs, 12_300);
   assert.equal(retimed.sections[1]!.phrases[0]!.durationMs, 1_180, "speech is never stretched");
 });
 
@@ -92,7 +92,7 @@ test("a wordless section still gets time on screen", () => {
   const retimed = retimeFromTake(plan(), PLACED);
   const signature = retimed.sections[2]!;
   assert.equal(signature.phrases.length, 0);
-  assert.equal(signature.durationMs, SILENT_SECTION_MIN_MS);
+  assert.equal(signature.durationMs, END_CARD_MIN_MS);
 });
 
 test("a phrase missing from the alignment stops the retime rather than guessing", () => {

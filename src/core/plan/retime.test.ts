@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import {test} from "node:test";
-import {retimePlan, seedGaps, SILENT_SECTION_MIN_MS} from "./retime.ts";
+import {END_CARD_MIN_MS, retimePlan, seedGaps, SILENT_SECTION_MIN_MS} from "./retime.ts";
 import {planDurationMs, videoPlanZ, type VideoPlan} from "./schema.ts";
 
 function plan(sections: {id: string; phrases: string[]}[]): VideoPlan {
@@ -51,6 +51,15 @@ test("a wordless section still occupies real time", () => {
 
   assert.equal(retimed.sections[1]?.durationMs, SILENT_SECTION_MIN_MS);
   assert.equal(planDurationMs(retimed), 1000 + SILENT_SECTION_MIN_MS);
+});
+
+test("a final outro remains readable before a short-form loop restarts", () => {
+  const source = plan([{id: "one", phrases: ["only"]}, {id: "signature", phrases: []}]);
+  source.sections[1] = {...source.sections[1]!, kind: "outro"};
+  const retimed = retimePlan(source, [{sectionId: "one", phraseId: "p0", durationMs: 900}]);
+
+  assert.equal(retimed.sections[1]?.durationMs, END_CARD_MIN_MS);
+  assert.equal(planDurationMs(retimed), 1000 + END_CARD_MIN_MS);
 });
 
 test("a missing measurement fails loudly instead of guessing", () => {

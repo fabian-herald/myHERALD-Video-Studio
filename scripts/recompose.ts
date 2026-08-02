@@ -24,6 +24,7 @@ import {OUT_DIR, videoDir} from "../src/core/paths.ts";
 import {buildContactSheet, buildCover} from "../src/core/render/artifacts.ts";
 import {emitFormat, renderSnapshots, renderVideo} from "../src/core/render/hyperframes.ts";
 import {runQc, writeQc} from "../src/core/render/qc.ts";
+import {readSettings} from "../src/core/settings.ts";
 import {buildCaptions} from "../src/core/tts/captions.ts";
 
 const videoId = process.argv[2];
@@ -32,6 +33,8 @@ if (!videoId) {
   process.exit(1);
 }
 const suffix = process.argv[3] ?? "motion";
+const settings = await readSettings();
+const composerId = process.argv[4] ?? settings.composer;
 const dir = videoDir(videoId);
 const log = (line: string) => console.log(line);
 
@@ -45,9 +48,9 @@ await fs.rm(authoringDir, {recursive: true, force: true});
 await fs.mkdir(authoringDir, {recursive: true});
 const authoring = await prepareAuthoringDir({plan, kit, family: "portrait", dir: authoringDir, narrationPath});
 
-log(`recompose     ${videoId} · ${plan.sections.length} sections · ${authoring.durationSeconds}s`);
+log(`recompose     ${videoId} · ${plan.sections.length} sections · ${authoring.durationSeconds}s · ${composerId}`);
 const composed = await composeWithRepair({
-  authoring, plan, kit, family: "portrait", composerId: "claude", baselineOnly: false, log,
+  authoring, plan, kit, family: "portrait", composerId, baselineOnly: false, log,
 });
 log(`compose       attempts ${composed.attempts} · baseline ${composed.usedBaseline}`);
 
