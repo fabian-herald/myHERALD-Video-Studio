@@ -5,7 +5,7 @@ import {FPS, NARRATION_FILE, sectionSnapshotTimes} from "../compose/workdir.ts";
 import {amendLedgerEntry, upsertLedgerEntry} from "../ledger.ts";
 import {byFamily, FORMATS, familyOf, type OutputFormat} from "../plan/formats.ts";
 import {assertPlanCopyRules} from "../plan/copyRules.ts";
-import {factIdsUsedByPlan} from "../plan/claims.ts";
+import {factIdsUsedByPlan, planClaimsViolation} from "../plan/claims.ts";
 import {loadPlan, planDurationMs, savePlan, videoPlanZ, type Energy, type VideoPlan} from "../plan/schema.ts";
 import {OUT_DIR, rel, videoDir} from "../paths.ts";
 import {buildContactSheet, buildCover} from "../render/artifacts.ts";
@@ -15,7 +15,7 @@ import {runQc, writeQc, type QcReport} from "../render/qc.ts";
 import {buildCaptions, writeCaptionData} from "../tts/captions.ts";
 import {narrate} from "../tts/narrate.ts";
 import {AUDIO_MASTERING_VERSION} from "../audio/master.ts";
-import {readFacts} from "../knowledge/facts.ts";
+import {approvedStatements, readFacts} from "../knowledge/facts.ts";
 
 export interface PlanEdit {
   sectionId: string;
@@ -133,6 +133,21 @@ export async function applyPlanEdits(options: {
   // Edits are user-controlled and bypass the planner retry, so apply the exact same
   // copy contract here before any TTS request, file write, or render can incur cost.
   assertPlanCopyRules(edited, kit.voice);
+
+  // The same reasoning, one step further. An edit rewrites display copy and narration
+  // freely, so it can introduce a figure nothing approves — and the facts a chart already
+  // cites can have been rejected or had their evidence cleared since the video was made. A
+  // stale figure survives a re-render exactly as well as a fresh one.
+  const facts = await readFacts();
+  const unsourced = planClaimsViolation(edited, facts, await approvedStatements(facts));
+  if (unsourced) {
+    throw new Error(
+      "The edited plan states a figure no approved fact backs. No narration or render was "
+      + `started:\n${unsourced}\n`
+      + "edit_video cannot change a chart's data: approve or correct the fact on the Brand "
+      + "screen, or rebuild the video.",
+    );
+  }
 
   // Display copy does not affect speech. Reusing the measured plan and mastered track
   // avoids uploading an identical take to ASR again (and, for providers without a local

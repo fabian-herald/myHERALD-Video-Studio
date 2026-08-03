@@ -1,4 +1,5 @@
-import {valueAppearsIn, type Figure} from "./figures.ts";
+import type {Figure} from "./figures.ts";
+import {valueAppearsIn} from "./numbers.ts";
 import type {ProductFact} from "./facts.ts";
 
 /**

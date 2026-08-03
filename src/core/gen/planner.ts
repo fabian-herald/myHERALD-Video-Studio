@@ -4,7 +4,9 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import type {BrandKit} from "../brand/kit.ts";
+import type {ProductFact} from "../knowledge/facts.ts";
 import {intentPreset} from "../intents/index.ts";
+import {planClaimsViolation} from "../plan/claims.ts";
 import type {OutputFormat} from "../plan/formats.ts";
 import {languageName, type ContentLanguage} from "../plan/language.ts";
 import {copyRulesViolation} from "../plan/copyRules.ts";
@@ -26,6 +28,12 @@ export interface PlanRequest {
   /** Theses already covered, so the planner sharpens rather than repeats. */
   priorTheses: readonly {id: string; thesis: string}[];
   knowledge: readonly string[];
+  /**
+   * The full fact set, so the sourcing gate `run.ts` applies after planning can also run
+   * inside the retry loop. `citableFacts` cannot stand in: it carries neither `state` nor
+   * `evidence`, and both decide whether a fact may back a figure.
+   */
+  facts: readonly ProductFact[];
   /**
    * Approved facts that carry a number, with their ids, so a `data` block can cite one.
    * Separate from `knowledge` because citing needs an id and reading needs a sentence.
@@ -161,6 +169,16 @@ export async function planVideo(
     if (violation) {
       lastError = violation;
       onLog(`plan          attempt ${attempt} broke a copy rule; retrying.`);
+      continue;
+    }
+
+    // Copy rules first: they are cheaper to check and their feedback is more actionable. A
+    // figure the model cannot source is still worth another attempt though — `run.ts` used to
+    // be the only place this ran, and there it kills the whole run with nothing to retry.
+    const unsourced = planClaimsViolation(result.data, request.facts, request.knowledge);
+    if (unsourced) {
+      lastError = unsourced;
+      onLog(`plan          attempt ${attempt} stated a figure it cannot source; retrying.`);
       continue;
     }
 

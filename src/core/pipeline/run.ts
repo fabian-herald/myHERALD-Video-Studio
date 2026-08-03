@@ -106,6 +106,7 @@ export async function runPipeline(options: RunOptions): Promise<RunResult> {
       kit,
       priorTheses: prior.map((entry) => ({id: entry.id, thesis: entry.thesis})),
       knowledge,
+      facts,
       // Ids as well as sentences: a chart cites a fact, and citing needs an id. Filtered
       // to approved-with-evidence here so the planner is never shown a figure it would
       // then be refused for using.

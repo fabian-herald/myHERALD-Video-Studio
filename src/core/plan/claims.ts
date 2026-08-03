@@ -1,4 +1,5 @@
-import {assertNoUnverifiedNumericClaims, containsNumericClaim, type ProductFact} from "../knowledge/facts.ts";
+import {containsNumericClaim, unverifiedNumbers, type ProductFact} from "../knowledge/facts.ts";
+import {valueAppearsIn} from "../knowledge/numbers.ts";
 import type {VideoPlan} from "./schema.ts";
 
 /**
@@ -14,13 +15,41 @@ export const planCopy = (plan: VideoPlan): string =>
     .join(" ");
 
 /**
- * Refuse a plan that states a number nothing approved stands behind.
+ * `planCopy` plus the text a `data` block burns in: its source note and every point label.
  *
- * This is the gate the architecture promised and never had: `assertNoUnverifiedNumericClaims`
- * has existed since the port and was called from nowhere, so every figure a planner
- * invented went straight to a rendered, captioned, publishable file. It runs here, right
- * after planning, because that is the cheapest place to fail — one planning call rather
- * than a narration take and a twenty-minute compose.
+ * A separate function rather than a wider `planCopy`, because that string is also what
+ * `factIdsUsedByPlan` matches statements against. A caption is an attribution, not a claim —
+ * folding it in there would record facts a video never actually spent, and fact usage is what
+ * the ledger reads to decide a figure has been used too often.
+ *
+ * `point.value` is deliberately absent. It is checked against the fact it cites, which is
+ * strictly stronger than this scan: fold it in here and a charted number would pass because
+ * some unrelated approved fact happened to mention it.
+ */
+export const planClaimText = (plan: VideoPlan): string =>
+  plan.sections
+    .flatMap((section) => [
+      section.onScreen,
+      ...section.phrases.map((phrase) => phrase.text),
+      section.data?.caption ?? "",
+      ...(section.data?.points ?? []).map((point) => point.label),
+    ])
+    .filter(Boolean)
+    .join(" ");
+
+/**
+ * Every reason a plan states a figure it cannot source, as prose, or null when it is clean.
+ *
+ * This is the gate the architecture promised and never had: the numeric check existed since
+ * the port and was called from nowhere, so every figure a planner invented went straight to
+ * a rendered, captioned, publishable file. It runs right after planning, because that is the
+ * cheapest place to fail — one planning call rather than a narration take and a twenty-minute
+ * compose.
+ *
+ * Returning prose rather than throwing, following `copyRulesViolation`: the planner hands the
+ * list back to the model for another attempt, and the edit path wraps it in an exception with
+ * a remedy that suits an already-rendered video. A plan that invented one number is worth a
+ * retry, not a dead run.
  *
  * Two rules, and the second is the one that makes charts trustworthy:
  *
@@ -28,15 +57,20 @@ export const planCopy = (plan: VideoPlan): string =>
  *     with no evidence note is not approved for this purpose — `approvedStatements`
  *     already withholds it, so the figure has nothing to match against and fails here.
  *  2. Every value in a `data` block must name a `factId` that resolves to an approved
- *     fact. A chart is the easiest place in a video to assert a number nobody can source,
- *     and it is the place a viewer is least likely to question one.
+ *     fact, *and* the fact must state that number. A chart is the easiest place in a video
+ *     to assert a number nobody can source, and it is the place a viewer is least likely to
+ *     question one. Checking only the id was the hole this rule shipped with: the citation
+ *     resolved, the bar said whatever the planner felt like, and every gate passed.
  */
-export function assertPlanClaimsAreSourced(
+export function planClaimsViolation(
   plan: VideoPlan,
   facts: readonly ProductFact[],
   approved: readonly string[],
-): void {
-  assertNoUnverifiedNumericClaims(planCopy(plan), approved);
+): string | null {
+  const problems: string[] = [];
+  for (const number of unverifiedNumbers(planClaimText(plan), approved)) {
+    problems.push(`- "${number}" appears in the copy and no approved fact states it`);
+  }
 
   const usable = new Map(
     facts
@@ -45,29 +79,52 @@ export function assertPlanClaimsAreSourced(
       .map((fact) => [fact.id, fact]),
   );
 
-  const problems: string[] = [];
   for (const section of plan.sections) {
     if (!section.data) continue;
     for (const point of section.data.points) {
       const fact = usable.get(point.factId);
       if (!fact) {
         problems.push(
-          `§${section.id} charts ${point.label} = ${point.value} against fact "${point.factId}", `
+          `- §${section.id} charts ${point.label} = ${point.value} against fact "${point.factId}", `
           + "which is not an approved fact with evidence",
+        );
+        continue;
+      }
+      // The check the citation only implied. A resolvable factId proves a fact was named; it
+      // proves nothing about the number, and a bar labelled 40 beside a fact that says 12 is
+      // the most quotable lie this pipeline can produce — sourced-looking, and wrong.
+      //
+      // The statement and its evidence note, and nothing else. `source` is a URL, and
+      // "…/10-insights-from-content-creators-toolbox/" would source a chart of 10 off a slug.
+      if (!valueAppearsIn(point.value, `${fact.statement} ${fact.evidence}`)) {
+        problems.push(
+          `- §${section.id} charts ${point.label} = ${point.value}, but fact "${fact.id}" `
+          + `does not state that number: "${fact.statement}"`,
         );
       }
     }
     if (!section.data.caption.trim()) {
       // Enforced rather than defaulted. A figure whose source is not on screen is not
       // citable by anyone watching, and the composer cannot invent the attribution.
-      problems.push(`§${section.id} puts figures on screen with no source note`);
+      problems.push(`- §${section.id} puts figures on screen with no source note`);
     }
   }
 
-  if (problems.length) {
+  return problems.length ? problems.join("\n") : null;
+}
+
+/** The gate as `run.ts` applies it, once the planner has had its retries. */
+export function assertPlanClaimsAreSourced(
+  plan: VideoPlan,
+  facts: readonly ProductFact[],
+  approved: readonly string[],
+): void {
+  const violation = planClaimsViolation(plan, facts, approved);
+  if (violation) {
     throw new Error(
-      `Plan states figures it cannot source:\n- ${problems.join("\n- ")}\n`
-      + "Approve a fact with an evidence note, or drop the figure.",
+      `Plan states figures it cannot source:\n${violation}\n`
+      + "Approve a fact with an evidence note, chart the number the fact actually states, "
+      + "or drop the figure.",
     );
   }
 }

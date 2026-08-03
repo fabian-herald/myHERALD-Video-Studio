@@ -8,9 +8,9 @@ import {
   figureQueryOptions,
   keepSourcedFigures,
   parseFigures,
-  valueAppearsIn,
   type Figure,
 } from "./figures.ts";
+import {valueAppearsIn} from "./numbers.ts";
 import {pageText} from "./research.ts";
 
 const figure = (overrides: Partial<Figure> = {}): Figure => ({
@@ -131,6 +131,13 @@ test("a number is sourced when the page prints it, however it is punctuated", ()
   assert.ok(valueAppearsIn(1200, "1 200 Antworten"), "including a space, as German pages use");
   assert.ok(valueAppearsIn(3, "3.0 hours a week"), "3 and 3.0 are one figure written two ways");
   assert.ok(valueAppearsIn(2_400_000, "€2,400,000 in the first year"));
+  // A German page writes the decimal separator as a comma, and the thousands normalisation
+  // above deliberately leaves it alone — so without a comma candidate no German figure ever
+  // sourced anything, scale words aside. Every German fact in the corpus depends on this.
+  assert.ok(valueAppearsIn(3.4, "3,4 Stunden pro Tag"), "German decimal comma, no scale word");
+  assert.ok(valueAppearsIn(12.5, "um 12,5 Prozent gestiegen"));
+  // And it must not reach across a thousands group: 12,500 is twelve and a half thousand.
+  assert.ok(!valueAppearsIn(12.5, "12,500 responses"), "a thousands group is not a decimal");
 });
 
 test("a scale word sources the number it scales", () => {
