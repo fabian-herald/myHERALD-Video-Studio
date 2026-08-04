@@ -40,6 +40,7 @@ import {hash} from "../util/exec.ts";
 import {readSettings} from "../settings.ts";
 import {marketingGuidanceFor} from "../marketing/guidance.ts";
 import {Timeline} from "./timing.ts";
+import {uniqueVideoId} from "./videoId.ts";
 import {
   editDelta,
   isSubstantive,
@@ -88,7 +89,7 @@ export async function runPipeline(options: RunOptions): Promise<RunResult> {
   const kit = await loadBrandKit();
   const settings = await readSettings();
   const marketingGuidance = marketingGuidanceFor(settings, options.intent, narrationProfile);
-  const videoId = `${options.intent}-${hash({brief: options.brief, narrationProfile, at: Date.now()}, 6)}`;
+  const videoId = await uniqueVideoId(options.brief);
   const dir = videoDir(videoId);
   await fs.mkdir(dir, {recursive: true});
 
