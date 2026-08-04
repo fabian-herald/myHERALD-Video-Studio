@@ -27,14 +27,30 @@ import {runQc, writeQc} from "../src/core/render/qc.ts";
 import {readSettings} from "../src/core/settings.ts";
 import {buildCaptions} from "../src/core/tts/captions.ts";
 
-const videoId = process.argv[2];
+const argv = process.argv.slice(2);
+const positional = argv.filter((value, index) =>
+  !value.startsWith("--") && !argv[index - 1]?.startsWith("--"));
+const flag = (name: string) => {
+  const index = argv.indexOf(`--${name}`);
+  return index >= 0 ? argv[index + 1] : undefined;
+};
+
+const videoId = positional[0];
 if (!videoId) {
-  console.error("usage: npm run recompose -- <videoId> [suffix]");
+  console.error(
+    "usage: npm run recompose -- <videoId> [suffix] [composer]\n"
+    + "       npm run recompose -- <videoId> [suffix] --render-only [--from <workDirName>]\n\n"
+    + "  --render-only  render an authored composition that already exists, spending no\n"
+    + "                 model call. For recovering a run that composed cleanly and then\n"
+    + "                 lost its render — a crash, a cancel, or an exhausted usage limit.\n"
+    + "  --from         work/ subdirectory to render (default: portrait)\n",
+  );
   process.exit(1);
 }
-const suffix = process.argv[3] ?? "motion";
+const suffix = positional[1] ?? "motion";
 const settings = await readSettings();
-const composerId = process.argv[4] ?? settings.composer;
+const composerId = positional[2] ?? settings.composer;
+const renderOnly = argv.includes("--render-only");
 const dir = videoDir(videoId);
 const log = (line: string) => console.log(line);
 
@@ -43,16 +59,33 @@ const kit = await loadBrandKit();
 const narrationPath = path.join(dir, "narration-narration-loudnorm-v2.m4a");
 await fs.access(narrationPath);
 
-const authoringDir = path.join(dir, "work", `portrait-${suffix}`);
-await fs.rm(authoringDir, {recursive: true, force: true});
+const authoringDir = renderOnly
+  ? path.join(dir, "work", flag("from") ?? "portrait")
+  : path.join(dir, "work", `portrait-${suffix}`);
+
+if (!renderOnly) {
+  await fs.rm(authoringDir, {recursive: true, force: true});
+}
 await fs.mkdir(authoringDir, {recursive: true});
+// Safe either way: the scaffolding this writes is every file *except* the three the
+// composer owns, so refreshing it over an existing composition cannot disturb the work.
 const authoring = await prepareAuthoringDir({plan, kit, family: "portrait", dir: authoringDir, narrationPath});
 
-log(`recompose     ${videoId} · ${plan.sections.length} sections · ${authoring.durationSeconds}s · ${composerId}`);
-const composed = await composeWithRepair({
-  authoring, plan, kit, family: "portrait", composerId, baselineOnly: false, log,
-});
-log(`compose       attempts ${composed.attempts} · baseline ${composed.usedBaseline}`);
+if (renderOnly) {
+  for (const file of ["index.html", "styles.css", "animation.js"]) {
+    await fs.access(path.join(authoringDir, file)).catch(() => {
+      console.error(`No ${file} in ${authoringDir}. There is no composition here to render.`);
+      process.exit(1);
+    });
+  }
+  log(`render-only   ${videoId} · ${path.basename(authoringDir)} · no model call`);
+} else {
+  log(`recompose     ${videoId} · ${plan.sections.length} sections · ${authoring.durationSeconds}s · ${composerId}`);
+  const composed = await composeWithRepair({
+    authoring, plan, kit, family: "portrait", composerId, baselineOnly: false, log,
+  });
+  log(`compose       attempts ${composed.attempts} · baseline ${composed.usedBaseline}`);
+}
 
 const format = "9x16" as const;
 const renderDir = path.join(dir, "render", `${format}-${suffix}`);
