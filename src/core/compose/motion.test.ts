@@ -205,3 +205,15 @@ test("CRAFT.md reaches every composer, and no rendered format", () => {
   const from = emit.indexOf("export async function emitFormat");
   assert.match(emit.slice(from, emit.indexOf("const indexPath", from)), /CRAFT\\\.md/);
 });
+
+test("CRAFT.md names the difference the owner actually saw", () => {
+  // "Codex visuals are more distracting, Claude's more meaningful." Three measurements
+  // failed to explain it — decorative-element ratio, invented-text count and label length
+  // all put the approved composition at or above the rejected ones. The fourth found it:
+  // the approved one puts 25 elements into repeated sets and the rejected ones 0 and 6.
+  const source = craft();
+  assert.match(source, /Draw sets, not shapes/);
+  assert.match(source, /25 elements into repeated/);
+  // And the caveat, because half the approved composition's scenes have no set in them.
+  assert.match(source, /Not every scene has a set in it/);
+});

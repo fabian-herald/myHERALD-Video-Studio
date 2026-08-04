@@ -48,7 +48,31 @@ it is a background that commits and a foreground that has been noticed.
 Every scene needs one colour that pulls the eye. Muted is fine; flat is not. Tint neutrals
 toward the brand hue — dead grey reads as undesigned.
 
-## 3. The sequence has a shape
+## 3. Draw sets, not shapes
+
+The clearest difference between a frame that reads and a frame that is merely full.
+
+Measured across three compositions: the approved one puts **25 elements into repeated
+sets** — five identical sheets, a three-day calendar where each day is a row plus a slab
+plus a chip, three lanes. The two rejected as distracting put **0 and 6** into sets; every
+other shape in them is a one-off, sixty-three unique shapes across six scenes.
+
+A set carries the argument by being a set. Five identical posts *is* the point about
+repetition. Three days each marked PUBLISHED *is* the point about cadence. The viewer reads
+one idea and the count does the work.
+
+Twelve unique shapes in one scene is twelve things to interpret, and a viewer with four
+seconds interprets none of them. It is the same element count and it reads as noise.
+
+So when a scene needs supporting structure, ask what it is a set *of* — days, posts,
+attempts, versions, rows of a comparison — and draw three or five of that one thing. Reach
+for a novel shape only when the scene genuinely has one subject and no plural.
+
+Not every scene has a set in it. In the approved composition the data scene and the payoff
+have none: a receipt is one object and a payoff is one statement. That is the exception,
+not the licence — half its scenes are built on a repeated element.
+
+## 4. The sequence has a shape
 
 Six good scenes in a row is not a good video. The sequence needs a peak and something
 either side of it.
@@ -62,7 +86,7 @@ either side of it.
 - Open with the strongest single image, not with a warm-up.
 - Close resolved. The last frame is the one that gets screenshotted.
 
-## 4. Easing means something
+## 5. Easing means something
 
 - **`power2.out` / `power3.out`** — arriving. Fast in, settles. Almost every entrance.
 - **`power2.in`** — leaving. Slow start, accelerates away.
@@ -81,7 +105,7 @@ Within a scene: **build, breathe, resolve.** Elements arrive in a deliberate ord
 frame holds long enough to read, then one thing changes to close the thought. The hold is
 not dead time — it is the part the viewer actually uses.
 
-## 5. Tells
+## 6. Tells
 
 Things that mark a composition as generated rather than designed:
 
@@ -94,7 +118,7 @@ Things that mark a composition as generated rather than designed:
 - Three of anything, evenly spaced, because three felt like enough.
 - Rounded corners on everything, at the same radius.
 
-## 6. Text in motion
+## 7. Text in motion
 
 Describe what moves, do not name an effect. There is no effects library here; there is
 GSAP and the DOM, and every one of these is a few lines of it:
