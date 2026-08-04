@@ -105,6 +105,7 @@ export async function checkComposition(options: {
     ...await checkPerpetualMotionSource(dir),
     ...await checkTransformOrigin(dir),
     ...await checkLayoutWaivers(dir),
+    ...await checkInventedText(dir, plan),
     ...await checkBrandRailPersistence(dir, plan),
     ...await checkNumericTiming(dir),
     ...await checkSceneEntrances(dir, plan),
@@ -203,7 +204,8 @@ async function runHyperframesCheck(
         ? {x: bbox.x as number, y: bbox.y as number, width: bbox.width as number, height: bbox.height as number}
         : undefined;
       findings.push({
-        severity: (finding.severity as Severity) ?? "warning",
+        severity: SEVERITY_PROMOTIONS[finding.code ?? ""]
+          ?? (finding.severity as Severity) ?? "warning",
         code: finding.code,
         // Unchanged on purpose: the composers have been repairing against this exact prose,
         // and the structured fields below are an addition to it, not a replacement for it.
@@ -253,6 +255,20 @@ const FIX_HINT_OVERRIDES: Record<string, string> = {
 function sanitizeFixHint(code: string | undefined, hint: string | undefined) {
   return (code && FIX_HINT_OVERRIDES[code]) ?? hint;
 }
+
+/**
+ * Upstream findings this studio holds to a higher standard than the checker that raised them.
+ *
+ * `rotation_pivot_drift` ships as a warning and its own source says so — "EF promotes this to
+ * error separately; keep it a warning here" — so promoting it downstream is the intended seam,
+ * not a disagreement with upstream. It earns the promotion: the dial on run 0600 drifted 107px
+ * and 162px across its rotation, which is a clock hand sweeping around a point outside the
+ * clock. It read as broken to the first person who watched it, and at warning level nothing
+ * stopped it reaching a rendered video.
+ */
+const SEVERITY_PROMOTIONS: Record<string, Severity> = {
+  rotation_pivot_drift: "error",
+};
 
 function parseJson(stdout: string): unknown {
   const trimmed = stdout.trim();
@@ -1141,6 +1157,13 @@ function markupTree(html: string): MarkupNode[] {
  * Measured across every composition in the repo: dba07c 0 of 6, the approved 7e83b7 0 of 3,
  * and 0 for five more that shipped. The three-of-three composition is the one with the
  * reported overlaps.
+ *
+ * Promoted from warning to error after its second real composition, which is the bar the
+ * plan set for every finding added in that round. It has now earned it twice over: on run
+ * 0600 it named `.section-number` — the oversized "02" that the owner photographed sitting
+ * across the headline — and the run shipped anyway, because a warning stops nothing. The
+ * false-positive risk this severity was hedging against never materialised: every approved
+ * composition scores zero, so nothing that has been signed off would fail today.
  */
 export async function checkLayoutWaivers(dir: string): Promise<CheckFinding[]> {
   const html = await fs.readFile(path.join(dir, "index.html"), "utf8").catch(() => "");
@@ -1158,7 +1181,7 @@ export async function checkLayoutWaivers(dir: string): Promise<CheckFinding[]> {
       return !grouped && node.text.trim().length > 0;
     })
     .map((node): CheckFinding => ({
-      severity: "warning",
+      severity: "error",
       code: "lone_layout_waiver",
       message:
         `index.html:${node.line} waives the layout check on <${node.tag}`
@@ -1598,6 +1621,94 @@ const normalise = (text: string) =>
     .replace(/\s+/g, " ")
     .trim()
     .toLowerCase();
+
+/**
+ * How much text a scene puts on screen that the plan never asked for.
+ *
+ * Density was the thing this studio was short of, so the metric added to chase it counts
+ * elements — and the cheapest element in HTML is a word in a `<span>`. On run 0600 the
+ * composition beat the density target for the first time, at 19 elements in its thinnest
+ * scene, and the first person to watch it called it busy and hard to read. Counting again
+ * by text run rather than element told the real story: 12.2 runs per scene against the
+ * approved exemplar's 8.0. It had cleared the bar by writing labels.
+ *
+ * So the ceiling is set from what the approved work does, not from a round number. Only text
+ * the plan did not supply is counted — a scene may render its `onScreen` line, its data
+ * labels, its caption and its unit as freely as it likes, and none of that is charged here.
+ * What is charged is `SPEED / JUDGMENT`, `THE TEST`, `EDGE CASE`, `POINT OF VIEW`: eyebrows,
+ * tickers and chips that no one wrote and no one reads.
+ *
+ * Warning rather than error, in line with the plan's promote-after-two-runs rule, and because
+ * this is the one finding here that judges rather than verifies. A composition can be dense
+ * and readable; the count cannot tell which. What it can do is refuse to let "busy" be
+ * invisible in the log again.
+ *
+ * Measured per scene, distinct: the approved exemplar runs [5, 6, 4, 6, 3, 0] and the approved
+ * dba07c the same; the accepted Terra run [4, 3, 3, 2, 4, 2]; the busy run [8, 6, 5, 6, 6, 3].
+ * Seven rather than six on purpose — six is exactly the approved peak, and a ceiling sitting
+ * on the shoulder of the work it is meant to permit fails the next composition that writes
+ * one more chip. Seven still catches the scene that prompted this, which is the whole job.
+ */
+const INVENTED_TEXT_PER_SCENE = 7;
+
+export async function checkInventedText(dir: string, plan: VideoPlan): Promise<CheckFinding[]> {
+  const html = await fs.readFile(path.join(dir, "index.html"), "utf8").catch(() => "");
+  const css = await fs.readFile(path.join(dir, "styles.css"), "utf8").catch(() => "");
+  if (!html.trim()) return [];
+  const hidden = visuallyHiddenClasses(css);
+  const findings: CheckFinding[] = [];
+
+  for (const section of plan.sections) {
+    const element = extractElement(html, `scene-${section.id}`);
+    if (!element) continue;
+
+    // Everything the plan put at this scene's disposal, as one haystack. Matching a run
+    // against the whole string rather than a list of fields is deliberate: compositions
+    // split a headline across spans — "Shipping is not" / "authorship" — and each fragment
+    // has to read as supplied, not as two inventions.
+    const supplied = normalise([
+      section.onScreen,
+      section.data?.caption ?? "",
+      section.data?.unit ?? "",
+      ...(section.data?.points ?? []).flatMap((point) => [point.label, String(point.value)]),
+    ].join(" "));
+
+    // Distinct text, not every occurrence. The first cut of this counted each run and fired
+    // on the approved exemplar, for a row of five `POST` chips and a Mon/Wed/Fri strip — the
+    // repeated sets that are the exemplar's whole method and the reason its scenes read as
+    // designed rather than listed. Five copies of one word is one decision. Five different
+    // words is five, and that is the thing worth counting.
+    const invented = [...new Set(
+      [...removeHiddenElements(element.inner, hidden).matchAll(/>([^<>]+)</g)]
+        .map((match) => normalise(match[1] ?? ""))
+        // A lone digit or bullet is punctuation with a tag around it, not a label. Counters
+        // legitimately render "0" and tick up, and the plan's figure lives in that span.
+        .filter((run) => run.replace(/[^a-z]/g, "").length > 1)
+        .filter((run) => !supplied.includes(run)),
+    )];
+
+    if (invented.length > INVENTED_TEXT_PER_SCENE) {
+      findings.push({
+        severity: "warning",
+        code: "scene_text_crowded",
+        message:
+          `scene-${section.id} renders ${invented.length} pieces of text the plan did not ask `
+          + `for (the ceiling is ${INVENTED_TEXT_PER_SCENE}): `
+          + `${invented.slice(0, 6).map((run) => `"${run}"`).join(", ")}`
+          + `${invented.length > 6 ? ", …" : ""}.`,
+        fixHint:
+          "Cut the labels that only restate the scene. Density should come from structure — "
+          + "layered fields, rules, plates, repeated sets — not from more words on the frame.",
+        source: "plan",
+        file: "index.html",
+        elementId: `scene-${section.id}`,
+        sectionId: section.id,
+      });
+    }
+  }
+
+  return findings;
+}
 
 export function formatFindings(report: CheckReport, limit = 12): string {
   return report.findings

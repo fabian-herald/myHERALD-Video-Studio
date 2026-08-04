@@ -3,7 +3,13 @@ import path from "node:path";
 import {loadBrandKit} from "../brand/kit.ts";
 import {renderTokensCss} from "../brand/tokens.ts";
 import {writeBaselineComposition} from "../compose/baseline.ts";
-import {FPS, prepareAuthoringDir, sectionReviewTimes, sectionSnapshotTimes} from "../compose/workdir.ts";
+import {
+  FPS,
+  prepareAuthoringDir,
+  restoreSuppliedFiles,
+  sectionReviewTimes,
+  sectionSnapshotTimes,
+} from "../compose/workdir.ts";
 import {
   COMPOSITION_FILES,
   composerFor,
@@ -602,6 +608,18 @@ export async function composeWithRepair(options: {
       closeAttempt();
     }
 
+    // Before the no-op guard, because an attempt that edited only supplied files trips that
+    // guard and reports "unchanged", which is true of the composition and useless as a
+    // diagnosis. Restoring first means the next attempt starts from clean infrastructure and
+    // the log names what actually happened.
+    const restored = await restoreSuppliedFiles(authoring.dir);
+    if (restored.length) {
+      log(
+        `compose       reverted ${restored.join(", ")} — supplied file(s) are not the `
+        + "composition's to edit; the fix belongs in styles.css",
+      );
+    }
+
     // A repair that returns the composition it was given has nothing further to offer, and
     // the remaining budget buys only identical sessions. Measured across twelve runs, five
     // repair rounds were byte-identical and one run spent its last two attempts this way.
@@ -610,7 +628,11 @@ export async function composeWithRepair(options: {
       throwIfCancelled(signal, "compose");
       throw new Error(
         `The ${composer.label} composition was unchanged by repair attempt ${attempt}, so the `
-        + `remaining ${MAX_REPAIR_ATTEMPTS + 1 - attempt} attempt(s) were not spent `
+        + (restored.length
+          ? `remaining ${MAX_REPAIR_ATTEMPTS + 1 - attempt} attempt(s) were not spent. `
+            + `The attempt edited ${restored.join(", ")} instead of the composition, and those `
+            + "supplied files were reverted, so nothing it did survived. "
+          : `remaining ${MAX_REPAIR_ATTEMPTS + 1 - attempt} attempt(s) were not spent `)
         + `(${report?.errorCount ?? "unknown"} error(s) remaining). The attempt was kept for `
         + "inspection; no fallback video was rendered.",
       );

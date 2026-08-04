@@ -15,6 +15,7 @@ import {
   checkPerpetualMotionSource,
   checkStylesheetLinks,
   checkLayoutWaivers,
+  checkInventedText,
   checkTransformOrigin,
   removeHiddenElements,
   visuallyHiddenClasses,
@@ -761,6 +762,109 @@ test("one target is reported once, however many times it is scaled", async () =>
       assert.deepEqual(findings.map((finding) => finding.selector), [".rule", ".other"]);
     },
   );
+});
+
+// ── waivers, hidden copy, and the tagline set twice ──────────────────────────────
+
+// ── how much text a scene puts on the frame ──────────────────────────────────────
+
+/** One scene, one section, with whatever markup the case needs. */
+async function withScene(
+  inner: string,
+  section: Record<string, unknown>,
+  run: (dir: string, plan: VideoPlan) => Promise<void>,
+) {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), "studio-text-"));
+  try {
+    await fs.writeFile(
+      path.join(dir, "index.html"),
+      `<section id="scene-s1" class="scene clip">${inner}</section>`,
+      "utf8",
+    );
+    await fs.writeFile(path.join(dir, "styles.css"), ".scene{color:red}", "utf8");
+    await run(dir, {sections: [{id: "s1", onScreen: "", phrases: [], ...section}]} as unknown as VideoPlan);
+  } finally {
+    await fs.rm(dir, {recursive: true, force: true});
+  }
+}
+
+const chips = (words: string[]) => words.map((word) => `<b>${word}</b>`).join("");
+
+test("a scene within the invented-text ceiling passes", async () => {
+  await withScene(
+    `<h1>Pressure changes the standard</h1>${chips(["ONE", "TWO", "THREE"])}`,
+    {onScreen: "Pressure changes the standard"},
+    async (dir, plan) => assert.deepEqual(await checkInventedText(dir, plan), []),
+  );
+});
+
+test("a row of identical chips counts once, not once each", async () => {
+  // The approved exemplar's method: five `POST` cards in a row, a Mon/Wed/Fri strip. The
+  // first cut of this check counted every occurrence and failed that composition.
+  await withScene(
+    `<h1>Consistency is cheap</h1>${chips(Array.from({length: 12}, () => "POST"))}`,
+    {onScreen: "Consistency is cheap"},
+    async (dir, plan) => assert.deepEqual(await checkInventedText(dir, plan), []),
+  );
+});
+
+test("a scene padded with distinct invented labels is flagged", async () => {
+  await withScene(
+    // "SHIP" is deliberately absent: it is a substring of the headline's "Shipping", so the
+    // check reads it as supplied. Erring that way is the right direction for a warning.
+    `<h1>Shipping is not authorship</h1>${chips([
+      "FAST", "01 / THE MEASURE", "SPEED / JUDGMENT", "JUDGE", "THE TEST", "JUDGMENT", "PACE", "VOLUME",
+    ])}`,
+    {onScreen: "Shipping is not authorship"},
+    async (dir, plan) => {
+      const findings = await checkInventedText(dir, plan);
+      assert.equal(findings.length, 1);
+      assert.equal(findings[0]?.code, "scene_text_crowded");
+      assert.equal(findings[0]?.sectionId, "s1");
+    },
+  );
+});
+
+test("the plan's own copy, figures and labels are never charged as invented", async () => {
+  await withScene(
+    "<h1>Pressure changes the standard</h1>"
+    + '<span class="data-figure">3.4</span><em>hours</em>'
+    + "<p>Daily content creation</p><p>Source: Kontent.ai, The content creator's toolbox 2025</p>",
+    {
+      onScreen: "Pressure changes the standard",
+      data: {
+        shape: "counter",
+        unit: "hours",
+        caption: "Source: Kontent.ai, The content creator's toolbox 2025",
+        points: [{label: "Daily content creation", value: 3.4, factId: "f-1"}],
+      },
+    },
+    async (dir, plan) => assert.deepEqual(await checkInventedText(dir, plan), []),
+  );
+});
+
+test("copy hidden by the stylesheet is not counted toward the ceiling", async () => {
+  // It is not on the frame, so it cannot be crowding it. Counting it would push a scene
+  // over the line for text no viewer will ever see.
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), "studio-text-"));
+  try {
+    await fs.writeFile(
+      path.join(dir, "index.html"),
+      '<section id="scene-s1" class="scene clip"><h1>Keep the decision</h1>'
+      + `<div class="sr">${chips(["A LABEL", "B LABEL", "C LABEL", "D LABEL", "E LABEL", "F LABEL", "G LABEL", "H LABEL"])}</div>`
+      + "</section>",
+      "utf8",
+    );
+    await fs.writeFile(
+      path.join(dir, "styles.css"),
+      ".sr{position:absolute;width:1px;height:1px;clip:rect(0 0 0 0)}",
+      "utf8",
+    );
+    const plan = {sections: [{id: "s1", onScreen: "Keep the decision", phrases: []}]} as unknown as VideoPlan;
+    assert.deepEqual(await checkInventedText(dir, plan), []);
+  } finally {
+    await fs.rm(dir, {recursive: true, force: true});
+  }
 });
 
 // ── waivers, hidden copy, and the tagline set twice ──────────────────────────────

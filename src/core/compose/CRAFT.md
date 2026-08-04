@@ -68,6 +68,17 @@ So when a scene needs supporting structure, ask what it is a set *of* — days, 
 attempts, versions, rows of a comparison — and draw three or five of that one thing. Reach
 for a novel shape only when the scene genuinely has one subject and no plural.
 
+**Structure, not labels.** The cheapest way to add an element is to type a word into a span,
+and it is the one way that makes a frame worse. A run that finally cleared the density bar
+did it with eyebrows and chips — `01 / THE MEASURE`, `SPEED / JUDGMENT`, `THE TEST`, `FAST`,
+`JUDGE` in one scene — and the first person who watched it called it busy and could not find
+the line that mattered.
+
+Budget **at most seven distinct pieces of text per scene** beyond the copy the plan supplies.
+The approved composition peaks at six. A row of five identical `POST` chips counts as one:
+repeating a label is a set, and sets are free. Five *different* labels is five, and it is the
+one place where more costs you.
+
 Not every scene has a set in it. In the approved composition the data scene and the payoff
 have none: a receipt is one object and a payoff is one statement. That is the exception,
 not the licence — half its scenes are built on a repeated element.

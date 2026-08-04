@@ -16,6 +16,7 @@ import {
   checkPerpetualMotionSource,
   checkStylesheetLinks,
   checkLayoutWaivers,
+  checkInventedText,
   checkTransformOrigin,
   visuallyHiddenClasses,
   checkTokens,
@@ -118,6 +119,11 @@ test("the exemplar trips none of the Stage 4a rules", async () => {
 
   // Nothing in it is invisible, so nothing in it can answer the copy rule invisibly.
   assert.deepEqual([...visuallyHiddenClasses(await read("styles.css"))], [], "hidden classes");
+
+  // Per scene it invents [5, 6, 4, 6, 3, 0] distinct pieces of text against a ceiling of 7.
+  // The ceiling was set from this composition and deliberately sits one above its peak — a
+  // gate resting exactly on the work it exists to permit fails the next one that adds a chip.
+  assert.deepEqual(await checkInventedText(EXEMPLAR, await plan()), [], "invented text");
 });
 
 test("the exemplar trips none of the Stage 4b rules either", async () => {

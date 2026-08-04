@@ -27,6 +27,55 @@ export const BLOCK_FILES = [
   "caption-layer.css",
 ] as const;
 
+/**
+ * Supplied files a composition may read and link but never edit, and the pristine source
+ * each one is restored from.
+ *
+ * The three authored files are the composition; everything else in the authoring directory
+ * is infrastructure that arrives identical for every video. Nothing enforced that. On run
+ * 0600 the landscape repair met six layout errors and answered them by editing
+ * `blocks/caption-layer.css` — nudging the shared caption band down 5% of frame height for
+ * every video ever made, to move two words in one of them.
+ *
+ * The damage would have been broad and the failure was silent: `compositionFingerprint`
+ * reads only the authored three, so the attempt looked byte-identical, the no-op guard fired,
+ * and the run died with two attempts unspent and a misleading reason. Restoring the file and
+ * saying so out loud turns a confusing dead end into a legible one, and hands the composer
+ * back an error it can actually act on.
+ *
+ * `tokens.css` is here for the same reason and a sharper one: it is the brand, generated from
+ * the kit, and a composition that edits it has redefined the brand rather than used it.
+ */
+export const SUPPLIED_FILES: readonly {file: string; source: string}[] = [
+  ...BLOCK_FILES.map((block) => ({
+    file: `blocks/${block}`,
+    source: path.join(COMPOSE_SRC, "blocks", block),
+  })),
+  {file: "CONTRACT.md", source: path.join(COMPOSE_SRC, "CONTRACT.md")},
+  {file: "CRAFT.md", source: path.join(COMPOSE_SRC, "CRAFT.md")},
+];
+
+/**
+ * Put back any supplied file the composer edited, and name what was put back.
+ *
+ * `tokens.css` and `caption-data.js` are generated per video rather than copied, so they
+ * cannot be restored from a source path here; they are covered by the checker instead.
+ */
+export async function restoreSuppliedFiles(dir: string): Promise<string[]> {
+  const restored: string[] = [];
+  for (const {file, source} of SUPPLIED_FILES) {
+    const target = path.join(dir, file);
+    const [pristine, current] = await Promise.all([
+      fs.readFile(source, "utf8").catch(() => null),
+      fs.readFile(target, "utf8").catch(() => null),
+    ]);
+    if (pristine === null || current === null || pristine === current) continue;
+    await fs.writeFile(target, pristine, "utf8");
+    restored.push(file);
+  }
+  return restored;
+}
+
 export interface AuthoringDir {
   dir: string;
   compositionId: string;
