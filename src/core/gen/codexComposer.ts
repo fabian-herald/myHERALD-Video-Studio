@@ -182,6 +182,16 @@ export const codexComposer: Composer = {
       [
         PREAMBLE,
         "",
+        "Study exemplar/index.html and exemplar/styles.css before deciding anything, for one",
+        "purpose only: how much a finished scene carries. Count the elements in a single one",
+        "of its sections. That density is the bar, and a sparse scene that passes every check",
+        "is still a failure.",
+        "",
+        "Copy nothing else from it. The exemplar predates parts of the contract and violates",
+        "them: it sets the brand name as live type, builds a seal by hand, reaches outside the",
+        "directory with ../media/ paths, and links neither tokens.css nor the block",
+        "stylesheets. Where it disagrees with CONTRACT.md, the contract wins every time.",
+        "",
         "Decide a distinct spatial archetype for every section before writing markup.",
         "Two adjacent scenes must never share an archetype.",
         "",
@@ -192,7 +202,12 @@ export const codexComposer: Composer = {
         "Do not install or download Node,",
         "HyperFrames, packages, skills, or registry items.",
       ].join("\n"),
-      context,
+      // Authoring is the one creative act in the run, and it was the only Codex call
+      // still running at medium — review and repair both force high. That is backwards:
+      // a repair is a minimal diff against named findings, while this pass decides every
+      // layout in the piece. Measured against Claude on the same brief, Codex authored 65
+      // lines of CSS to Claude's 570, and this is the cheapest lever on that gap.
+      {...context, effort: "high"},
       "compose",
     );
   },
