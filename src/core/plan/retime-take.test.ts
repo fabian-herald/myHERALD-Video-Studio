@@ -82,10 +82,25 @@ test("the final spoken section runs to the end of the audio", () => {
 });
 
 test("the mastered post-roll belongs to the last scene instead of being cut off", () => {
+  // Long enough that the master genuinely outlasts the end card, which is the case this
+  // guards: the AAC tail must land inside the last scene rather than be truncated.
+  const retimed = retimeFromTake(plan(), PLACED, 14_800);
+  const last = retimed.sections.at(-1)!;
+  assert.equal(last.startMs + last.durationMs, 14_800);
+  assert.ok(last.durationMs > END_CARD_MIN_MS, "the tail was absorbed rather than dropped");
+  assert.equal(retimed.sections[1]!.phrases[0]!.durationMs, 1_180, "speech is never stretched");
+});
+
+test("a master shorter than the end card never clips the card", () => {
+  // The end card is silent by design, so a plan that outlasts the narration is correct —
+  // the voice stops and the identity card holds. Absorbing a tail may only ever add time.
   const retimed = retimeFromTake(plan(), PLACED, 12_300);
   const last = retimed.sections.at(-1)!;
-  assert.equal(last.startMs + last.durationMs, 12_300);
-  assert.equal(retimed.sections[1]!.phrases[0]!.durationMs, 1_180, "speech is never stretched");
+  assert.equal(last.durationMs, END_CARD_MIN_MS);
+  assert.ok(
+    last.startMs + last.durationMs >= 12_300,
+    "the plan must never end before the audio it is cut against",
+  );
 });
 
 test("a wordless section still gets time on screen", () => {

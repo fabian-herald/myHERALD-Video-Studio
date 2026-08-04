@@ -5,9 +5,26 @@ export const SILENT_SECTION_MIN_MS = 1600;
 
 /**
  * The final identity card needs time to register before a short-form video loops.
- * Three seconds includes its entrance and leaves roughly two seconds on the resolved card.
+ *
+ * Three seconds was set on the assumption that the entrance costs about a second. It does
+ * not. A real card stages in its plate, rule, lockup, descriptor and URL in sequence —
+ * measured at 1.70s in thought-leadership-dba07c — which left only 1.34s on the resolved
+ * card, and the owner read that as an underwhelming ending rather than a short one.
+ *
+ * Four seconds is the ceiling, not a preference. The post-render freeze gate
+ * (`freezedetect=d=2.5` in render/qc.ts) fails any span holding a static frame for 2.5s,
+ * and a resolved identity card is exactly that. Five seconds gave a 3.44s hold and failed
+ * QC; four gives roughly 2.3s and passes. The two rules genuinely disagree here — the
+ * visual rubric asks the card to "hold long enough to register before looping" while the
+ * freeze gate forbids holding — and this constant sits at the edge the gate allows rather
+ * than resolving the disagreement.
+ *
+ * That makes the margin thin and composition-dependent: a card that stages in faster
+ * leaves a longer static tail and can still trip the gate. If end cards start failing
+ * `noLongFreeze`, the fix is to scope that check past the final scene — the way the
+ * pre-render motion gate already reasons per section — not to shorten the card further.
  */
-export const END_CARD_MIN_MS = 3000;
+export const END_CARD_MIN_MS = 4000;
 
 /** A thought must be allowed to land after the last spoken word. */
 export const NARRATION_END_HOLD_MS = 650;
