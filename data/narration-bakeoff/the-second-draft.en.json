@@ -1,0 +1,150 @@
+{
+  "videoId": "the-second-draft",
+  "language": "en",
+  "adaptationNote": "The English original the German adaptation was made from. Extracted from the video that produced it so the bake-off no longer reads a gitignored working directory.",
+  "sections": [
+    {
+      "id": "you-can-tell",
+      "phrases": [
+        {
+          "id": "tell",
+          "text": "You can always tell."
+        },
+        {
+          "id": "not-bad",
+          "text": "The piece is fine, just unfinished."
+        },
+        {
+          "id": "hedge",
+          "text": "The hedge is still in the sentence."
+        },
+        {
+          "id": "last-para",
+          "text": "The point shows up in the last paragraph."
+        }
+      ]
+    },
+    {
+      "id": "why-good-teams",
+      "phrases": [
+        {
+          "id": "not-careless",
+          "text": "These are not careless people."
+        },
+        {
+          "id": "they-know",
+          "text": "They know what a good piece looks like."
+        },
+        {
+          "id": "so-why",
+          "text": "So why does the work arrive unfinished?"
+        }
+      ]
+    },
+    {
+      "id": "the-day",
+      "phrases": [
+        {
+          "id": "look",
+          "text": "Look at where the day already goes."
+        },
+        {
+          "id": "figure",
+          "text": "3.4 hours of every working day, creating."
+        },
+        {
+          "id": "real-work",
+          "text": "That time is doing real work."
+        },
+        {
+          "id": "remainder",
+          "text": "It has to hold everything else you owe."
+        }
+      ]
+    },
+    {
+      "id": "revision-is-thinking",
+      "phrases": [
+        {
+          "id": "not-polish",
+          "text": "A second draft is not polish."
+        },
+        {
+          "id": "cut-down",
+          "text": "It is where the argument gets cut down."
+        },
+        {
+          "id": "vague",
+          "text": "It is where the vague sentence gets replaced."
+        },
+        {
+          "id": "meant",
+          "text": "It is where you find what you meant."
+        },
+        {
+          "id": "thats-it",
+          "text": "That is the work."
+        }
+      ]
+    },
+    {
+      "id": "first-thing-dropped",
+      "phrases": [
+        {
+          "id": "dropped",
+          "text": "So it is the first thing dropped."
+        },
+        {
+          "id": "publishable",
+          "text": "A first draft is publishable."
+        },
+        {
+          "id": "optional",
+          "text": "A second draft is optional."
+        },
+        {
+          "id": "not-speed",
+          "text": "Cutting it does not cost you speed."
+        },
+        {
+          "id": "the-point",
+          "text": "It costs you the point."
+        }
+      ]
+    },
+    {
+      "id": "reframe",
+      "phrases": [
+        {
+          "id": "not-thinking",
+          "text": "So most published work is not the thinking."
+        },
+        {
+          "id": "attempt",
+          "text": "It is the first attempt at thinking."
+        },
+        {
+          "id": "deadline",
+          "text": "With a deadline attached."
+        }
+      ]
+    },
+    {
+      "id": "close",
+      "phrases": [
+        {
+          "id": "calendar",
+          "text": "So put the second draft on the calendar."
+        },
+        {
+          "id": "before",
+          "text": "Not after the deadline, before it."
+        },
+        {
+          "id": "publish-thought",
+          "text": "Publish the thought, not the attempt."
+        }
+      ]
+    }
+  ]
+}

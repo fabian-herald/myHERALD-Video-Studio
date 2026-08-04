@@ -13,7 +13,7 @@ import {
   averageConfidence, controlledSlices, masterListeningFile, peakDb,
   unexplainedSilences, wordErrorRate, BETWEEN_SECTION_GAP_MS, WITHIN_SECTION_GAP_MS,
 } from "../src/core/tts/bakeoff/quality.ts";
-import {alignmentTargets, loadBakeoffScript, plainTranscript} from "../src/core/tts/bakeoff/scripts.ts";
+import {alignmentTargets, BAKEOFF_SCRIPT_ID, loadBakeoffScript, plainTranscript} from "../src/core/tts/bakeoff/scripts.ts";
 import type {
   AutomaticQuality, BakeoffLanguage, BakeoffManifest, CandidateRecord, ProviderGeneration,
 } from "../src/core/tts/bakeoff/types.ts";
@@ -28,7 +28,7 @@ const flag = (name: string) => {
 const has = (name: string) => argv.includes(`--${name}`);
 const reprocess = has("reprocess");
 const screening = has("screening");
-const videoId = flag("video") ?? "thought-leadership-7e83b7";
+const videoId = flag("video") ?? BAKEOFF_SCRIPT_ID;
 const takes = Math.max(1, Number.parseInt(flag("takes") ?? "2", 10));
 const languages = parseLanguages(flag("languages") ?? "en,de");
 const requested = new Set((flag("candidates") ?? BAKEOFF_CANDIDATES.filter((item) => !item.retired && !item.optIn).map((item) => item.id).join(","))

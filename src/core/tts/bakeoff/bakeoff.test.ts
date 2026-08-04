@@ -9,12 +9,12 @@ import {
   qwenContinueTask, qwenFinishTask, qwenRunTask,
   sonicContinuationRequests, sonicHttpRequest, sonicKyleRequest,
 } from "./providers.ts";
-import {loadBakeoffScript, pauseTaggedTranscript, performanceTaggedTranscript, ssmlTranscript} from "./scripts.ts";
+import {BAKEOFF_SCRIPT_ID, loadBakeoffScript, pauseTaggedTranscript, performanceTaggedTranscript, ssmlTranscript} from "./scripts.ts";
 
 test("both language scripts preserve seven sections and 27 phrase identities", async () => {
   const [english, german] = await Promise.all([
-    loadBakeoffScript("thought-leadership-7e83b7", "en"),
-    loadBakeoffScript("thought-leadership-7e83b7", "de"),
+    loadBakeoffScript(BAKEOFF_SCRIPT_ID, "en"),
+    loadBakeoffScript(BAKEOFF_SCRIPT_ID, "de"),
   ]);
   assert.equal(english.sections.length, 7);
   assert.equal(german.sections.length, 7);
@@ -29,7 +29,7 @@ test("both language scripts preserve seven sections and 27 phrase identities", a
 });
 
 test("Gemini directed voices share the exact Studio-style prompt", async () => {
-  const script = await loadBakeoffScript("thought-leadership-7e83b7", "en");
+  const script = await loadBakeoffScript(BAKEOFF_SCRIPT_ID, "en");
   const prompt = geminiStudioPrompt(script);
   assert.match(prompt, /# Audio Profile/);
   assert.match(prompt, /# Director's note/);
@@ -42,7 +42,7 @@ test("Gemini directed voices share the exact Studio-style prompt", async () => {
 });
 
 test("Gemini production candidate preserves the current prompt for a prompt-only A/B", async () => {
-  const script = await loadBakeoffScript("thought-leadership-7e83b7", "en");
+  const script = await loadBakeoffScript(BAKEOFF_SCRIPT_ID, "en");
   const prompt = geminiProductionPrompt(script);
   assert.match(prompt, /^Read the following transcript/);
   assert.match(prompt, /# Audio Profile/);
@@ -57,7 +57,7 @@ test("Gemini production candidate preserves the current prompt for a prompt-only
 });
 
 test("Gemini simplified prompt keeps only three expression tags and a direct pace target", async () => {
-  const script = await loadBakeoffScript("thought-leadership-7e83b7", "en");
+  const script = await loadBakeoffScript(BAKEOFF_SCRIPT_ID, "en");
   const prompt = geminiSimplePrompt(script);
   assert.match(prompt, /Pace: Brisk and continuous, with no dead air\. Aim for about 75 seconds/);
   assert.doesNotMatch(prompt, /## Sample Context:|\[(?:short|medium) pause\]/);
@@ -69,7 +69,7 @@ test("Gemini simplified prompt keeps only three expression tags and a direct pac
 });
 
 test("Gemini balanced prompt restores calm authority and only pauses between sections", async () => {
-  const script = await loadBakeoffScript("thought-leadership-7e83b7", "en");
+  const script = await loadBakeoffScript(BAKEOFF_SCRIPT_ID, "en");
   const prompt = geminiBalancedPrompt(script);
   assert.match(prompt, /Thought leadership with calm authority/);
   assert.match(prompt, /Aim for around 80 seconds; never rush a paragraph transition/);
@@ -98,7 +98,7 @@ test("rejected Chirp remains reproducible but is retired from default runs", () 
 });
 
 test("Sonic uses one context, one voice, and seven pinned continuation inputs", async () => {
-  const script = await loadBakeoffScript("thought-leadership-7e83b7", "de");
+  const script = await loadBakeoffScript(BAKEOFF_SCRIPT_ID, "de");
   const requests = sonicContinuationRequests(script, "one-context", "one-voice");
   assert.equal(requests.length, 7);
   assert.deepEqual(new Set(requests.map((request) => request.context_id)), new Set(["one-context"]));
@@ -113,7 +113,7 @@ test("Sonic defaults to the resolved Theo voice", () => {
 });
 
 test("Sonic HTTP candidate reproduces the supplied defaults and adds only language", async () => {
-  const script = await loadBakeoffScript("thought-leadership-7e83b7", "de");
+  const script = await loadBakeoffScript(BAKEOFF_SCRIPT_ID, "de");
   const request = sonicHttpRequest(script, CARTESIA_THEO_VOICE_ID);
   assert.equal(request.model_id, "sonic-3.5");
   assert.equal(request.voice.id, CARTESIA_THEO_VOICE_ID);
@@ -124,7 +124,7 @@ test("Sonic HTTP candidate reproduces the supplied defaults and adds only langua
 });
 
 test("Sonic Kyle uses supported contemplative emotion and sparse section breaks", async () => {
-  const script = await loadBakeoffScript("thought-leadership-7e83b7", "en");
+  const script = await loadBakeoffScript(BAKEOFF_SCRIPT_ID, "en");
   const request = sonicKyleRequest(script);
   assert.equal(request.model_id, SONIC_SNAPSHOT);
   assert.equal(request.voice.id, CARTESIA_KYLE_VOICE_ID);
@@ -136,7 +136,7 @@ test("Sonic Kyle uses supported contemplative emotion and sparse section breaks"
 });
 
 test("Qwen keeps one task id across run, seven inputs, and finish", async () => {
-  const script = await loadBakeoffScript("thought-leadership-7e83b7", "en");
+  const script = await loadBakeoffScript(BAKEOFF_SCRIPT_ID, "en");
   const id = "one-task";
   const messages = [
     qwenRunTask(id, "one-voice"),
