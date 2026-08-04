@@ -7,6 +7,9 @@ const ROLES: {key: "agent" | "planner" | "composer"; title: string; description:
   {key: "composer", title: "Visual composer", description: "The HyperFrames scenes, motion and visual treatment."},
 ];
 
+/** Shown, not defaulted — an empty field means "whatever the studio ships with". */
+const CODEX_MODEL_PLACEHOLDER = "gpt-5.6-terra";
+
 const GUIDANCE: {
   key: keyof Settings["marketingSkills"];
   title: string;
@@ -93,7 +96,46 @@ export function SettingsPage() {
             {!providers.codex.available ? (
               <div className="banner">Codex is unavailable: {providers.codex.reason}</div>
             ) : (
-              <p className="settings-note">Codex is signed in through your ChatGPT subscription. No OpenAI API billing is used.</p>
+              <>
+                <p className="settings-note">Codex is signed in through your ChatGPT subscription. No OpenAI API billing is used.</p>
+                <div className="settings-grid">
+                  <label className="settings-card">
+                    <span>
+                      <b>Codex model</b>
+                      <small>Blank uses the studio default. Enter a model id to try a different one.</small>
+                    </span>
+                    <input
+                      type="text"
+                      placeholder={CODEX_MODEL_PLACEHOLDER}
+                      defaultValue={settings.codexModel}
+                      onBlur={(event) => {
+                        const value = event.target.value.trim();
+                        if (value !== settings.codexModel) void save({...settings, codexModel: value});
+                      }}
+                    />
+                  </label>
+                  <label className="settings-card">
+                    <span>
+                      <b>Composing effort</b>
+                      <small>
+                        How hard Codex thinks when it authors the scenes. Lower this if a model
+                        rejects xhigh — Codex accepts an unknown value silently, so the run just fails.
+                      </small>
+                    </span>
+                    <select
+                      value={settings.codexComposeEffort}
+                      onChange={(event) => void save({
+                        ...settings,
+                        codexComposeEffort: event.target.value as Settings["codexComposeEffort"],
+                      })}
+                    >
+                      <option value="xhigh">xhigh — the visual default</option>
+                      <option value="high">high</option>
+                      <option value="medium">medium — fastest</option>
+                    </select>
+                  </label>
+                </div>
+              </>
             )}
 
             <div className="settings-heading guidance-heading">

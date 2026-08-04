@@ -234,7 +234,7 @@ async function askCodex(
   onUsage: (usage: {costUsd: number; model: string}) => void,
 ): Promise<string> {
   const executable = await requireCodexSubscription();
-  const model = codexModel();
+  const model = await codexModel();
   const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "myherald-codex-plan-"));
   const outputPath = path.join(tempDir, "plan.json");
 

@@ -187,6 +187,9 @@ export interface Settings {
   agent: "claude" | "codex";
   planner: "claude" | "codex";
   composer: "claude" | "codex";
+  /** Empty means the studio default. Free-form: model ids ship faster than this file. */
+  codexModel: string;
+  codexComposeEffort: "medium" | "high" | "xhigh";
   marketingSkills: {
     adCreative: boolean;
     social: boolean;

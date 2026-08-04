@@ -252,7 +252,7 @@ async function* runCodexAgentTurn(options: {
     signal,
   });
 
-  const model = codexModel();
+  const model = await codexModel();
   const mcpConfig = codexStudioMcpConfig(options.codexMcpUrl);
   const args = sessionId
     ? ["exec", "resume", "--ignore-user-config", "--ignore-rules", "--model", model, ...mcpConfig, "--json", sessionId, "-"]

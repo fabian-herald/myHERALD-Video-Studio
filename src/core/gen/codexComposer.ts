@@ -114,8 +114,12 @@ async function drive(
   imagePaths: readonly string[] = [],
 ): Promise<ComposeResult> {
   const executable = await requireCodexSubscription();
-  const model = codexModel();
-  const effort = context.effort === "high" ? codexEffort() : "medium";
+  const model = await codexModel();
+  // Not `context.effort`. That field maps to Claude's turn ceiling and carries "default"
+  // on a first attempt, but all three Codex entry points below already force "high", so
+  // the branch that read it could only ever take one side. Composing, reviewing and
+  // repairing are the whole of what this backend does, and all three decide something.
+  const effort = await codexEffort();
   const node = await compatibleNode();
   const toolPath = [path.dirname(node), process.env.PATH].filter(Boolean).join(path.delimiter);
 

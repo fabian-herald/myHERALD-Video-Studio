@@ -19,6 +19,26 @@ export const settingsZ = z.object({
   /** The one-shot strategy, script and VideoPlan generator. */
   planner: z.enum(["claude", "codex"]).default("claude"),
   composer: z.enum(["claude", "codex"]).default("claude"),
+  /**
+   * Which model the Codex CLI runs, and how hard it thinks when it composes.
+   *
+   * These clear the bar above narrowly, and for the same reason. Swapping the Codex model
+   * is a thing the owner does once and then wants to stay done — retyping `CODEX_MODEL=…`
+   * on every `npm run make` is exactly what settings exist to stop. And the two travel
+   * together: `codex` accepts an unknown effort value silently rather than erroring, so a
+   * model that does not support `xhigh` fails a whole run with no useful message. Whoever
+   * changes one needs the other in the same place.
+   *
+   * Free-form on purpose — new model ids ship faster than this schema does, and an enum
+   * would reject the one the owner is trying to test. Empty means "use the default".
+   */
+  codexModel: z.string().default(""),
+  /**
+   * Effort applies to composing only. Planning and the studio conversation are structured
+   * extraction and chat — neither is a design decision, and neither is where the visual
+   * gap was measured. Hence the name.
+   */
+  codexComposeEffort: z.enum(["medium", "high", "xhigh"]).default("xhigh"),
   marketingSkills: z.object({
     adCreative: z.boolean().default(true),
     social: z.boolean().default(true),

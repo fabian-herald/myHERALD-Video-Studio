@@ -3,6 +3,7 @@ import {constants as fsConstants} from "node:fs";
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import {readSettings} from "../settings.ts";
 
 export interface CodexSubscriptionStatus {
   available: boolean;
@@ -80,15 +81,29 @@ export function codexChildEnv(extra: NodeJS.ProcessEnv = {}): NodeJS.ProcessEnv 
   return env;
 }
 
-export const codexModel = () => process.env.CODEX_MODEL ?? "gpt-5.6-terra";
+/**
+ * Which model, and how hard it thinks. Environment first, then settings, then the default.
+ *
+ * Both are async because settings live on disk. `settings.ts` imports only node builtins,
+ * zod, `paths.ts` and `plan/language.ts`, so there is no cycle back to here.
+ *
+ * The environment stays ahead of settings deliberately: a one-off `CODEX_MODEL=… npm run
+ * make` is how a new model gets tried without committing the studio to it.
+ */
+export const codexModel = async () =>
+  process.env.CODEX_MODEL || (await readSettings()).codexModel || "gpt-5.6-terra";
 
 /**
- * Reasoning effort for the passes that decide something.
+ * Reasoning effort for the pass that decides the composition.
  *
  * `xhigh` is verified accepted by codex-cli 0.146.0 against gpt-5.6-terra. It is the
  * default because the work this studio asks of the model is a composition, not a lookup:
  * on the same brief Codex authored 65 lines of CSS to Claude's 570, and thinking budget is
- * the one input we control without changing models. Override for a cheaper run, or when a
- * model that does not accept `xhigh` is selected through `CODEX_MODEL`.
+ * the one input we control without changing models.
+ *
+ * Worth lowering when a model that does not accept `xhigh` is selected — `codex` takes an
+ * unknown effort value silently rather than erroring, so the symptom is a failed run with
+ * nothing in it that names the cause.
  */
-export const codexEffort = () => process.env.CODEX_REASONING_EFFORT ?? "xhigh";
+export const codexEffort = async () =>
+  process.env.CODEX_REASONING_EFFORT || (await readSettings()).codexComposeEffort;
