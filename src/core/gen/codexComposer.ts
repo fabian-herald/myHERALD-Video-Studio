@@ -17,8 +17,16 @@ import {
 } from "./composer.ts";
 import {codexChildEnv, codexEffort, codexModel, requireCodexSubscription} from "./codexCli.ts";
 
-/** Large multi-scene file writes can legitimately produce no JSONL event for several minutes. */
-export const CODEX_IDLE_TIMEOUT_MS = 300_000;
+/**
+ * How long a Codex session may emit nothing before it is treated as hung.
+ *
+ * Five minutes was chosen when a large multi-scene file write was the longest silence
+ * worth surviving. At `xhigh` the reasoning phase alone is longer than that: the first
+ * xhigh compose announced its six-scene plan, went quiet to write it, and was killed at
+ * exactly 300s having produced no file at all — the run then failed the whole format
+ * family. The budget has to exceed the thinking it is paying for.
+ */
+export const CODEX_IDLE_TIMEOUT_MS = 900_000;
 
 /**
  * The alternate backend. Same contract, same authoring directory, same repair loop —

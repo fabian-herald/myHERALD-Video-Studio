@@ -181,10 +181,11 @@ export interface AutoFixResult {
   report: CheckReport;
 }
 
+/** Missing reads as empty: an attempt that died before writing is a state, not a crash. */
 async function readFiles(dir: string): Promise<CompositionFiles> {
   const entries = await Promise.all(COMPOSITION_FILES.map(async (file) => [
     file,
-    await fs.readFile(path.join(dir, file), "utf8"),
+    await fs.readFile(path.join(dir, file), "utf8").catch(() => ""),
   ] as const));
   return Object.fromEntries(entries) as CompositionFiles;
 }

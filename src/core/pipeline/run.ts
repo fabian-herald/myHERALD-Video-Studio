@@ -657,11 +657,19 @@ export async function composeWithRepair(options: {
   );
 }
 
-/** The three composed files, keyed by name. One reader, so the hash and the diff agree. */
+/**
+ * The three composed files, keyed by name. One reader, so the hash and the diff agree.
+ *
+ * A missing file reads as empty rather than throwing. An attempt that died before writing
+ * anything is a real state — a killed session, an exhausted limit — and the callers here all
+ * want to reason about it rather than crash on it. Two attempts that both produce nothing
+ * then fingerprint identically, which is exactly the stagnation the repair loop should stop
+ * on. Before this, the second attempt threw ENOENT and took the whole format family with it.
+ */
 async function readComposition(dir: string): Promise<CompositionSnapshot> {
   const files = await Promise.all(COMPOSITION_FILES.map(async (file) => [
     file,
-    await fs.readFile(path.join(dir, file), "utf8"),
+    await fs.readFile(path.join(dir, file), "utf8").catch(() => ""),
   ] as const));
   return Object.fromEntries(files);
 }

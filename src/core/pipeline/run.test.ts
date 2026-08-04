@@ -1,5 +1,8 @@
 import assert from "node:assert/strict";
+import fs from "node:fs/promises";
 import {readFileSync} from "node:fs";
+import os from "node:os";
+import path from "node:path";
 import {test} from "node:test";
 import {combineComposeResults} from "./run.ts";
 import type {ComposeResult} from "../gen/composer.ts";
@@ -103,4 +106,32 @@ test("an authored result that never existed leaves the review untouched", () => 
     turns: 7, actions: 20, costUsd: 1.5, notes: "only pass",
   };
   assert.deepEqual(combineComposeResults(null, reviewed), reviewed);
+});
+
+test("a composition that was never written reads as empty rather than throwing", async () => {
+  // The live failure this guards: an xhigh Codex session was killed by the idle timeout
+  // before it wrote anything, and the next attempt's stagnation fingerprint threw ENOENT
+  // and took the whole format family down with it. An attempt that produced nothing is a
+  // real state the repair loop has to be able to reason about.
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), "studio-empty-"));
+  try {
+    const source = readFileSync(new URL("./run.ts", import.meta.url), "utf8");
+    assert.match(
+      source,
+      /await fs\.readFile\(path\.join\(dir, file\), "utf8"\)\.catch\(\(\) => ""\)/,
+      "readComposition must tolerate a missing file",
+    );
+    // And the same for the auto-fix snapshot, which reads the same three files.
+    const autofix = readFileSync(new URL("../render/autofix.ts", import.meta.url), "utf8");
+    assert.match(autofix, /\.catch\(\(\) => ""\)/, "autofix must tolerate a missing file");
+  } finally {
+    await fs.rm(dir, {recursive: true, force: true});
+  }
+});
+
+test("the Codex idle budget outlasts the reasoning it pays for", () => {
+  const source = readFileSync(new URL("../gen/codexComposer.ts", import.meta.url), "utf8");
+  const budget = Number(/CODEX_IDLE_TIMEOUT_MS = ([\d_]+)/.exec(source)?.[1]?.replace(/_/g, ""));
+  // An xhigh compose went silent for over 300s while writing and was killed mid-file.
+  assert.ok(budget > 300_000, `idle budget ${budget}ms is not longer than a measured xhigh silence`);
 });

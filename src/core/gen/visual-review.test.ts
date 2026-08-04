@@ -91,9 +91,15 @@ test("ordinary Codex authoring does not invent an empty image flag", () => {
 });
 
 test("Codex authoring allows a full multi-scene file-write interval before idle recovery", () => {
+  // Asserted as a property, not a literal. This test pinned 300_000, and the number it
+  // pinned was wrong: at xhigh a compose announced its six-scene plan, went silent to write
+  // it, and was killed at exactly that mark having produced nothing — failing the format
+  // family. A budget that has to grow with the reasoning it pays for cannot be a constant
+  // a test freezes.
   const source = readFileSync(new URL("./codexComposer.ts", import.meta.url), "utf8");
-  assert.match(source, /CODEX_IDLE_TIMEOUT_MS = 300_000/);
-  assert.doesNotMatch(source, /120_000/);
+  const budget = Number(/CODEX_IDLE_TIMEOUT_MS = ([\d_]+)/.exec(source)?.[1]?.replace(/_/g, ""));
+  assert.ok(Number.isFinite(budget), "the idle budget is not a readable number");
+  assert.ok(budget >= 600_000, `idle budget ${budget}ms is too short for an xhigh compose`);
 });
 
 test("the pipeline renders centrally, then invokes and rechecks the shared review", () => {
