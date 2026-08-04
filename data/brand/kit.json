@@ -210,7 +210,8 @@
     ],
     "addressAs": "you",
     "narrationStyle": "Warm, credible, founder-to-founder. Conversational and restrained, crisp articulation, natural micro-pauses. No hype, no radio-announcer tone, no rising sell.",
-    "narratorRegister": "one man, low-to-mid register, speaking pitch around 140 hertz"
+    "narratorRegister": "one man, low-to-mid register, speaking pitch around 140 hertz",
+    "narratorSeed": 3
   },
   "doDont": {
     "do": [
