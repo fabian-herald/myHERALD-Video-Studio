@@ -81,3 +81,14 @@ export function codexChildEnv(extra: NodeJS.ProcessEnv = {}): NodeJS.ProcessEnv 
 }
 
 export const codexModel = () => process.env.CODEX_MODEL ?? "gpt-5.6-terra";
+
+/**
+ * Reasoning effort for the passes that decide something.
+ *
+ * `xhigh` is verified accepted by codex-cli 0.146.0 against gpt-5.6-terra. It is the
+ * default because the work this studio asks of the model is a composition, not a lookup:
+ * on the same brief Codex authored 65 lines of CSS to Claude's 570, and thinking budget is
+ * the one input we control without changing models. Override for a cheaper run, or when a
+ * model that does not accept `xhigh` is selected through `CODEX_MODEL`.
+ */
+export const codexEffort = () => process.env.CODEX_REASONING_EFFORT ?? "xhigh";

@@ -15,7 +15,7 @@ import {
   type Composer,
   type VisualReviewRequest,
 } from "./composer.ts";
-import {codexChildEnv, codexModel, requireCodexSubscription} from "./codexCli.ts";
+import {codexChildEnv, codexEffort, codexModel, requireCodexSubscription} from "./codexCli.ts";
 
 /** Large multi-scene file writes can legitimately produce no JSONL event for several minutes. */
 export const CODEX_IDLE_TIMEOUT_MS = 300_000;
@@ -92,7 +92,7 @@ async function drive(
 ): Promise<ComposeResult> {
   const executable = await requireCodexSubscription();
   const model = codexModel();
-  const effort = context.effort === "high" ? "high" : "medium";
+  const effort = context.effort === "high" ? codexEffort() : "medium";
   const node = await compatibleNode();
   const toolPath = [path.dirname(node), process.env.PATH].filter(Boolean).join(path.delimiter);
 
