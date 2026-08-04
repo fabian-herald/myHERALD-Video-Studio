@@ -354,14 +354,16 @@ Rules:
 2. Each \`phrases\` entry becomes one caption page. Keep each to at most ${CAPTION_MAX_WORDS} words
    and ${CAPTION_MAX_CHARS} characters — a clause someone would say in one breath.
 
-   **The phrases are read aloud as one continuous script, so punctuate them that way.**
-   They are joined in order and spoken in a single take: a full stop tells the voice to
-   fall and pause, and a line that ends in one when the thought carries on is heard as a
-   sentence that stopped early. Write "Optimizely's 2026 survey found 25%," then
-   "of marketers knowingly publish off-brand AI content" — not two full stops, which reads
-   aloud as a statistic with nothing attached to it. End a line with a full stop only where
-   the thought genuinely ends. Commas, colons and no terminal mark at all are all available,
-   and a script of eight sentences reads better than the same words cut into fourteen.
+   **The phrases are joined in order and read aloud as one continuous take, so the mark a
+   line ends on is performance direction.** A full stop tells the voice to fall and pause.
+   A line that ends on one while the thought carries on is heard as a sentence that stopped
+   early: "Optimizely's 2026 survey found 25%." arrives as a statistic with nothing
+   attached to it.
+
+   So end a line with a full stop only where the thought genuinely ends, and use a comma,
+   a colon or no mark at all where it continues. **This is a change of punctuation, not of
+   wording** — it costs no characters, and the word and character caps above are hard. Do
+   not add linking words to make lines flow; repunctuate the words you already have.
 3. \`onScreen\` is short: at most six words. It is typography, not a sentence. It may be
    empty for a purely visual section. It must never duplicate the spoken line word for word.
 4. Omit \`startMs\`, \`durationMs\` and \`gapAfterMs\` entirely — timings are measured from
