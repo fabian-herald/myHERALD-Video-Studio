@@ -82,11 +82,19 @@ for (const {from, to} of renames) {
   if (await exists(path.join(OUT_DIR, from))) {
     await fs.rename(path.join(OUT_DIR, from), path.join(OUT_DIR, to));
   }
-  // The plan carries its own id, and `applyPlanEdits` reads it back.
-  const planPath = path.join(VIDEOS_DIR, to, "plan.json");
-  const plan = JSON.parse(await fs.readFile(planPath, "utf8")) as Record<string, unknown>;
-  plan.id = to;
-  await fs.writeFile(planPath, `${JSON.stringify(plan, null, 2)}\n`, "utf8");
+  // The plan and the provenance each carry a copy of the id. `applyPlanEdits` reads the
+  // plan's back, and provenance is the record the summary renders — left stale it names a
+  // folder that no longer exists, which is worse than having no record at all.
+  for (const [file, key] of [
+    [path.join(VIDEOS_DIR, to, "plan.json"), "id"],
+    [path.join(OUT_DIR, to, "provenance.json"), "videoId"],
+  ] as const) {
+    const raw = await fs.readFile(file, "utf8").catch(() => null);
+    if (!raw) continue;
+    const json = JSON.parse(raw) as Record<string, unknown>;
+    json[key] = to;
+    await fs.writeFile(file, `${JSON.stringify(json, null, 2)}\n`, "utf8");
+  }
   console.log(`moved ${from} → ${to}`);
 }
 

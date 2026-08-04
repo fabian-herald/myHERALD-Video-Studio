@@ -29,6 +29,7 @@ import {
 } from "../plan/schema.ts";
 import {OUT_DIR, rel, videoDir} from "../paths.ts";
 import {buildContactSheet, buildCover, writeProvenance} from "../render/artifacts.ts";
+import {renderSummary} from "../render/summary.ts";
 import {checkComposition, formatFindings, type CheckReport} from "../render/check.ts";
 import {autoFix} from "../render/autofix.ts";
 import {emitFormat, renderSnapshots, renderVideo, type Quality} from "../render/hyperframes.ts";
@@ -366,8 +367,7 @@ export async function runPipeline(options: RunOptions): Promise<RunResult> {
     }
   }
 
-  await writeProvenance(
-    {
+  const provenance = {
       videoId,
       createdAt: new Date().toISOString(),
       thesis: plan.thesis,
@@ -413,8 +413,28 @@ export async function runPipeline(options: RunOptions): Promise<RunResult> {
           `${family} format family failed before completion: ${message}`),
       ],
       outputFileHashes: Object.fromEntries(outputs.flatMap((output) => Object.entries(output.qc.hashes))),
-    },
-    path.join(OUT_DIR, videoId, "provenance.json"),
+  };
+  await writeProvenance(provenance, path.join(OUT_DIR, videoId, "provenance.json"));
+
+  // The same facts, next to the video rather than inside `out/`, as something readable.
+  // Provenance has held all of this for a long time; nobody opens a 120-line JSON file to
+  // find out which model composed a video.
+  const slowest = timeline.totals()[0];
+  await fs.writeFile(
+    path.join(dir, "SUMMARY.txt"),
+    renderSummary({
+      provenance,
+      title: plan.title,
+      brief: options.brief,
+      language: options.language,
+      sections: plan.sections.length,
+      phrases: plan.sections.reduce((sum, section) => sum + section.phrases.length, 0),
+      durationMs: planDurationMs(plan),
+      quality: options.quality,
+      outputs,
+      timing: {totalMs: timeline.elapsedMs, ...slowest ? {slowest} : {}},
+    }),
+    "utf8",
   );
 
   await upsertLedgerEntry({
