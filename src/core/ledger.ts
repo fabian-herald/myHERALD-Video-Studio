@@ -84,7 +84,8 @@ export async function amendLedgerEntry(
   return amended;
 }
 
-async function writeLedger(entries: readonly LedgerEntry[]): Promise<void> {
+/** Exported for the one-off rename migration; the pipeline goes through upsert/amend. */
+export async function writeLedger(entries: readonly LedgerEntry[]): Promise<void> {
   await fs.mkdir(path.dirname(LEDGER_PATH), {recursive: true});
   await fs.writeFile(LEDGER_PATH, `${JSON.stringify(entries, null, 2)}\n`, "utf8");
 }

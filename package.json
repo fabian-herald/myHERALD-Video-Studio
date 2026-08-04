@@ -20,7 +20,8 @@
     "research": "tsx scripts/research.ts",
     "wordmark": "tsx scripts/wordmark.ts",
     "narration:bakeoff": "tsx scripts/narration-bakeoff.ts",
-    "narration:profiles": "tsx scripts/narration-profile-listening.ts"
+    "narration:profiles": "tsx scripts/narration-profile-listening.ts",
+    "rename-videos": "tsx scripts/rename-videos.ts"
   },
   "dependencies": {
     "@anthropic-ai/claude-agent-sdk": "^0.3.220",

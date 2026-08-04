@@ -89,10 +89,6 @@ export async function runPipeline(options: RunOptions): Promise<RunResult> {
   const kit = await loadBrandKit();
   const settings = await readSettings();
   const marketingGuidance = marketingGuidanceFor(settings, options.intent, narrationProfile);
-  const videoId = await uniqueVideoId(options.brief);
-  const dir = videoDir(videoId);
-  await fs.mkdir(dir, {recursive: true});
-
   const ledger = new CostLedger();
   const timeline = new Timeline();
   let usedBaseline = Boolean(options.baselineOnly);
@@ -109,7 +105,10 @@ export async function runPipeline(options: RunOptions): Promise<RunResult> {
   log(`plan          ${options.intent} · ${narrationProfile} · ${options.formats.join(", ")} · ${options.language}`);
   const planned = await timeline.span("plan", async () => planVideo(
     {
-      id: videoId,
+      // Provisional. The folder is named from the plan's own title, which does not exist
+      // yet — `normalise()` overwrites `plan.id` from this field anyway, and it is
+      // overwritten again below once there is something better to call it.
+      id: "pending",
       brief: options.brief,
       intent: options.intent,
       narrationProfile,
@@ -153,6 +152,13 @@ export async function runPipeline(options: RunOptions): Promise<RunResult> {
   } else {
     ledger.model("claude", "plan", planned.costUsd);
   }
+  // Named now, not before planning: "the-month-later-test" is worth waiting one call for,
+  // and nothing has been written to disk yet, so there is nothing to move.
+  const videoId = await uniqueVideoId(planned.plan.title, options.composerId);
+  const dir = videoDir(videoId);
+  await fs.mkdir(dir, {recursive: true});
+  planned.plan.id = videoId;
+  log(`video         ${videoId}`);
   log(`plan          "${planned.plan.thesis}"`);
   log(`plan          ${planned.plan.sections.length} sections · ${planned.plan.sections.reduce((sum, section) => sum + section.phrases.length, 0)} phrases`);
   await savePlan(planned.plan, path.join(dir, "plan.draft.json"));
