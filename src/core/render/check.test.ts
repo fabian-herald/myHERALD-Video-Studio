@@ -479,3 +479,69 @@ test("a data bar with no matching plan point declines to guess a figure", async 
     },
   );
 });
+
+// The silent outro used to be required to typeset the tagline even when the lockup image
+// already rendered it, which put the same words on screen twice with no legal alternative.
+
+const outroKit = (includesTagline: boolean) => ({
+  name: "myHERALD",
+  tagline: "Autonomous AI Content Engine",
+  website: "myherald.io",
+  voice: {bannedWords: []},
+  logos: [{
+    id: "lockup-light", role: "lockup", theme: "light", file: "logos/lockup-light.png",
+    safeAreaPct: 0.25, includesTagline, label: "",
+  }],
+} as unknown as import("../brand/kit.ts").BrandKit);
+
+const outroPlan = {
+  sections: [{id: "brand-signature", kind: "outro", startMs: 0, durationMs: 4000, phrases: []}],
+} as unknown as VideoPlan;
+
+const outroHtml = (body: string) =>
+  '<html><body><header id="brand-rail">'
+  + '<img class="rail-lockup" src="media/logo-lockup-light.png" alt="myHERALD"></header>'
+  + `<section id="scene-brand-signature">${body}</section></body></html>`;
+
+test("a lockup that renders the tagline satisfies the signature requirement", async () => {
+  await withHtml(
+    outroHtml(
+      '<img class="cta-wordmark" src="media/logo-lockup-light.png" alt="myHERALD">'
+      + '<div class="cta-url">myherald.io</div>',
+    ),
+    async (dir) => {
+      const codes = (await checkCanonicalBrandLockups(dir, outroKit(true), outroPlan))
+        .map((finding) => finding.code);
+      assert.equal(codes.includes("signature_tagline_missing"), false,
+        "the tagline is already in the lockup image; demanding it as type duplicates it");
+      // The website is not in the image, so that half of the rule still applies.
+      assert.equal(codes.includes("signature_website_missing"), false);
+    },
+  );
+});
+
+test("a lockup without the tagline still has to say it", async () => {
+  await withHtml(
+    outroHtml(
+      '<img class="cta-wordmark" src="media/logo-lockup-light.png" alt="myHERALD">'
+      + '<div class="cta-url">myherald.io</div>',
+    ),
+    async (dir) => {
+      const codes = (await checkCanonicalBrandLockups(dir, outroKit(false), outroPlan))
+        .map((finding) => finding.code);
+      assert.ok(codes.includes("signature_tagline_missing"),
+        "a bare lockup plate with no context is what this rule exists to prevent");
+    },
+  );
+});
+
+test("the website is never assumed to be in the artwork", async () => {
+  await withHtml(
+    outroHtml('<img class="cta-wordmark" src="media/logo-lockup-light.png" alt="myHERALD">'),
+    async (dir) => {
+      const codes = (await checkCanonicalBrandLockups(dir, outroKit(true), outroPlan))
+        .map((finding) => finding.code);
+      assert.ok(codes.includes("signature_website_missing"));
+    },
+  );
+});

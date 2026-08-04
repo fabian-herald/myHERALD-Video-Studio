@@ -607,10 +607,20 @@ export async function checkCanonicalBrandLockups(
     // A non-promotional signature still has to tell a new viewer whose work this is.
     // Requiring visible text rather than an href means the website cannot exist only in
     // metadata, and requiring the tagline prevents a bare-logo plate with no context.
+    //
+    // Unless the lockup already says it. This rule had no way to see inside the image, so
+    // it demanded the tagline as type on a card whose lockup renders the same words — and
+    // the composer had no legal alternative to putting "Autonomous AI Content Engine" on
+    // screen twice. A supplied asset that carries the tagline satisfies the requirement it
+    // was written for: the viewer can read it.
+    const taglineInLockup = lockups.some((logo) =>
+      logo.includesTagline
+      && new RegExp(`logo-${escapeRegex(logo.id)}\\.[a-z0-9]+`, "i").test(scene?.inner ?? ""));
+
     if (scene && !plan.cta) {
       const visible = normalise(stripTags(scene.inner));
       for (const [field, expected] of [
-        ["tagline", kit.tagline ?? ""],
+        ["tagline", taglineInLockup ? "" : kit.tagline ?? ""],
         ["website", kit.website ?? ""],
       ] as const) {
         if (expected.trim() && !visible.includes(normalise(expected))) {

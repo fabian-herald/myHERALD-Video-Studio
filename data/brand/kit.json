@@ -42,7 +42,8 @@
       "safeAreaPct": 0.25,
       "width": 1040,
       "height": 192,
-      "label": "Seal, wordmark and tagline, for light fields."
+      "label": "Seal, wordmark and tagline, for light fields.",
+      "includesTagline": true
     },
     {
       "id": "lockup-dark",
@@ -52,7 +53,8 @@
       "safeAreaPct": 0.25,
       "width": 1040,
       "height": 192,
-      "label": "Seal, wordmark and tagline, for dark fields."
+      "label": "Seal, wordmark and tagline, for dark fields.",
+      "includesTagline": true
     },
     {
       "id": "lockup-plate",
@@ -62,7 +64,8 @@
       "safeAreaPct": 0.25,
       "width": 1013,
       "height": 280,
-      "label": "Lockup on its own white plate. Carries its own background, so it reads on any field."
+      "label": "Lockup on its own white plate. Carries its own background, so it reads on any field.",
+      "includesTagline": true
     }
   ],
   "color": {

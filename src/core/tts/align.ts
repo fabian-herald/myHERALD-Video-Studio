@@ -125,15 +125,33 @@ export function alignPhrases(
 export interface AlignmentVerdict {
   ok: boolean;
   reasons: string[];
+  /** Phrases the walk half-recognised. Tolerated, but worth saying out loud in the log. */
+  weak: string[];
 }
+
+/**
+ * How much of a take may be uncertain before the take itself is not worth trusting.
+ *
+ * One weak phrase among thirteen is a hard-to-align line, and the answer is to bound it by
+ * its neighbours. A quarter of the take coming back weak means the audio does not say the
+ * script, and no amount of interpolation rescues that.
+ */
+export const MAX_WEAK_SHARE = 0.25;
 
 /**
  * Is this alignment safe to build a video on?
  *
  * A bad alignment is worse than no alignment: every caption after a misplaced boundary
  * drifts, and nothing downstream would notice. So the answer has to be checked rather
- * than assumed, and a failure falls back to synthesising each phrase separately — worse
- * audio, but timings that cannot be wrong.
+ * than assumed, and a failure falls back to synthesising each phrase separately.
+ *
+ * The bar used to be every phrase over 70%, and that was too blunt. One line at 67% —
+ * "Same voice. Same format. Same schedule.", repetition being exactly what a word walk
+ * trips on — discarded a whole usable take and bought a clip per phrase, which re-rolls
+ * the speaker on every request and gives a video several narrators. What actually has to
+ * hold is that every phrase was found somewhere, that they came out in order, and that
+ * uncertainty is a minority; a weak phrase between two firm ones can take its boundaries
+ * from them (`boundWeakPhrases`).
  */
 export function verifyAlignment(
   aligned: readonly AlignedPhrase[],
@@ -141,17 +159,32 @@ export function verifyAlignment(
   minConfidence = 0.7,
 ): AlignmentVerdict {
   const reasons: string[] = [];
+  const weak: string[] = [];
 
   for (const phrase of aligned) {
+    // A phrase nothing matched has no position at all — there is nothing to trust and
+    // nothing to interpolate from. That is a real failure.
+    if (phrase.durationMs <= 0 || phrase.confidence === 0) {
+      reasons.push(`${phrase.sectionId}/${phrase.phraseId} was not located in the take`);
+      continue;
+    }
+    // A phrase the walk only half-recognised is different in kind. Rhetorical repetition —
+    // "Same voice. Same format. Same schedule." — is good writing and is precisely what a
+    // word walk struggles with. Discarding the whole take for it cost a one-take reading
+    // and replaced it with a clip per phrase, which re-rolls the speaker on every request.
     if (phrase.confidence < minConfidence) {
-      reasons.push(
+      weak.push(
         `${phrase.sectionId}/${phrase.phraseId} matched only `
         + `${Math.round(phrase.confidence * 100)}% of its words`,
       );
     }
-    if (phrase.durationMs <= 0) {
-      reasons.push(`${phrase.sectionId}/${phrase.phraseId} has no duration`);
-    }
+  }
+
+  if (aligned.length && weak.length / aligned.length > MAX_WEAK_SHARE) {
+    reasons.push(
+      `${weak.length} of ${aligned.length} phrases matched weakly, so the take does not `
+      + `reliably say the script: ${weak.join("; ")}`,
+    );
   }
 
   // Phrases must come out in the order they were sent. Out of order means the walk
@@ -167,5 +200,36 @@ export function verifyAlignment(
     reasons.push("the last phrase ends after the audio does");
   }
 
-  return {ok: reasons.length === 0, reasons};
+  return {ok: reasons.length === 0, reasons, weak};
+}
+
+/**
+ * Give a weakly-matched phrase the boundaries its neighbours prove.
+ *
+ * The walk found *some* of its words, so it sits in the right place; what it cannot be
+ * trusted about is exactly where it starts and stops. Its neighbours can settle that: a
+ * phrase between two confidently-located ones occupies the gap between them, and captions
+ * need boundaries rather than word-level certainty. Deterministic, and it cannot drift —
+ * every boundary still comes from a word the aligner actually heard.
+ *
+ * Only interior phrases are rewritten. A weak first or last phrase has no neighbour on one
+ * side, so its own match is the only evidence there is and it keeps it.
+ */
+export function boundWeakPhrases(
+  aligned: readonly AlignedPhrase[],
+  minConfidence = 0.7,
+): AlignedPhrase[] {
+  return aligned.map((phrase, index) => {
+    const previous = aligned[index - 1];
+    const next = aligned[index + 1];
+    if (phrase.confidence >= minConfidence || !previous || !next) return phrase;
+    if (previous.confidence < minConfidence || next.confidence < minConfidence) return phrase;
+
+    const startMs = previous.startMs + previous.durationMs;
+    const durationMs = next.startMs - startMs;
+    // Neighbours that leave no room mean the take is denser than the script; keep what the
+    // walk found rather than writing a zero or negative span.
+    if (durationMs <= 0) return phrase;
+    return {...phrase, startMs, durationMs};
+  });
 }

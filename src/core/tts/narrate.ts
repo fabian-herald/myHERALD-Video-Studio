@@ -5,7 +5,7 @@ import {
   type MeasuredPhrase, type PlacedPhrase,
 } from "../plan/retime.ts";
 import {allPhrases, planDurationMs, type NarrationProfileId, type VideoPlan} from "../plan/schema.ts";
-import {alignPhrases, verifyAlignment} from "./align.ts";
+import {alignPhrases, boundWeakPhrases, verifyAlignment} from "./align.ts";
 import {arcDirection, deliveryFor} from "./energy.ts";
 import {fadedOut, measureFade, MAX_FADE_DB} from "./level.ts";
 import {centreHz, closestToCentre, medianF0, pitchOutlier, semitones} from "./pitch.ts";
@@ -336,9 +336,16 @@ async function narrateAsTake(
     for (const reason of verdict.reasons.slice(0, 3)) onLog(`narration    ${reason}`);
     return null;
   }
+  // Weak phrases are kept, not discarded with the take. Say so, because a caption whose
+  // boundaries came from its neighbours rather than from its own words is worth knowing
+  // about when one later looks slightly early or late.
+  const bounded = boundWeakPhrases(aligned);
+  for (const reason of verdict.weak.slice(0, 3)) {
+    onLog(`narration    ${reason}; bounded by its neighbours rather than re-synthesised`);
+  }
 
   let sourcePath = take.outputPath;
-  let placed: PlacedPhrase[] = aligned;
+  let placed: PlacedPhrase[] = bounded;
   let timingTreatment: NarrationResult["timingTreatment"] = "provider-native";
   let sectionGapsShortened = 0;
   if (narrationProfile) {

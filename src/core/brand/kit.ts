@@ -19,6 +19,12 @@ export const logoZ = z.object({
   file: z.string(),
   /** Clear space around the mark, as a fraction of its own width. */
   safeAreaPct: z.number().min(0).max(1).default(0.25),
+  /**
+   * Whether the asset already renders the brand tagline. A lockup usually does, and a
+   * composition that also typesets it puts the same words on screen twice — which the
+   * silent-outro rule used to require, because it had no way to know.
+   */
+  includesTagline: z.boolean().default(false),
   /** Intrinsic pixel size, so a composition can size the mark without measuring it. */
   width: z.number().int().positive().optional(),
   height: z.number().int().positive().optional(),

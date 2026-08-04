@@ -26,6 +26,8 @@ export interface LogoUpload {
   theme: "light" | "dark" | "any";
   label?: string;
   safeAreaPct?: number;
+  /** Set when the uploaded asset already renders the brand tagline. */
+  includesTagline?: boolean;
   /** Slug for the file and the id. Derived from the filename when absent. */
   id?: string;
 }
@@ -62,6 +64,9 @@ export async function addLogo(upload: LogoUpload): Promise<BrandKit> {
     theme: upload.theme,
     file,
     safeAreaPct: upload.safeAreaPct ?? 0.25,
+    // Conservative for an upload: claiming a tagline that is not in the pixels would let a
+    // silent outro ship with no brand context at all. The kit can set it deliberately.
+    includesTagline: upload.includesTagline ?? false,
     label: upload.label ?? "",
     ...(size ?? {}),
   };

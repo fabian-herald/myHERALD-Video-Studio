@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import {test} from "node:test";
-import {alignPhrases, normalise, verifyAlignment, type TimedWord} from "./align.ts";
+import {alignPhrases, boundWeakPhrases, normalise, verifyAlignment, type TimedWord} from "./align.ts";
 
 /** Builds word timings at a steady rate, which is enough to test the walk itself. */
 function speak(text: string, from = 0, secondsPerWord = 0.4): TimedWord[] {
@@ -91,4 +91,88 @@ test("an alignment running past the end of the audio is rejected", () => {
   const verdict = verifyAlignment(aligned, 1_000);
   assert.equal(verdict.ok, false);
   assert.ok(verdict.reasons.some((r) => r.includes("after the audio")));
+});
+
+// One weak phrase used to discard a whole usable take, which bought a clip per phrase and
+// with it a different speaker on every clip. These pin the narrower rule.
+
+const weakPhrase = (confidence: number, startMs: number, durationMs: number) =>
+  ({sectionId: "s", phraseId: `p${startMs}`, startMs, durationMs, confidence});
+
+test("one weakly-matched phrase does not condemn the take", () => {
+  const aligned = [
+    weakPhrase(1, 0, 2_000),
+    weakPhrase(0.67, 2_100, 1_800),
+    weakPhrase(1, 4_000, 2_000),
+    weakPhrase(1, 6_000, 2_000),
+  ];
+  const verdict = verifyAlignment(aligned, 20_000);
+  assert.equal(verdict.ok, true, "67% of one phrase in four is a hard line, not a bad take");
+  assert.equal(verdict.weak.length, 1);
+  assert.match(verdict.weak[0] ?? "", /matched only 67%/);
+});
+
+test("a take that is mostly guesswork is still rejected", () => {
+  const aligned = [
+    weakPhrase(0.4, 0, 2_000),
+    weakPhrase(0.5, 2_000, 2_000),
+    weakPhrase(1, 4_000, 2_000),
+    weakPhrase(1, 6_000, 2_000),
+  ];
+  const verdict = verifyAlignment(aligned, 20_000);
+  assert.equal(verdict.ok, false, "half the take unrecognised means the audio is not the script");
+  assert.match(verdict.reasons.join(" "), /2 of 4 phrases matched weakly/);
+});
+
+test("a phrase found nowhere is a hard failure, not a weak one", () => {
+  const aligned = [weakPhrase(1, 0, 2_000), weakPhrase(0, 0, 0), weakPhrase(1, 4_000, 2_000)];
+  const verdict = verifyAlignment(aligned, 20_000);
+  assert.equal(verdict.ok, false);
+  assert.match(verdict.reasons.join(" "), /was not located in the take/);
+  assert.equal(verdict.weak.length, 0, "unlocated is a different kind of problem from weak");
+});
+
+test("out-of-order phrases still condemn the take however confident they are", () => {
+  const aligned = [weakPhrase(1, 5_000, 2_000), weakPhrase(1, 1_000, 2_000)];
+  assert.equal(verifyAlignment(aligned, 20_000).ok, false);
+});
+
+test("a weak phrase takes its boundaries from the neighbours that are certain", () => {
+  const bounded = boundWeakPhrases([
+    weakPhrase(1, 0, 2_000),
+    weakPhrase(0.67, 2_500, 900),
+    weakPhrase(1, 4_000, 2_000),
+  ]);
+  // It occupies the gap its neighbours prove: 2000 -> 4000, not the 2500-3400 it guessed.
+  assert.equal(bounded[1]!.startMs, 2_000);
+  assert.equal(bounded[1]!.durationMs, 2_000);
+  // The confident neighbours are untouched.
+  assert.equal(bounded[0]!.startMs, 0);
+  assert.equal(bounded[2]!.startMs, 4_000);
+});
+
+test("an edge phrase keeps its own match, having only one neighbour", () => {
+  const aligned = [weakPhrase(0.6, 100, 1_800), weakPhrase(1, 2_000, 2_000)];
+  const bounded = boundWeakPhrases(aligned);
+  assert.deepEqual(bounded[0], aligned[0], "nothing on the left to bound it with");
+});
+
+test("a weak phrase beside another weak one is left alone", () => {
+  const aligned = [weakPhrase(1, 0, 2_000), weakPhrase(0.6, 2_000, 900), weakPhrase(0.5, 3_000, 900)];
+  const bounded = boundWeakPhrases(aligned);
+  assert.deepEqual(bounded[1], aligned[1], "an uncertain neighbour proves nothing");
+});
+
+test("neighbours that leave no room do not produce a negative span", () => {
+  const bounded = boundWeakPhrases([
+    weakPhrase(1, 0, 4_000),
+    weakPhrase(0.6, 1_000, 500),
+    weakPhrase(1, 2_000, 1_000),
+  ]);
+  assert.equal(bounded[1]!.durationMs, 500, "kept what the walk found rather than writing a negative");
+});
+
+test("a confident take is returned unchanged", () => {
+  const aligned = [weakPhrase(1, 0, 2_000), weakPhrase(0.9, 2_000, 2_000), weakPhrase(1, 4_000, 2_000)];
+  assert.deepEqual(boundWeakPhrases(aligned), aligned);
 });

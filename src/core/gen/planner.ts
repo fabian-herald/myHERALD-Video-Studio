@@ -334,7 +334,7 @@ Return JSON matching this shape exactly:
       "intentNote": "<what this section must accomplish — guidance for the designer, never rendered>",
       "energy": "quiet|settled|lift|edge",
       "onScreen": "<the display copy, rendered verbatim on screen>",
-      "phrases": [{"id": "<kebab-case, unique within the section>", "text": "<one spoken sentence>"}]
+      "phrases": [{"id": "<kebab-case, unique within the section>", "text": "<one caption line, punctuated as it is spoken>"}]
       // optional, only where they earn their place — see rules 7 and 8:
       // "screen": {"mediaId": "<an id listed above>", "fit": "contain|device-frame|browser-chrome",
       //            "focus": [{"atMs": <ms into THIS section>, "rect": [x, y, w, h], "label": "<short>"}]}
@@ -351,9 +351,17 @@ Return JSON matching this shape exactly:
 Rules:
 
 1. All copy is in ${language}.
-2. Each \`phrases\` entry becomes one caption page **and** one text-to-speech clip.
-   Keep each to at most ${CAPTION_MAX_WORDS} words and ${CAPTION_MAX_CHARS} characters, and make it a
-   naturally speakable unit — a clause someone would say in one breath.
+2. Each \`phrases\` entry becomes one caption page. Keep each to at most ${CAPTION_MAX_WORDS} words
+   and ${CAPTION_MAX_CHARS} characters — a clause someone would say in one breath.
+
+   **The phrases are read aloud as one continuous script, so punctuate them that way.**
+   They are joined in order and spoken in a single take: a full stop tells the voice to
+   fall and pause, and a line that ends in one when the thought carries on is heard as a
+   sentence that stopped early. Write "Optimizely's 2026 survey found 25%," then
+   "of marketers knowingly publish off-brand AI content" — not two full stops, which reads
+   aloud as a statistic with nothing attached to it. End a line with a full stop only where
+   the thought genuinely ends. Commas, colons and no terminal mark at all are all available,
+   and a script of eight sentences reads better than the same words cut into fourteen.
 3. \`onScreen\` is short: at most six words. It is typography, not a sentence. It may be
    empty for a purely visual section. It must never duplicate the spoken line word for word.
 4. Omit \`startMs\`, \`durationMs\` and \`gapAfterMs\` entirely — timings are measured from
