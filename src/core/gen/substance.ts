@@ -87,3 +87,74 @@ export function editDelta(before: CompositionSnapshot, after: CompositionSnapsho
 export function isSubstantive(delta: EditDelta): boolean {
   return delta.structural || delta.changedLines >= SUBSTANTIVE_LINES;
 }
+
+/**
+ * How much composition there is.
+ *
+ * On one brief with an identical plan and narration, Claude authored 570 lines of CSS and
+ * Codex 65, and the owner approved the first and rejected the second as thin. That
+ * comparison was made by hand with `wc -l`; this makes it a recorded number, so a change to
+ * a prompt or a model can be judged instead of argued about.
+ *
+ * A line count on its own is gameable — a model told to write more CSS writes longer
+ * selectors — so the shape is a record. `minElementsPerScene` is the honest floor: a
+ * composition can carry its element budget in one dense scene and leave five bare, and
+ * that reads as thin however good the total looks.
+ */
+export interface CompositionSize {
+  lines: Record<string, number>;
+  /** Opening tags in index.html. */
+  elements: number;
+  /** Rule blocks in styles.css. */
+  cssRules: number;
+  cssDeclarations: number;
+  /** `gsap.*` / `timeline.*` call sites in animation.js. */
+  gsapCalls: number;
+  minElementsPerScene: number;
+}
+
+const count = (body: string, pattern: RegExp) => (body.match(pattern) ?? []).length;
+
+/**
+ * Elements inside the smallest `<section id="scene-…">`. Scenes nest `<section>` freely, so
+ * this walks balanced tags rather than splitting — the same reason `findSceneEnd` exists in
+ * compose/html.ts. Returns 0 when the markup declares no scenes at all.
+ */
+function smallestSceneElementCount(html: string): number {
+  const counts: number[] = [];
+  const opener = /<section\b[^>]*\bid="scene-[^"]*"[^>]*>/gi;
+  for (let match = opener.exec(html); match; match = opener.exec(html)) {
+    const inner = html.slice(match.index + match[0].length);
+    const nested = /<section\b|<\/section\s*>/gi;
+    let depth = 1;
+    let end = inner.length;
+    for (let tag = nested.exec(inner); tag; tag = nested.exec(inner)) {
+      depth += tag[0].startsWith("</") ? -1 : 1;
+      if (depth === 0) {
+        end = tag.index;
+        break;
+      }
+    }
+    counts.push(count(inner.slice(0, end), /<[a-zA-Z][^>]*>/g));
+  }
+  return counts.length ? Math.min(...counts) : 0;
+}
+
+export function compositionSize(snapshot: CompositionSnapshot): CompositionSize {
+  const html = snapshot["index.html"] ?? "";
+  const css = snapshot["styles.css"] ?? "";
+  const js = snapshot["animation.js"] ?? "";
+  const lines: Record<string, number> = {};
+  for (const [name, body] of Object.entries(snapshot)) lines[name] = normalise(body).length;
+
+  return {
+    lines,
+    elements: structuralCounts("index.html", html)[0] ?? 0,
+    cssRules: structuralCounts("styles.css", css)[0] ?? 0,
+    // Declarations rather than lines, because a stylesheet's real weight is the properties
+    // it sets — `.a{color:red;background:blue}` is one line and two decisions.
+    cssDeclarations: count(css.replace(/\/\*[\s\S]*?\*\//g, ""), /;/g),
+    gsapCalls: structuralCounts("animation.js", js)[0] ?? 0,
+    minElementsPerScene: smallestSceneElementCount(html),
+  };
+}

@@ -18,7 +18,20 @@ export interface ComposeContext {
 export interface ComposeResult {
   provider: string;
   model: string;
+  /**
+   * The thinking budget this pass actually ran at — Codex's `model_reasoning_effort`, or
+   * Claude's turn ceiling. Recorded because it is the one input we tune without swapping
+   * models, and provenance could not previously say which budget produced a composition.
+   */
+  effort: string;
+  /**
+   * Assistant turns. Provider-relative and not comparable across backends: Claude reports
+   * the SDK's `num_turns`, Codex counts completed assistant messages, which reads lower for
+   * the same work. Compare a provider against itself over time, never against the other.
+   */
   turns: number;
+  /** Tool calls, file writes and commands — what the session did, as against what it said. */
+  actions: number;
   costUsd: number;
   /** Whatever the composer said about what it built. */
   notes: string;

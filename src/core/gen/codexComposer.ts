@@ -50,7 +50,20 @@ export function codexExecArgs(options: {
   ];
 }
 
-export function codexComposerEvent(line: string): {log?: string; note?: string; filesChanged?: boolean} {
+/**
+ * `turns` is the count of completed assistant messages, which is the honest analogue of the
+ * Claude SDK's `num_turns` — not the count of every `item.completed`, which would inflate it
+ * with tool chatter. It will read lower than Claude's for the same amount of work; the two
+ * providers are not comparable on this number and nothing should try. `actions` is the
+ * separate count of things the session actually did.
+ */
+export function codexComposerEvent(line: string): {
+  log?: string;
+  note?: string;
+  filesChanged?: boolean;
+  agentMessage?: boolean;
+  action?: boolean;
+} {
   let event: Record<string, unknown>;
   try {
     event = JSON.parse(line) as Record<string, unknown>;
@@ -63,7 +76,7 @@ export function codexComposerEvent(line: string): {log?: string; note?: string; 
 
   if (item.type === "agent_message" && typeof item.text === "string") {
     const note = item.text.trim();
-    return {note, log: note.split(/\r?\n/).at(-1)?.slice(0, 180)};
+    return {note, log: note.split(/\r?\n/).at(-1)?.slice(0, 180), agentMessage: true};
   }
   if (item.type === "file_change") {
     const changes = Array.isArray(item.changes) ? item.changes as Record<string, unknown>[] : [];
@@ -73,13 +86,14 @@ export function codexComposerEvent(line: string): {log?: string; note?: string; 
     return {
       log: files.length ? `updated ${files.join(", ")}` : "updated composition files",
       filesChanged: true,
+      action: true,
     };
   }
   if (item.type === "command_execution") {
-    return {log: `command ${String(item.command ?? "").slice(0, 140)}`};
+    return {log: `command ${String(item.command ?? "").slice(0, 140)}`, action: true};
   }
   if ((item.type === "mcp_tool_call" || item.type === "tool_call") && typeof item.tool === "string") {
-    return {log: `tool ${item.tool}`};
+    return {log: `tool ${item.tool}`, action: true};
   }
   return {};
 }
@@ -98,7 +112,7 @@ async function drive(
 
   const args = codexExecArgs({dir: context.authoring.dir, model, effort, imagePaths});
 
-  const notes = await new Promise<string>((resolve, reject) => {
+  const session = await new Promise<{notes: string; turns: number; actions: number}>((resolve, reject) => {
     const child = spawn(executable, args, {
       cwd: context.authoring.dir,
       env: codexChildEnv({
@@ -111,6 +125,8 @@ async function drive(
 
     let finalNote = "";
     let sawFileChange = false;
+    let turns = 0;
+    let actions = 0;
     let acceptedIdleExit = false;
     let idleTimer: ReturnType<typeof setTimeout> | undefined;
     let forceTimer: ReturnType<typeof setTimeout> | undefined;
@@ -135,6 +151,8 @@ async function drive(
       const event = codexComposerEvent(line);
       if (event.note) finalNote = event.note.slice(-4000);
       if (event.filesChanged) sawFileChange = true;
+      if (event.agentMessage) turns += 1;
+      if (event.action) actions += 1;
       if (event.log) context.onLog(`  ${label}      ${event.log}`);
     });
     const stderr = readline.createInterface({input: child.stderr});
@@ -149,7 +167,7 @@ async function drive(
     child.on("close", (code) => {
       clearTimers();
       if (context.signal?.aborted) reject(new Cancelled(label));
-      else if (code === 0 || acceptedIdleExit) resolve(finalNote.trim());
+      else if (code === 0 || acceptedIdleExit) resolve({notes: finalNote.trim(), turns, actions});
       else reject(new Error(`codex exec exited with code ${code}.`));
     });
 
@@ -159,7 +177,15 @@ async function drive(
   });
 
   await assertCompositionWritten(context.authoring.dir);
-  return {provider: "codex", model, turns: 1, costUsd: 0, notes};
+  return {
+    provider: "codex",
+    model,
+    effort,
+    turns: session.turns,
+    actions: session.actions,
+    costUsd: 0,
+    notes: session.notes,
+  };
 }
 
 const PREAMBLE = [

@@ -22,10 +22,11 @@ import {composeWithRepair} from "../src/core/pipeline/run.ts";
 import {loadPlan, planDurationMs} from "../src/core/plan/schema.ts";
 import {OUT_DIR, rel, videoDir} from "../src/core/paths.ts";
 import {amendLedgerEntry} from "../src/core/ledger.ts";
-import {buildContactSheet, buildCover} from "../src/core/render/artifacts.ts";
+import {buildContactSheet, buildCover, type Provenance} from "../src/core/render/artifacts.ts";
 import {emitFormat, renderSnapshots, renderVideo} from "../src/core/render/hyperframes.ts";
 import {runQc, writeQc} from "../src/core/render/qc.ts";
 import {readSettings} from "../src/core/settings.ts";
+import {compositionSize} from "../src/core/gen/substance.ts";
 import {buildCaptions} from "../src/core/tts/captions.ts";
 
 const argv = process.argv.slice(2);
@@ -130,11 +131,19 @@ if (record) {
   // cleanly and then died still reads as a total failure. Correct the record — without
   // pretending the stages that never ran did: the reason stays in knownLimitations.
   const provenancePath = path.join(OUT_DIR, videoId, "provenance.json");
-  const provenance = JSON.parse(await fs.readFile(provenancePath, "utf8")) as {
-    composer?: {provider?: string; model?: string; turns?: number; attempts?: number};
-    knownLimitations?: string[];
-  };
-  provenance.composer = {...provenance.composer, provider: composerId};
+  // The real type, not a structural copy — the copy silently drifted the last time the
+  // composer block grew a field. Partial because a recovered run may predate any of them.
+  const provenance = JSON.parse(await fs.readFile(provenancePath, "utf8")) as
+    Omit<Partial<Provenance>, "composer"> & {composer?: Partial<Provenance["composer"]>};
+
+  // The composition is on disk and unchanged, so its size is measurable even though the run
+  // that produced it never got far enough to record one.
+  const snapshot: Record<string, string> = {};
+  for (const file of ["index.html", "styles.css", "animation.js"]) {
+    snapshot[file] = await fs.readFile(path.join(authoringDir, file), "utf8");
+  }
+  const size = compositionSize(snapshot);
+  provenance.composer = {...provenance.composer, provider: composerId, size, sizeFinal: size};
   provenance.knownLimitations = [
     ...(provenance.knownLimitations ?? []).filter((note) => !/family failed before completion/.test(note)),
     `Recovered after the run aborted: the composition passed every check and was rendered `
@@ -148,4 +157,5 @@ if (record) {
     outputs: [{format, path: rel(outPath)}],
   });
   log(`recorded      ledger status ${qc.passed ? "ready" : "failed"} · provenance updated`);
+  log(`size          ${size.lines["styles.css"]} css · ${size.gsapCalls} gsap · min ${size.minElementsPerScene} el/scene`);
 }

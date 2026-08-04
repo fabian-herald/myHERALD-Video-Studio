@@ -1,6 +1,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import {run} from "../util/exec.ts";
+import type {CompositionSize} from "../gen/substance.ts";
 
 /**
  * The contact sheet is the fastest honest review in the system: representative frames
@@ -70,7 +71,22 @@ export interface Provenance {
   planner: {provider: string; model: string};
   /** Optional planning aids that were actually present in the prompt for this run. */
   marketingGuidance: readonly string[];
-  composer: {provider: string; model: string; turns: number; attempts: number};
+  composer: {
+    provider: string;
+    model: string;
+    /** The thinking budget the composition was authored under. */
+    effort: string;
+    turns: number;
+    actions: number;
+    attempts: number;
+    /**
+     * How much composition there is, as authored and as finally shipped. Both, because the
+     * pair answers the question a single number cannot: did the composer author a dense
+     * frame, or did the visual-review pass rescue a thin one?
+     */
+    size: CompositionSize | null;
+    sizeFinal: CompositionSize | null;
+  };
   /** How varied the finished script turned out, measured from the real audio. */
   rhythm: {
     variation: number;

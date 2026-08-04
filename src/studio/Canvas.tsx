@@ -164,6 +164,22 @@ function ScenesTab({detail}: {detail: VideoDetail}) {
   );
 }
 
+/**
+ * The density of a finished composition, in the one line that fits a sidebar. Thin frames
+ * were the complaint that made this measurable; a viewer of the Assets pane should be able
+ * to see at a glance whether a video was composed or merely assembled.
+ */
+function compositionDensity(size: unknown): string {
+  const record = size as {
+    lines?: Record<string, number>;
+    gsapCalls?: number;
+    minElementsPerScene?: number;
+  } | null | undefined;
+  if (!record?.lines) return "—";
+  const css = record.lines["styles.css"] ?? 0;
+  return `${css} css · ${record.gsapCalls ?? 0} gsap · min ${record.minElementsPerScene ?? 0} el/scene`;
+}
+
 function AssetsTab({detail}: {detail: VideoDetail}) {
   const plan = detail.plan;
   const provenance = detail.provenance as {narration?: Record<string, unknown>; composer?: Record<string, unknown>} | null;
@@ -179,9 +195,14 @@ function AssetsTab({detail}: {detail: VideoDetail}) {
         <dt>Phrases</dt>
         <dd>{String(provenance?.narration?.phrases ?? plan?.sections.reduce((sum, section) => sum + section.phrases.length, 0) ?? 0)}</dd>
         <dt>Composition</dt>
-        <dd>{String(provenance?.composer?.provider ?? "—")} · {String(provenance?.composer?.model ?? "")}</dd>
+        <dd>
+          {String(provenance?.composer?.provider ?? "—")} · {String(provenance?.composer?.model ?? "")}
+          {provenance?.composer?.effort ? ` · ${String(provenance.composer.effort)}` : ""}
+        </dd>
         <dt>Attempts</dt>
         <dd>{String(provenance?.composer?.attempts ?? "—")}</dd>
+        <dt>Density</dt>
+        <dd>{compositionDensity(provenance?.composer?.sizeFinal)}</dd>
         <dt>Formats</dt>
         <dd>{plan?.formats.join(", ")}</dd>
       </dl>

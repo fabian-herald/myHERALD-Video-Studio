@@ -128,3 +128,55 @@ test("both adapters implement the same visual-review seam", () => {
   assert.match(codex, /evidencePaths/);
   assert.match(claude, /evidencePaths/);
 });
+
+// Codex effort accounting. Before this, codexComposer returned `turns: 1` hardcoded, so
+// provenance could not answer "how hard did Codex work" at all.
+
+test("a completed assistant message is a turn; tool chatter is not", () => {
+  const turn = codexComposerEvent(JSON.stringify({
+    type: "item.completed",
+    item: {id: "i1", type: "agent_message", text: "Six scenes, six archetypes."},
+  }));
+  assert.equal(turn.agentMessage, true);
+  assert.equal(turn.action, undefined, "an assistant message is not an action");
+
+  for (const item of [
+    {type: "command_execution", command: "ls -la"},
+    {type: "tool_call", tool: "Read"},
+    {type: "mcp_tool_call", tool: "search"},
+  ]) {
+    const event = codexComposerEvent(JSON.stringify({type: "item.completed", item}));
+    assert.equal(event.action, true, `${item.type} should count as an action`);
+    assert.equal(event.agentMessage, undefined, `${item.type} must not inflate the turn count`);
+  }
+});
+
+test("a file change is both an action and the idle-exit signal", () => {
+  const event = codexComposerEvent(JSON.stringify({
+    type: "item.completed",
+    item: {type: "file_change", changes: [{path: "/tmp/x/styles.css", diff: "@@ -1 +1 @@"}]},
+  }));
+  assert.equal(event.action, true);
+  // filesChanged is what lets an idle session be accepted; it must survive the addition.
+  assert.equal(event.filesChanged, true);
+  assert.match(event.log ?? "", /updated styles\.css/);
+});
+
+test("envelope noise and unparseable lines count as neither", () => {
+  for (const line of [
+    JSON.stringify({type: "thread.started", thread_id: "t1"}),
+    JSON.stringify({type: "item.started", item: {type: "agent_message"}}),
+    "codex: some diagnostic text",
+  ]) {
+    const event = codexComposerEvent(line);
+    assert.equal(event.agentMessage, undefined, `"${line.slice(0, 30)}" must not be a turn`);
+    assert.equal(event.action, undefined, `"${line.slice(0, 30)}" must not be an action`);
+  }
+});
+
+test("Codex reports the reasoning effort it actually ran at", () => {
+  const source = readFileSync(new URL("./codexComposer.ts", import.meta.url), "utf8");
+  // The effort is resolved for the CLI flag and must reach the result, not be discarded.
+  assert.match(source, /effort,\n\s+turns: session\.turns/);
+  assert.doesNotMatch(source, /turns: 1,/, "turns must be counted, never hardcoded");
+});

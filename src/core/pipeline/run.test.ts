@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
 import {test} from "node:test";
+import {combineComposeResults} from "./run.ts";
+import type {ComposeResult} from "../gen/composer.ts";
 
 test("a failed format family is recorded before the run throws", () => {
   const source = readFileSync(new URL("./run.ts", import.meta.url), "utf8");
@@ -56,4 +58,49 @@ test("stagnation and an exhausted budget stay distinguishable failures", () => {
   const stagnation = flow.indexOf("was unchanged by repair attempt");
   const afterStagnation = flow.slice(stagnation, stagnation + 400);
   assert.doesNotMatch(afterStagnation, /writeBaselineComposition|usedBaseline: true/);
+});
+
+test("no field of a compose result is dropped when a review pass is combined in", () => {
+  // The guard, not the fix. combineComposeResults used to list every field explicitly, so a
+  // field added to ComposeResult silently vanished the moment a visual review ran — and
+  // stayed invisible until someone read a provenance file weeks later. This asserts the
+  // property rather than the implementation: whatever the interface grows, it survives.
+  const authored: ComposeResult = {
+    provider: "codex",
+    model: "gpt-5.6-terra",
+    effort: "xhigh",
+    turns: 3,
+    actions: 11,
+    costUsd: 0,
+    notes: "authored",
+  };
+  const reviewed: ComposeResult = {
+    provider: "codex",
+    model: "gpt-5.6-terra",
+    effort: "xhigh",
+    turns: 2,
+    actions: 4,
+    costUsd: 0,
+    notes: "reviewed",
+  };
+
+  const combined = combineComposeResults(authored, reviewed) as unknown as Record<string, unknown>;
+  for (const key of Object.keys(authored)) {
+    assert.ok(key in combined, `combineComposeResults dropped "${key}"`);
+    assert.notEqual(combined[key], undefined, `combineComposeResults blanked "${key}"`);
+  }
+
+  // Only the genuinely cumulative fields add up; identity fields take the reviewer's value.
+  assert.equal(combined.turns, 5);
+  assert.equal(combined.actions, 15);
+  assert.equal(combined.notes, "authored\nreviewed");
+  assert.equal(combined.effort, "xhigh");
+});
+
+test("an authored result that never existed leaves the review untouched", () => {
+  const reviewed: ComposeResult = {
+    provider: "claude", model: "claude-opus-5", effort: "maxTurns:90",
+    turns: 7, actions: 20, costUsd: 1.5, notes: "only pass",
+  };
+  assert.deepEqual(combineComposeResults(null, reviewed), reviewed);
 });

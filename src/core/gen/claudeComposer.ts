@@ -219,6 +219,7 @@ function toController(signal?: AbortSignal) {
 
 async function drive(prompt: string, context: ComposeContext, label: string): Promise<ComposeResult> {
   let turns = 0;
+  let actions = 0;
   let costUsd = 0;
   let model = "claude";
   let notes = "";
@@ -237,6 +238,7 @@ async function drive(prompt: string, context: ComposeContext, label: string): Pr
         model = message.message.model ?? model;
         for (const block of message.message.content) {
           if (block.type === "tool_use") {
+            actions += 1;
             context.onLog(`  ${label}      ${describeTool(block.name, block.input as Record<string, unknown>, context.authoring.dir)}`);
           }
         }
@@ -259,7 +261,10 @@ async function drive(prompt: string, context: ComposeContext, label: string): Pr
   }
 
   await assertCompositionWritten(context.authoring.dir);
-  return {provider: "claude", model, turns, costUsd, notes: notes.trim()};
+  // Claude's budget is a turn ceiling rather than a reasoning-effort string, so record the
+  // ceiling it ran under. Both providers then answer "how much was this allowed to think?".
+  const effort = `maxTurns:${context.effort === "high" ? 90 : 60}`;
+  return {provider: "claude", model, effort, turns, actions, costUsd, notes: notes.trim()};
 }
 
 function describeTool(name: string, input: Record<string, unknown>, dir: string) {

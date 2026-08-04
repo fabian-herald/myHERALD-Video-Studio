@@ -44,6 +44,8 @@ import {
   editDelta,
   isSubstantive,
   SUBSTANTIVE_LINES,
+  compositionSize,
+  type CompositionSize,
   type CompositionSnapshot,
 } from "../gen/substance.ts";
 
@@ -190,6 +192,8 @@ export async function runPipeline(options: RunOptions): Promise<RunResult> {
   let attemptsUsed = 0;
   let contactSheet: string | null = null;
   let cover: string | null = null;
+  let authoredSize: CompositionSize | null = null;
+  let finalSize: CompositionSize | null = null;
   const familyFailures: {family: string; message: string}[] = [];
 
   // Resolve every screenshot the plan asked for once, before any family. A missing one is
@@ -230,6 +234,15 @@ export async function runPipeline(options: RunOptions): Promise<RunResult> {
     attemptsUsed = Math.max(attemptsUsed, composed.attempts);
     usedBaseline ||= composed.usedBaseline;
     composeResult = composed.result;
+    // The reference family is the one authored from scratch, so its size is the honest
+    // measure; later families re-emit from it and would only dilute the number.
+    authoredSize ??= composed.size;
+    finalSize = compositionSize(await readComposition(authoring.dir));
+    log(
+      `size          ${finalSize.lines["styles.css"]} css · ${finalSize.lines["index.html"]} html`
+      + ` · ${finalSize.lines["animation.js"]} js · ${finalSize.cssRules} rules`
+      + ` · ${finalSize.gsapCalls} gsap · min ${finalSize.minElementsPerScene} el/scene`,
+    );
 
     // 4 — render every format in this family from the one authored composition.
     let qcRepairsLeft = composed.usedBaseline ? 0 : 1;
@@ -334,8 +347,12 @@ export async function runPipeline(options: RunOptions): Promise<RunResult> {
       composer: {
         provider: usedBaseline ? "baseline" : composeResult?.provider ?? "unknown",
         model: composeResult?.model ?? "n/a",
+        effort: composeResult?.effort ?? "n/a",
         turns: composeResult?.turns ?? 0,
+        actions: composeResult?.actions ?? 0,
         attempts: attemptsUsed,
+        size: authoredSize,
+        sizeFinal: finalSize,
       },
       rhythm,
       narration: {
@@ -431,7 +448,14 @@ export async function composeWithRepair(options: {
   signal?: AbortSignal;
   /** Optional so `recompose` can call this without owning a run-wide timeline. */
   timeline?: Timeline;
-}): Promise<{result: ComposeResult | null; costUsd: number; attempts: number; usedBaseline: boolean}> {
+}): Promise<{
+  result: ComposeResult | null;
+  costUsd: number;
+  attempts: number;
+  usedBaseline: boolean;
+  /** Composition size as the model authored it, before any visual-review edit. */
+  size: CompositionSize | null;
+}> {
   const {authoring, plan, kit, family, composerId, baselineOnly, log, signal} = options;
   const timeline = options.timeline ?? new Timeline();
   const check = () => timeline.span(
@@ -450,13 +474,20 @@ export async function composeWithRepair(options: {
         + `error${baselineReport.errorCount === 1 ? "" : "s"}; render/QC will record the result`,
       );
     }
-    return {result: null, costUsd: 0, attempts: 0, usedBaseline: true};
+    return {
+      result: null,
+      costUsd: 0,
+      attempts: 0,
+      usedBaseline: true,
+      size: compositionSize(await readComposition(authoring.dir)),
+    };
   }
 
   const composer = composerFor(composerId);
   log(`compose       ${composer.label} · ${family} ${authoring.width}×${authoring.height}`);
 
   let result: ComposeResult | null = null;
+  let authoredSize: CompositionSize | null = null;
   let costUsd = 0;
   let report: CheckReport | null = null;
   let visualReviewed = false;
@@ -530,6 +561,10 @@ export async function composeWithRepair(options: {
 
     if (report.ok) {
       if (!visualReviewed) {
+        // Captured here, before the reviewer touches anything: the pair of authored and
+        // final size is what distinguishes a composer that writes a dense frame from one
+        // whose thin frame the review pass rescues.
+        authoredSize ??= compositionSize(await readComposition(authoring.dir));
         // The model sandboxes intentionally do not own the browser process. Rendering here
         // gives Claude and Codex the same frames from the same HyperFrames/Node runtime;
         // only the transport differs (Claude Read versus Codex --image).
@@ -604,7 +639,7 @@ export async function composeWithRepair(options: {
         visualReviewed = true;
       }
       if (result.notes) log(`compose       ${result.notes.split("\n")[0]}`);
-      return {result, costUsd, attempts: attempt, usedBaseline: false};
+      return {result, costUsd, attempts: attempt, usedBaseline: false, size: authoredSize};
     }
 
     await freezeAttempt(authoring.dir, attempt);
@@ -636,15 +671,19 @@ async function compositionFingerprint(dir: string): Promise<string> {
   return hash(COMPOSITION_FILES.map((file) => ({file, body: snapshot[file]})));
 }
 
-function combineComposeResults(
+export function combineComposeResults(
   authored: ComposeResult | null,
   reviewed: ComposeResult,
 ): ComposeResult {
   if (!authored) return reviewed;
+  // Spread the reviewed result rather than listing its fields. The listed form was
+  // exhaustive by construction, so a field added to ComposeResult silently disappeared here
+  // the moment a visual-review pass ran — invisible until someone read a provenance file
+  // weeks later. Only the fields that genuinely accumulate are named below.
   return {
-    provider: reviewed.provider,
-    model: reviewed.model,
+    ...reviewed,
     turns: authored.turns + reviewed.turns,
+    actions: authored.actions + reviewed.actions,
     costUsd: authored.costUsd + reviewed.costUsd,
     notes: [authored.notes, reviewed.notes].filter(Boolean).join("\n"),
   };
