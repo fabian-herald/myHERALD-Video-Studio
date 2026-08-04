@@ -114,6 +114,11 @@ test("the contract names the check that catches an opaque overlap", () => {
   assert.match(contract, /rgba\(0,0,0,α\)|translucent/, "no way out is offered, only a prohibition");
 });
 
+test("the contract never recommends a full-runtime spatial tween", () => {
+  const contract = readFileSync(new URL("./CONTRACT.md", import.meta.url), "utf8");
+  assert.doesNotMatch(contract, /duration\s*:\s*TOTAL\b/);
+});
+
 test("the brief lists the directory instead of making the composer find it", () => {
   // An attempt died at error_max_turns having spent its budget on `ls -la`, `ls -R`,
   // `find exemplar` and a `cat` — all refused by the sandbox, so it learned nothing and

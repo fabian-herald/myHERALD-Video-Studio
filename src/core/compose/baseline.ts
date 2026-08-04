@@ -98,7 +98,9 @@ function buildScene(section: PlanSection, index: number, plan: VideoPlan, kit: B
         </div>`,
     field: `
         <div class="scene-body body-field">
-          ${isEndCard ? endCard : displayCopy(copy, kit, "light")}
+          ${isEndCard
+            ? `${isBrandName(copy, kit) ? "" : displayCopy(copy, kit, "light")}${endCard}`
+            : displayCopy(copy, kit, "light")}
           ${slot}
         </div>`,
     split: `

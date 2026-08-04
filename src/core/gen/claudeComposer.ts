@@ -5,6 +5,7 @@ import {compatibleNode} from "../render/node.ts";
 import {
   actionableRepairFindings,
   assertCompositionWritten,
+  formatFindingForRepair,
   registerComposer,
   type ComposeContext,
   type ComposeResult,
@@ -310,11 +311,7 @@ export const claudeComposer: Composer = {
         "",
         "Findings:",
         "",
-        findings
-          .map((finding) => `- [${finding.severity}] ${finding.code ?? "issue"}: ${finding.message}`
-            + (finding.selector ? ` (selector: ${finding.selector})` : "")
-            + (finding.fixHint ? `\n  hint: ${finding.fixHint}` : ""))
-          .join("\n"),
+        findings.map(formatFindingForRepair).join("\n"),
         ...(evidencePaths.length ? [
           "",
           "Rendered checker evidence (overview frames and focused finding crops):",

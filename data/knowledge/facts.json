@@ -421,5 +421,14 @@
     "state": "approved",
     "source": "https://www.betterbriefs.com/library/the-cost-of-poor-feedback",
     "updatedAt": "2026-08-01T14:17:35.131Z"
+  },
+  {
+    "id": "f-msajobqz-0",
+    "kind": "problem",
+    "statement": "25% of marketers knowingly publish off-brand AI-generated content when facing tight deadlines.",
+    "evidence": "Optimizely survey, 2026: “Optimizely has published research showing that 25% of marketers knowingly publish off-brand AI-generated content when facing tight deadlines.” The research was carried out by Savanta and surveyed 2,003 marketing leaders in the United States, United Kingdom, Germany, Sweden, the Netherlands, Australia and the UAE.",
+    "state": "approved",
+    "source": "https://cmotech.news/story/optimizely-study-finds-marketers-cut-corners-on-ai",
+    "updatedAt": "2026-08-01T15:48:11.269Z"
   }
 ]

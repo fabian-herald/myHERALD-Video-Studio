@@ -4,6 +4,14 @@ import {loadBrandKit} from "../brand/kit.ts";
 import {FPS, NARRATION_FILE, sectionSnapshotTimes} from "../compose/workdir.ts";
 import {amendLedgerEntry, upsertLedgerEntry} from "../ledger.ts";
 import {byFamily, FORMATS, familyOf, type OutputFormat} from "../plan/formats.ts";
+import {
+  escapeHtml,
+  removeScene,
+  rewriteFullDurationClips,
+  rewriteSceneTiming,
+  sceneDisplaysCopy,
+  swapCopy,
+} from "../compose/html.ts";
 import {assertPlanCopyRules} from "../plan/copyRules.ts";
 import {factIdsUsedByPlan, planClaimsViolation} from "../plan/claims.ts";
 import {loadPlan, planDurationMs, savePlan, videoPlanZ, type Energy, type VideoPlan} from "../plan/schema.ts";
@@ -375,94 +383,9 @@ async function rewriteComposition(
   return {unapplied};
 }
 
-function removeScene(html: string, sectionId: string): string {
-  const anchor = html.indexOf(`id="scene-${sectionId}"`);
-  if (anchor < 0) return html;
-  const start = html.lastIndexOf("<", anchor);
-  return html.slice(0, start) + html.slice(findSceneEnd(html, start));
-}
-
 /** Stable, collision-free id for a line the owner just added. */
 function freshPhraseId(sectionId: string, index: number, text: string): string {
   const slug = text.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 18);
   return `${slug || "line"}-${index}`;
 }
 
-function rewriteSceneTiming(html: string, sectionId: string, startMs: number, durationMs: number): string {
-  const anchor = html.indexOf(`id="scene-${sectionId}"`);
-  if (anchor < 0) return html;
-  const tagStart = html.lastIndexOf("<", anchor);
-  const tagEnd = html.indexOf(">", anchor);
-  if (tagStart < 0 || tagEnd < 0) return html;
-
-  const tag = html.slice(tagStart, tagEnd + 1)
-    .replace(/data-start="[^"]*"/, `data-start="${(startMs / 1000).toFixed(3)}"`)
-    .replace(/data-duration="[^"]*"/, `data-duration="${(durationMs / 1000).toFixed(3)}"`);
-  return html.slice(0, tagStart) + tag + html.slice(tagEnd + 1);
-}
-
-/** The backdrop, brand rail, caption layer and audio all span the whole piece. */
-function rewriteFullDurationClips(html: string, duration: string): string {
-  return html.replace(
-    /(id="(?:stage|backdrop|brand-rail|caption-layer|narration)"[^>]*?data-duration=")[^"]*(")/g,
-    `$1${duration}$2`,
-  );
-}
-
-function swapCopy(html: string, sectionId: string, before: string, after: string): string | null {
-  const anchor = html.indexOf(`id="scene-${sectionId}"`);
-  if (anchor < 0) return null;
-  const sceneStart = html.lastIndexOf("<", anchor);
-  const sceneEnd = findSceneEnd(html, sceneStart);
-  const scene = html.slice(sceneStart, sceneEnd);
-
-  const escapedBefore = escapeHtml(before);
-  const target = scene.includes(before) ? before : scene.includes(escapedBefore) ? escapedBefore : null;
-  if (!target) return null;
-
-  const replacement = target === before ? after : escapeHtml(after);
-  return html.slice(0, sceneStart) + scene.replace(target, replacement) + html.slice(sceneEnd);
-}
-
-/**
- * Compare visible scene text, not HTML source. This deliberately answers only whether
- * the requested copy is already present: it never rewrites markup or guesses how a
- * styled heading should be split across elements.
- */
-export function sceneDisplaysCopy(html: string, sectionId: string, copy: string): boolean {
-  const anchor = html.indexOf(`id="scene-${sectionId}"`);
-  if (anchor < 0) return false;
-  const sceneStart = html.lastIndexOf("<", anchor);
-  const sceneEnd = findSceneEnd(html, sceneStart);
-  const visible = decodeBasicEntities(html.slice(sceneStart, sceneEnd)
-    .replace(/<script\b[^>]*>[\s\S]*?<\/script\s*>/gi, " ")
-    .replace(/<style\b[^>]*>[\s\S]*?<\/style\s*>/gi, " ")
-    .replace(/<[^>]+>/g, " "));
-  const haystack = normalizeVisibleText(visible);
-  const needle = normalizeVisibleText(copy);
-  return needle.length > 0 && ` ${haystack} `.includes(` ${needle} `);
-}
-
-const normalizeVisibleText = (value: string) => value.replace(/\s+/g, " ").trim();
-
-const decodeBasicEntities = (value: string) => value
-  .replaceAll("&amp;", "&")
-  .replaceAll("&lt;", "<")
-  .replaceAll("&gt;", ">")
-  .replaceAll("&quot;", '"')
-  .replaceAll("&#39;", "'")
-  .replaceAll("&nbsp;", " ");
-
-function findSceneEnd(html: string, sceneStart: number): number {
-  const pattern = /<section\b|<\/section\s*>/gi;
-  pattern.lastIndex = sceneStart + 1;
-  let depth = 1;
-  for (let match = pattern.exec(html); match; match = pattern.exec(html)) {
-    depth += match[0].startsWith("</") ? -1 : 1;
-    if (depth === 0) return match.index + match[0].length;
-  }
-  return html.length;
-}
-
-const escapeHtml = (value: string) =>
-  value.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");

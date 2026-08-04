@@ -8,6 +8,7 @@ import {compatibleNode} from "../render/node.ts";
 import {
   actionableRepairFindings,
   assertCompositionWritten,
+  formatFindingForRepair,
   registerComposer,
   type ComposeContext,
   type ComposeResult,
@@ -213,11 +214,7 @@ export const codexComposer: Composer = {
         "Fix it with a minimal diff. Do not re-author it and do not change the design.",
         "",
         "Findings:",
-        findings
-          .map((finding) => `- [${finding.severity}] ${finding.code ?? "issue"}: ${finding.message}`
-            + (finding.selector ? ` (selector: ${finding.selector})` : "")
-            + (finding.fixHint ? `\n  hint: ${finding.fixHint}` : ""))
-          .join("\n"),
+        findings.map(formatFindingForRepair).join("\n"),
         ...(evidencePaths.length ? [
           "",
           "The attached images are the checker overview frames and focused finding crops.",

@@ -1,7 +1,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import type {AuthoringDir} from "../compose/workdir.ts";
-import type {CheckReport} from "../render/check.ts";
+import type {CheckFinding, CheckReport} from "../render/check.ts";
 
 /** The three files a composition consists of. Nothing else may be written. */
 export const COMPOSITION_FILES = ["index.html", "styles.css", "animation.js"] as const;
@@ -111,6 +111,23 @@ export interface Composer {
 export function actionableRepairFindings(report: CheckReport) {
   const errors = report.findings.filter((finding) => finding.severity === "error");
   return errors.length ? errors : report.findings;
+}
+
+/**
+ * One rendering of a finding for every adapter.
+ *
+ * Claude and Codex had byte-identical copies of this, which is how a field added for one
+ * silently fails to reach the other. `file:line` and the expected literal are the two the
+ * model most often had to rediscover by reading the whole file.
+ */
+export function formatFindingForRepair(finding: CheckFinding): string {
+  const at = finding.file
+    ? ` (${finding.file}${finding.line ? `:${finding.line}` : ""})`
+    : "";
+  return `- [${finding.severity}] ${finding.code ?? "issue"}${at}: ${finding.message}`
+    + (finding.selector ? ` (selector: ${finding.selector})` : "")
+    + (finding.expected ? `\n  expected: ${finding.expected}` : "")
+    + (finding.fixHint ? `\n  hint: ${finding.fixHint}` : "");
 }
 
 const registry = new Map<string, Composer>();

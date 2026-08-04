@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "id": "t-50111f90",
+  "kind": "video",
+  "title": "Video 8/1/2026",
+  "createdAt": "2026-08-01T00:46:44.240Z",
+  "updatedAt": "2026-08-01T00:46:46.544Z",
+  "sessions": {},
+  "messages": [
+    {
+      "id": "5dd6e414e4",
+      "role": "user",
+      "text": "First call read_context. Then create a short English educational test video explaining the difference between a content topic and a strong content thesis. Use no statistics, do not browse the web, and use only approved product facts. Make the video now.",
+      "at": "2026-08-01T00:46:46.544Z"
+    },
+    {
+      "id": "8239bab623",
+      "role": "assistant",
+      "text": "⚠ 2026-08-01T00:46:45.139526Z ERROR rmcp::transport::worker: worker quit with fatal: unexpected server response: HTTP 500: , when send initialized notification\n2026-08-01T00:46:45.392289Z ERROR rmcp::transport::worker: worker quit with fatal: Transport channel closed, when UnexpectedServerResponse(\"HTTP 500: \")\n2026-08-01T00:46:46.395673Z ERROR rmcp::transport::worker: worker quit with fatal: Transport channel closed, when UnexpectedServerResponse(\"HTTP 500: \")\n2026-08-01T00:46:46.397570Z ERROR codex_core::session: Failed to create session: required MCP servers failed to initialize: studio: handshaking with MCP server failed: Send message error Transport [rmcp::transport::worker::WorkerTransport<rmcp::transport::streamable_http_client::StreamableHttpClientWorker<codex_rmcp_client::http_client_adapter::StreamableHttpClientAdapter>>] error: unexpected server response: HTTP 500: , when send initialize request\nError: thread/start: thread/start failed: error creating thread: Fatal error: Failed to initialize session: required MCP servers failed to initialize: studio: handshaking with MCP server failed: Send message error Transport [rmcp::transport::worker::WorkerTransport<rmcp::transport::streamable_http_client::StreamableHttpClientWorker<codex_rmcp_client::http_client_adapter::StreamableHttpClientAdapter>>] error: unexpected server response: HTTP 500: , when send initialize request (code -32603)",
+      "at": "2026-08-01T00:46:46.544Z"
+    }
+  ]
+}

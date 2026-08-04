@@ -44,6 +44,41 @@ test("scene-local state changes and static accents pass the perpetual-motion che
   );
 });
 
+test("a lowercase duration alias bound to the stage is rejected", async () => {
+  await withAnimation(
+    'const total = parseFloat(stage.dataset.duration);\ntimeline.to(".node", {y: HEIGHT, duration: total});',
+    async (dir) => assert.equal((await checkPerpetualMotionSource(dir)).length, 1),
+  );
+});
+
+test("a multiline full-runtime tween is rejected", async () => {
+  await withAnimation(
+    'timeline.to(".node", {\n  y: HEIGHT,\n  duration: TOTAL,\n});',
+    async (dir) => assert.equal((await checkPerpetualMotionSource(dir)).length, 1),
+  );
+});
+
+test("a full-runtime non-spatial opacity change is not perpetual motion", async () => {
+  await withAnimation(
+    'timeline.to(".scrim", {opacity: 0, duration: TOTAL});',
+    async (dir) => assert.deepEqual(await checkPerpetualMotionSource(dir), []),
+  );
+});
+
+test("an inline full-runtime spatial tween cannot bypass animation.js", async () => {
+  await withAnimation("", async (dir) => {
+    await fs.writeFile(
+      path.join(dir, "index.html"),
+      '<script>const whole = parseFloat(stage.dataset.duration);\n'
+        + 'gsap.to(".node", {rotation: 360, duration: whole});</script>',
+      "utf8",
+    );
+    const findings = await checkPerpetualMotionSource(dir);
+    assert.equal(findings.length, 1);
+    assert.match(findings[0]?.message ?? "", /index\.html/);
+  });
+});
+
 test("a hardcoded canvas height is caught when the family serves several formats", async () => {
   await withAnimation(
     'timeline.fromTo(".spine-node", {y: 0}, {y: 1920, duration: TOTAL}, 0);',
@@ -325,5 +360,122 @@ test("a non-bar data treatment is not forced into bar metadata", async () => {
   await withHtml(
     '<section id="scene-proof"><strong class="data-figure">25%</strong></section>',
     async (dir) => assert.deepEqual(await checkDataBarProportions(dir, dataPlan), []),
+  );
+});
+
+// A2 — structured location and remedy on findings.
+//
+// These fields are what let a deterministic fixer act on a finding without a model session.
+// Each assertion below pins a value that was previously computed and then spent on prose.
+
+test("perpetual motion carries the file and line it already names in its message", async () => {
+  await withAnimation(
+    '\n\ntimeline.to(".spine-node", {y: HEIGHT, duration: TOTAL, ease: "none"}, 0);',
+    async (dir) => {
+      const [finding] = await checkPerpetualMotionSource(dir);
+      assert.equal(finding?.file, "animation.js");
+      assert.equal(finding?.line, 3);
+      assert.match(finding?.snippet ?? "", /spine-node/);
+      // The message keeps its prose form; the fields are an addition, not a replacement.
+      assert.match(finding?.message ?? "", /animation\.js:3/);
+    },
+  );
+});
+
+test("an em-dash finding carries the one substitution that needs no judgement", async () => {
+  await withHtml(
+    "<html><body><h1>Slots — statt Gedanken</h1></body></html>",
+    async (dir) => {
+      const finding = (await checkBannedWords(dir, kit)).find((f) => f.code === "em_dash");
+      assert.equal(finding?.file, "index.html");
+      // A spaced en-dash is explicitly permitted; a comma or full stop is a copy decision.
+      assert.equal(finding?.expected, "–");
+    },
+  );
+});
+
+test("a missing rail lockup resolves the asset from the field the rail declares", async () => {
+  const lockupKit = {
+    ...branded,
+    logos: [
+      {id: "lockup-light", role: "lockup", theme: "light", file: "logos/lockup-light.png", safeAreaPct: 0.25, label: ""},
+      {id: "lockup-dark", role: "lockup", theme: "dark", file: "logos/lockup-dark.png", safeAreaPct: 0.25, label: ""},
+    ],
+  } as unknown as import("../brand/kit.ts").BrandKit;
+  const emptyPlan = {sections: []} as unknown as VideoPlan;
+
+  await withHtml(
+    '<html><body><header id="brand-rail" class="brand-rail on-dark clip"><span>myHERALD</span></header></body></html>',
+    async (dir) => {
+      const [finding] = await checkCanonicalBrandLockups(dir, lockupKit, emptyPlan);
+      assert.equal(finding?.code, "canonical_lockup_missing_rail");
+      assert.equal(finding?.elementId, "brand-rail");
+      // on-dark must pick the dark lockup, not merely the first one in the kit.
+      assert.equal(
+        finding?.expected,
+        '<img class="rail-lockup" src="media/logo-lockup-dark.png" alt="myHERALD">',
+      );
+    },
+  );
+});
+
+test("the rail lockup literal stays unset when the field cannot be read", async () => {
+  const lockupKit = {
+    ...branded,
+    logos: [
+      {id: "lockup-light", role: "lockup", theme: "light", file: "logos/lockup-light.png", safeAreaPct: 0.25, label: ""},
+      {id: "lockup-dark", role: "lockup", theme: "dark", file: "logos/lockup-dark.png", safeAreaPct: 0.25, label: ""},
+    ],
+  } as unknown as import("../brand/kit.ts").BrandKit;
+  const emptyPlan = {sections: []} as unknown as VideoPlan;
+
+  await withHtml(
+    '<html><body><header id="brand-rail" class="brand-rail clip"><span>myHERALD</span></header></body></html>',
+    async (dir) => {
+      const [finding] = await checkCanonicalBrandLockups(dir, lockupKit, emptyPlan);
+      // Choosing between a light, dark and plate lockup is a design call, not a fix.
+      assert.equal(finding?.expected, undefined);
+      assert.match(finding?.fixHint ?? "", /field-appropriate/);
+    },
+  );
+});
+
+test("a data bar pinned to a plan point carries the numbers to write", async () => {
+  const dataBarPlan = {
+    sections: [{
+      id: "proof",
+      data: {unit: "%", points: [{label: "Reach", value: 25}]},
+    }],
+  } as unknown as VideoPlan;
+
+  await withHtml(
+    '<section id="scene-proof"><div class="data-bar" data-value="25" data-max="7" style="--fill: .9"></div></section>',
+    async (dir) => {
+      const [finding] = await checkDataBarProportions(dir, dataBarPlan);
+      assert.equal(finding?.code, "data_bar_proportion");
+      assert.equal(finding?.sectionId, "proof");
+      // The matched tag identifies which bar; the selector alone cannot when a scene has several.
+      assert.match(finding?.snippet ?? "", /data-value="25"/);
+      assert.ok(finding?.expected, "a bar anchored by data-value should carry its expected geometry");
+    },
+  );
+});
+
+test("a data bar with no matching plan point declines to guess a figure", async () => {
+  const dataBarPlan = {
+    sections: [{
+      id: "proof",
+      data: {unit: "%", points: [{label: "Reach", value: 25}]},
+    }],
+  } as unknown as VideoPlan;
+
+  await withHtml(
+    '<section id="scene-proof"><div class="data-bar" data-value="61" data-max="100" style="--fill: .61"></div></section>',
+    async (dir) => {
+      const [finding] = await checkDataBarProportions(dir, dataBarPlan);
+      assert.equal(finding?.code, "data_bar_proportion");
+      // Nothing maps this bar to a figure, and inventing one puts a wrong number on screen.
+      assert.equal(finding?.expected, undefined);
+    },
   );
 });

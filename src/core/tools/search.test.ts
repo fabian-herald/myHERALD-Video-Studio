@@ -132,6 +132,12 @@ test("an explicit aspect ratio in the brief survives a missing tool parameter", 
   assert.match(toolsByName().get("make_video")?.description ?? "", /owner names a format/i);
 });
 
+test("subject-matter words never masquerade as output formats", () => {
+  assert.deepEqual(formatsFromBrief("Explain the B2B marketing landscape."), []);
+  assert.deepEqual(formatsFromBrief("Why every square peg needs a round hole."), []);
+  assert.deepEqual(formatsFromBrief("The risks of vertical integration."), []);
+});
+
 test("the figure fence says a well-formed figure is not a verified one", () => {
   // SEARCH_FENCE covers a page that chose to rank for a query. This one covers a step further
   // on: a model has already read the page and quoted it, so the output *looks* checked. Both
@@ -188,6 +194,21 @@ test("the same sourced figure is not proposed twice with cosmetic rewording", ()
       evidence: "Shorter evidence.",
     },
   ), true);
+});
+
+test("different claims sharing a source and numbers remain distinct", () => {
+  assert.equal(sameProposedFact(
+    {
+      statement: "40% of teams use content planning in 2026.",
+      source: "https://example.com/study",
+      evidence: "First finding.",
+    },
+    {
+      statement: "40% of teams use content production in 2026.",
+      source: "https://example.com/study",
+      evidence: "Second finding.",
+    },
+  ), false);
 });
 
 test("the research record cannot set a fact's state", () => {

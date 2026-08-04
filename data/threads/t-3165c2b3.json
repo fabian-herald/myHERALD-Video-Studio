@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "id": "t-3165c2b3",
+  "kind": "video",
+  "title": "Video 8/1/2026",
+  "createdAt": "2026-08-01T00:47:39.204Z",
+  "updatedAt": "2026-08-01T00:47:54.687Z",
+  "sessions": {
+    "codex": "019fbaca-7b7c-7d60-9d0b-2eac4218e0b7"
+  },
+  "messages": [
+    {
+      "id": "5dd6e414e4",
+      "role": "user",
+      "text": "First call read_context. Then create a short English educational test video explaining the difference between a content topic and a strong content thesis. Use no statistics, do not browse the web, and use only approved product facts. Make the video now.",
+      "at": "2026-08-01T00:47:54.687Z"
+    },
+    {
+      "id": "ca70706fc1",
+      "role": "assistant",
+      "text": "I’ll check the studio context and its prior work first, then create the English educational test video using only approved product facts.",
+      "at": "2026-08-01T00:47:54.687Z"
+    },
+    {
+      "id": "0fede0a10d",
+      "role": "assistant",
+      "text": "I’m using the video-production workflow to preserve the studio’s rendering and narration rules; the final assembly will run through the studio rather than a manual composition.",
+      "at": "2026-08-01T00:47:54.687Z"
+    },
+    {
+      "id": "515b408c8c",
+      "role": "assistant",
+      "text": "I couldn’t begin: the required studio-context check was cancelled. Please rerun the request and I’ll create the educational test video directly.",
+      "at": "2026-08-01T00:47:54.687Z"
+    }
+  ]
+}

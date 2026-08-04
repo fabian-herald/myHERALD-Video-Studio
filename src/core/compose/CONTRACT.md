@@ -90,7 +90,8 @@ Everything else in the directory is provided and must not be modified.
     const HEIGHT = parseFloat(stage.dataset.height);
     const WIDTH  = parseFloat(stage.dataset.width);
 
-    timeline.fromTo(".spine-node", {y: 0}, {y: HEIGHT, duration: TOTAL, ease: "none"}, 0);
+    timeline.fromTo("#scene-proof .proof-card", {x: 0},
+      {x: WIDTH * 0.4, duration: 0.6, ease: "power2.out"}, at("#scene-proof") + 0.1);
     ```
 
     **One composition serves every format in its family**, re-emitted at a different

@@ -100,7 +100,52 @@ export function sameProposedFact(
   if (!source || source !== candidate.source.trim().replace(/\/$/, "")) return false;
   const currentNumbers = numericSignature(current.statement);
   const candidateNumbers = numericSignature(candidate.statement);
-  return Boolean(currentNumbers) && currentNumbers === candidateNumbers;
+  return Boolean(currentNumbers)
+    && currentNumbers === candidateNumbers
+    && factStatementSimilarity(current.statement, candidate.statement) >= SAME_FACT_SIMILARITY;
+}
+
+/**
+ * The two errors here are not symmetric. Proposing a duplicate costs the owner one click in
+ * the Brand screen; suppressing a distinct finding loses a fact silently, and nothing
+ * downstream can recover it. So this leans towards letting near-duplicates through.
+ *
+ * 0.75 was too low by exactly one term. Two four-term claims differing in a single content
+ * word — "content planning" against "content production", same source, same figures — score
+ * 2x3/(4+4) = 0.75 and were being collapsed into one. A genuine rewording scores 1.0,
+ * because `relatedFactTerm` already folds "measure"/"measured" together before counting.
+ */
+const SAME_FACT_SIMILARITY = 0.85;
+
+const FACT_STOP_WORDS = new Set([
+  "a", "an", "and", "are", "as", "at", "do", "does", "for", "in", "is", "of", "only", "or", "the", "to", "was", "were",
+  "der", "die", "das", "den", "dem", "des", "ein", "eine", "einer", "eines", "für", "im", "in", "ist", "oder", "und", "von", "zu",
+]);
+
+function factTerms(value: string): string[] {
+  return (normalFactText(value).match(/[\p{L}\p{N}%]+/gu) ?? [])
+    .filter((term) => !/^\d+(?:[.,]\d+)?%?$/.test(term))
+    .filter((term) => !FACT_STOP_WORDS.has(term));
+}
+
+function relatedFactTerm(left: string, right: string) {
+  if (left === right) return true;
+  const shortest = Math.min(left.length, right.length);
+  return shortest >= 5 && (left.startsWith(right) || right.startsWith(left));
+}
+
+function factStatementSimilarity(left: string, right: string): number {
+  const leftTerms = factTerms(left);
+  const remaining = [...factTerms(right)];
+  if (!leftTerms.length || !remaining.length) return 0;
+  let matches = 0;
+  for (const term of leftTerms) {
+    const index = remaining.findIndex((candidate) => relatedFactTerm(term, candidate));
+    if (index < 0) continue;
+    matches += 1;
+    remaining.splice(index, 1);
+  }
+  return (2 * matches) / (leftTerms.length + factTerms(right).length);
 }
 
 export function brandResearchUrlFault(urls: readonly string[], website: string): string | null {
@@ -125,10 +170,10 @@ export function formatsFromBrief(brief: string): OutputFormat[] {
   const add = (format: OutputFormat) => {
     if (!found.includes(format)) found.push(format);
   };
-  if (/\b16\s*[:x×]\s*9\b|\blandscape\b/i.test(brief)) add("16x9");
-  if (/\b9\s*[:x×]\s*16\b|\bvertical\b/i.test(brief)) add("9x16");
+  if (/\b16\s*[:x×]\s*9\b/i.test(brief)) add("16x9");
+  if (/\b9\s*[:x×]\s*16\b/i.test(brief)) add("9x16");
   if (/\b4\s*[:x×]\s*5\b/i.test(brief)) add("4x5");
-  if (/\b1\s*[:x×]\s*1\b|\bsquare\b/i.test(brief)) add("1x1");
+  if (/\b1\s*[:x×]\s*1\b/i.test(brief)) add("1x1");
   return found;
 }
 

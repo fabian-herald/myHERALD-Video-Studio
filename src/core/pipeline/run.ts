@@ -30,6 +30,7 @@ import {
 import {OUT_DIR, rel, videoDir} from "../paths.ts";
 import {buildContactSheet, buildCover, writeProvenance} from "../render/artifacts.ts";
 import {checkComposition, formatFindings, type CheckReport} from "../render/check.ts";
+import {autoFix} from "../render/autofix.ts";
 import {emitFormat, renderSnapshots, renderVideo, type Quality} from "../render/hyperframes.ts";
 import {composerFixableFailures, runQc, writeQc, type QcReport} from "../render/qc.ts";
 import {buildCaptions} from "../tts/captions.ts";
@@ -38,6 +39,13 @@ import {narrate} from "../tts/narrate.ts";
 import {hash} from "../util/exec.ts";
 import {readSettings} from "../settings.ts";
 import {marketingGuidanceFor} from "../marketing/guidance.ts";
+import {Timeline} from "./timing.ts";
+import {
+  editDelta,
+  isSubstantive,
+  SUBSTANTIVE_LINES,
+  type CompositionSnapshot,
+} from "../gen/substance.ts";
 
 // Registering the adapters here is what keeps every seam swappable from one place.
 import "../gen/claudeComposer.ts";
@@ -83,6 +91,7 @@ export async function runPipeline(options: RunOptions): Promise<RunResult> {
   await fs.mkdir(dir, {recursive: true});
 
   const ledger = new CostLedger();
+  const timeline = new Timeline();
   let usedBaseline = Boolean(options.baselineOnly);
 
   // 1 — plan, informed by approved facts and what already exists.
@@ -95,7 +104,7 @@ export async function runPipeline(options: RunOptions): Promise<RunResult> {
   }
 
   log(`plan          ${options.intent} · ${narrationProfile} · ${options.formats.join(", ")} · ${options.language}`);
-  const planned = await planVideo(
+  const planned = await timeline.span("plan", async () => planVideo(
     {
       id: videoId,
       brief: options.brief,
@@ -135,7 +144,7 @@ export async function runPipeline(options: RunOptions): Promise<RunResult> {
     },
     log,
     options.signal,
-  );
+  ));
   if (options.plannerId === "codex") {
     ledger.free("codex", "plan", "covered by the local ChatGPT subscription");
   } else {
@@ -154,7 +163,10 @@ export async function runPipeline(options: RunOptions): Promise<RunResult> {
   // Checked between every stage, because each one is minutes long and a cancel that only
   // takes effect at the end of the current stage is not a cancel the owner can feel.
   throwIfCancelled(options.signal, "planning");
-  const narration = await narrate(planned.plan, dir, log, options.signal);
+  const narration = await timeline.span(
+    "narrate",
+    () => narrate(planned.plan, dir, log, options.signal),
+  );
   if (narration.costUsd > 0) ledger.metered("gemini", "narrate", narration.costUsd);
   else ledger.free("gemini", "narrate", `${narration.clipCount} phrases on the free tier; Google's quota records are authoritative`);
   const plan = narration.plan;
@@ -178,11 +190,12 @@ export async function runPipeline(options: RunOptions): Promise<RunResult> {
   let attemptsUsed = 0;
   let contactSheet: string | null = null;
   let cover: string | null = null;
+  const familyFailures: {family: string; message: string}[] = [];
 
   // Resolve every screenshot the plan asked for once, before any family. A missing one is
   // reported rather than ignored: the composer would write an `<img>` at a path with no
   // file behind it, which renders as an empty panel and passes every check we have.
-  const media = await mediaForPlan(plan.sections);
+  const media = await timeline.span("media", () => mediaForPlan(plan.sections));
   if (media.files.length) log(`media         ${media.files.length} item(s) bound: ${media.files.map((file) => file.id).join(", ")}`);
   if (media.missing.length) {
     log(`media         MISSING ${media.missing.join(", ")} — no approved library item with that id;`
@@ -190,6 +203,7 @@ export async function runPipeline(options: RunOptions): Promise<RunResult> {
   }
 
   for (const [family, formats] of byFamily(plan.formats)) {
+    try {
     const authoringDir = path.join(dir, "work", family);
     await fs.mkdir(authoringDir, {recursive: true});
     const authoring = await prepareAuthoringDir({
@@ -201,7 +215,7 @@ export async function runPipeline(options: RunOptions): Promise<RunResult> {
       mediaFiles: media.files,
     });
 
-    const composed = await composeWithRepair({
+    const composed = await timeline.span("compose", () => composeWithRepair({
       authoring,
       plan,
       kit,
@@ -210,7 +224,8 @@ export async function runPipeline(options: RunOptions): Promise<RunResult> {
       baselineOnly: options.baselineOnly ?? false,
       log,
       signal: options.signal,
-    });
+      timeline,
+    }));
     if (composed.costUsd > 0) ledger.model(composed.result?.provider ?? options.composerId, "compose", composed.costUsd);
     attemptsUsed = Math.max(attemptsUsed, composed.attempts);
     usedBaseline ||= composed.usedBaseline;
@@ -232,7 +247,7 @@ export async function runPipeline(options: RunOptions): Promise<RunResult> {
       if (fixable.length && qcRepairsLeft > 0 && !options.signal?.aborted) {
         qcRepairsLeft -= 1;
         log(`qc            ${format} FAILED — ${fixable.map((item) => item.check).join(", ")}; repairing once`);
-        const repaired = await repairFromQc(fixable);
+        const repaired = await timeline.span("compose·qc-repair", () => repairFromQc(fixable));
         if (repaired) {
           attemptsUsed += 1;
           if (repaired.costUsd > 0) ledger.model(repaired.provider, "qc-repair", repaired.costUsd);
@@ -246,33 +261,36 @@ export async function runPipeline(options: RunOptions): Promise<RunResult> {
 
     async function renderAndQc(format: OutputFormat) {
       const renderDir = path.join(dir, "render", format);
-      await emitFormat(authoring.dir, format, renderDir);
+      await timeline.span("render·emit", () => emitFormat(authoring.dir, format, renderDir));
 
       const outPath = path.join(OUT_DIR, videoId, `master-${format}.mp4`);
       const spec = FORMATS[format];
       log(`render        ${format} · ${spec.width}×${spec.height} · ${options.quality}`);
-      await renderVideo({dir: renderDir, outputPath: outPath, quality: options.quality});
+      await timeline.span(
+        "render·video",
+        () => renderVideo({dir: renderDir, outputPath: outPath, quality: options.quality}),
+      );
 
-      const frames = await renderSnapshots({
+      const frames = await timeline.span("render·snapshots", () => renderSnapshots({
         dir: renderDir,
         durationSeconds: authoring.durationSeconds,
         at: sectionSnapshotTimes(plan),
         outputDir: path.join(renderDir, "snapshots"),
-      });
+      }));
 
       if (frames.length && (!contactSheet || format === formats[0])) {
         contactSheet = await buildContactSheet(frames, path.join(OUT_DIR, videoId, "contact-sheet.png"));
         cover = await buildCover(frames, path.join(OUT_DIR, videoId, "cover.png"));
       }
 
-      const qc = await runQc({
+      const qc = await timeline.span("render·qc", () => runQc({
         videoPath: outPath,
         format,
         expectedDurationMs: durationMs,
         fps: FPS,
         captions: buildCaptions(plan),
         coverPath: cover ?? undefined,
-      });
+      }));
       await writeQc(qc, path.join(OUT_DIR, videoId, `qc-${format}.json`));
       return {outPath, qc};
     }
@@ -296,6 +314,12 @@ export async function runPipeline(options: RunOptions): Promise<RunResult> {
           log(`compose       QC repair failed: ${(error as Error).message}`);
           return null;
         });
+    }
+    } catch (error) {
+      if (isCancellation(error)) throw error;
+      const message = error instanceof Error ? error.message : String(error);
+      familyFailures.push({family, message});
+      log(`compose       ${family} family FAILED — ${message}`);
     }
   }
 
@@ -338,6 +362,8 @@ export async function runPipeline(options: RunOptions): Promise<RunResult> {
         // on both narration paths; it is the placement of words inside a page that is
         // estimated, and saying otherwise understated captions that are in fact aligned.
         "Word placement within a caption page is weighted by character and punctuation, not per-word aligned.",
+        ...familyFailures.map(({family, message}) =>
+          `${family} format family failed before completion: ${message}`),
       ],
       outputFileHashes: Object.fromEntries(outputs.flatMap((output) => Object.entries(output.qc.hashes))),
     },
@@ -352,7 +378,9 @@ export async function runPipeline(options: RunOptions): Promise<RunResult> {
     formats: plan.formats,
     language: plan.language,
     createdAt: new Date().toISOString(),
-    status: outputs.every((output) => output.qc.passed) ? "ready" : "failed",
+    status: familyFailures.length === 0 && outputs.length > 0 && outputs.every((output) => output.qc.passed)
+      ? "ready"
+      : "failed",
     spokenScript: plan.sections.flatMap((section) => section.phrases.map((phrase) => phrase.text)).join(" "),
     mediaIds: [],
     // Recorded at the one moment the plan and the finished file are both in hand, and it is
@@ -365,6 +393,19 @@ export async function runPipeline(options: RunOptions): Promise<RunResult> {
   ledger.free("hyperframes", "render", "local render; machine time and electricity excluded");
   const cost = ledger.summary();
   log(`cost          ${formatCost(cost)}`);
+
+  // Written before the failure throw below, because a run that died in the landscape
+  // family is exactly the one whose stage costs are worth reading.
+  await timeline.write(path.join(OUT_DIR, videoId, "timing.json"));
+  timeline.report(log);
+
+  if (familyFailures.length) {
+    const completed = outputs.map((output) => output.format).join(", ") || "none";
+    throw new Error(
+      `Video ${videoId} failed in ${familyFailures.map(({family}) => family).join(", ")} `
+      + `format family. Completed outputs recorded: ${completed}.`,
+    );
+  }
   return {videoId, plan, outputs, contactSheet, cover, cost, usedBaseline};
 }
 
@@ -388,9 +429,15 @@ export async function composeWithRepair(options: {
   baselineOnly: boolean;
   log: (line: string) => void;
   signal?: AbortSignal;
+  /** Optional so `recompose` can call this without owning a run-wide timeline. */
+  timeline?: Timeline;
 }): Promise<{result: ComposeResult | null; costUsd: number; attempts: number; usedBaseline: boolean}> {
   const {authoring, plan, kit, family, composerId, baselineOnly, log, signal} = options;
-  const check = () => checkComposition({dir: authoring.dir, plan, kit, family, fps: FPS, onLog: log});
+  const timeline = options.timeline ?? new Timeline();
+  const check = () => timeline.span(
+    "compose·check",
+    () => checkComposition({dir: authoring.dir, plan, kit, family, fps: FPS, onLog: log}),
+  );
 
   if (baselineOnly) {
     log("compose       baseline (deterministic fallback requested)");
@@ -398,9 +445,9 @@ export async function composeWithRepair(options: {
     const baselineReport = await check();
     await reportCheck(baselineReport, log, "baseline");
     if (!baselineReport.ok) {
-      throw new Error(
-        `The requested baseline composition failed validation with `
-        + `${baselineReport.errorCount} error(s). Nothing was rendered.`,
+      log(
+        `compose       baseline diagnostic continues with ${baselineReport.errorCount} validation `
+        + `error${baselineReport.errorCount === 1 ? "" : "s"}; render/QC will record the result`,
       );
     }
     return {result: null, costUsd: 0, attempts: 0, usedBaseline: true};
@@ -426,6 +473,10 @@ export async function composeWithRepair(options: {
     // is a model session, so a run cancelled during attempt two must not open attempt three.
     throwIfCancelled(signal, "compose");
 
+    // Bracketed around the model call alone, deliberately: an auto-fix pass that edits the
+    // same files would otherwise disguise a composer that has stopped producing changes.
+    const before = attempt === 1 ? null : await compositionFingerprint(authoring.dir);
+    const closeAttempt = timeline.open(attempt === 1 ? "compose·author" : "compose·repair");
     try {
       result = attempt === 1 || !report
         ? await composer.compose(context)
@@ -439,10 +490,44 @@ export async function composeWithRepair(options: {
       log(`compose       attempt ${attempt} failed: ${(error as Error).message}`);
       await freezeAttempt(authoring.dir, attempt);
       continue;
+    } finally {
+      closeAttempt();
+    }
+
+    // A repair that returns the composition it was given has nothing further to offer, and
+    // the remaining budget buys only identical sessions. Measured across twelve runs, five
+    // repair rounds were byte-identical and one run spent its last two attempts this way.
+    if (before !== null && before === await compositionFingerprint(authoring.dir)) {
+      await freezeAttempt(authoring.dir, attempt);
+      throwIfCancelled(signal, "compose");
+      throw new Error(
+        `The ${composer.label} composition was unchanged by repair attempt ${attempt}, so the `
+        + `remaining ${MAX_REPAIR_ATTEMPTS + 1 - attempt} attempt(s) were not spent `
+        + `(${report?.errorCount ?? "unknown"} error(s) remaining). The attempt was kept for `
+        + "inspection; no fallback video was rendered.",
+      );
     }
 
     report = await check();
     await reportCheck(report, log, `attempt ${attempt}`);
+
+    // Before the next repair, not instead of it. A missing `id`, a drifted `data-start` or
+    // an em-dash costs a regex here and a whole model session one branch later — and an
+    // attempt whose every error is mechanical reaches visual review without a repair at all.
+    if (!report.ok) {
+      const fixed = await timeline.span("compose·autofix", () => autoFix({
+        dir: authoring.dir,
+        authoring,
+        report: report as CheckReport,
+        check,
+        log,
+      }));
+      if (fixed.applied.length) {
+        report = fixed.report;
+        await reportCheck(report, log, `auto-fix after attempt ${attempt}`);
+      }
+    }
+
     if (report.ok) {
       if (!visualReviewed) {
         // The model sandboxes intentionally do not own the browser process. Rendering here
@@ -452,6 +537,7 @@ export async function composeWithRepair(options: {
           throwIfCancelled(signal, "visual review");
           const evidenceDir = path.join(authoring.dir, ".visual-review");
           await fs.rm(evidenceDir, {recursive: true, force: true});
+          const closeSnapshots = timeline.open("visual·snapshots");
           const frames = await renderSnapshots({
             dir: authoring.dir,
             durationSeconds: authoring.durationSeconds,
@@ -459,6 +545,7 @@ export async function composeWithRepair(options: {
             outputDir: path.join(evidenceDir, "frames"),
             onLog: (line) => log(`  snapshots    ${line}`),
           });
+          closeSnapshots();
           const expected = plan.sections.filter((section) => section.durationMs > 0).length * 2;
           if (frames.length !== expected) {
             throw new Error(
@@ -471,20 +558,39 @@ export async function composeWithRepair(options: {
           );
           if (!contactSheet) throw new Error("Visual review could not build a contact sheet.");
 
-          const before = await compositionFingerprint(authoring.dir);
+          const beforeReview = await readComposition(authoring.dir);
           log(`visual        ${composer.label} · pass ${visualPass} · ${frames.length} section frame(s)`);
+          const closeReview = timeline.open("visual·review");
           const reviewed = await composer.review(
             {...context, effort: "high"},
             visualReviewRequest(authoring, [contactSheet, ...frames]),
           );
+          closeReview();
           costUsd += reviewed.costUsd;
           result = combineComposeResults(result, reviewed);
 
-          const changed = before !== await compositionFingerprint(authoring.dir);
-          log(`visual        ${changed ? "composition adjusted" : "approved without edits"}`);
+          // Whether the reviewer edited at all decides if the composition needs re-checking;
+          // whether it edited *substantially* decides if it is worth a second opinion. A
+          // retuned padding is a real edit and a poor reason to spend another vision session.
+          const delta = editDelta(beforeReview, await readComposition(authoring.dir));
+          const changed = delta.files.length > 0;
+          const substantive = isSubstantive(delta);
+          log(
+            `visual        ${changed
+              ? `composition adjusted · ${delta.changedLines} line(s)`
+                + `${delta.structural ? ", structural" : ""} in ${delta.files.join(", ")}`
+              : "approved without edits"}`,
+          );
           report = await check();
           await reportCheck(report, log, `visual review ${visualPass}`);
           if (!report.ok || !changed) break;
+          if (!substantive) {
+            log(
+              `visual        edit was cosmetic (${delta.changedLines} line(s), `
+              + `threshold ${SUBSTANTIVE_LINES}); accepting without a confirmation pass`,
+            );
+            break;
+          }
           if (visualPass === 1) log("visual        rendering the adjusted composition for confirmation");
         }
 
@@ -516,12 +622,18 @@ export async function composeWithRepair(options: {
   );
 }
 
-async function compositionFingerprint(dir: string): Promise<string> {
-  const files = await Promise.all(COMPOSITION_FILES.map(async (file) => ({
+/** The three composed files, keyed by name. One reader, so the hash and the diff agree. */
+async function readComposition(dir: string): Promise<CompositionSnapshot> {
+  const files = await Promise.all(COMPOSITION_FILES.map(async (file) => [
     file,
-    body: await fs.readFile(path.join(dir, file), "utf8"),
-  })));
-  return hash(files);
+    await fs.readFile(path.join(dir, file), "utf8"),
+  ] as const));
+  return Object.fromEntries(files);
+}
+
+async function compositionFingerprint(dir: string): Promise<string> {
+  const snapshot = await readComposition(dir);
+  return hash(COMPOSITION_FILES.map((file) => ({file, body: snapshot[file]})));
 }
 
 function combineComposeResults(

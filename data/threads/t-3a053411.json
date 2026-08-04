@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "id": "t-3a053411",
+  "kind": "video",
+  "title": "Video 8/1/2026",
+  "createdAt": "2026-08-01T00:43:11.968Z",
+  "updatedAt": "2026-08-01T00:43:46.835Z",
+  "sessions": {
+    "codex": "019fbac6-8284-7cc3-92a8-aeb2f14766ec"
+  },
+  "messages": [
+    {
+      "id": "852bf6d551",
+      "role": "user",
+      "text": "Create a short English educational test video explaining the difference between a content topic and a strong content thesis. Use no statistics, do not browse the web, and use only approved product facts. Make the video now.",
+      "at": "2026-08-01T00:43:46.835Z"
+    },
+    {
+      "id": "5255722a1f",
+      "role": "assistant",
+      "text": "I’ll make this as an English educational piece using only approved myHERALD context—no web research or statistics. I’m using the project’s video workflow to check prior work and build it now.",
+      "at": "2026-08-01T00:43:46.835Z"
+    },
+    {
+      "id": "d332335868",
+      "role": "assistant",
+      "text": "I can’t create this video in the current session because the myHERALD Studio controls (context, prior-video search, brief saving, and render) aren’t available. No web research or statistics were used.",
+      "at": "2026-08-01T00:43:46.835Z"
+    }
+  ]
+}

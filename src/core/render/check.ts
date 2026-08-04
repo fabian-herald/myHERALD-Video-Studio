@@ -9,8 +9,12 @@ import {run} from "../util/exec.ts";
 import {compatibleNode} from "./node.ts";
 import {describeFrozen, sampleMotion} from "./motionGate.ts";
 import {ROOT} from "../paths.ts";
+import {attribute, extractElement, openingTagsByClass} from "../compose/html.ts";
 
 export type Severity = "error" | "warning" | "info";
+
+/** The three files a composition consists of, and the only ones a finding can point at. */
+export type CompositionFile = "index.html" | "styles.css" | "animation.js";
 
 export interface CheckFinding {
   severity: Severity;
@@ -21,6 +25,31 @@ export interface CheckFinding {
   /** Rendered evidence that shows this finding, when the gate produced it. */
   evidencePaths?: string[];
   source: "hyperframes" | "tokens" | "plan";
+
+  // Location and remedy, structured.
+  //
+  // Every one of these was already known at the point the finding was raised and was being
+  // spent on prose — a line number interpolated into a message, an expected value computed
+  // and dropped, a `sourceFile` discarded at the CLI boundary. A model can read prose back;
+  // a deterministic fixer cannot, and that is the difference between a mechanical repair
+  // costing a regex and costing a model session.
+  /** Which of the three files the defect is in. */
+  file?: CompositionFile;
+  /** 1-indexed line within `file`. */
+  line?: number;
+  /** `id` of the offending element, without the `#`. */
+  elementId?: string;
+  /** Plan section this finding belongs to, for `#scene-<id>` lookup. */
+  sectionId?: string;
+  /** The attribute or custom property to write, when the fix is an attribute. */
+  attribute?: string;
+  /** The literal value a fixer should write. Present only when fully determined. */
+  expected?: string;
+  /** The offending open tag or source excerpt, verbatim. */
+  snippet?: string;
+  dataAttributes?: Record<string, string>;
+  bbox?: {x: number; y: number; width: number; height: number};
+  timeSeconds?: number;
 }
 
 export interface CheckReport {
@@ -163,15 +192,26 @@ async function runHyperframesCheck(
       const coordinates = bbox && [bbox.x, bbox.y, bbox.width, bbox.height].every(Number.isFinite)
         ? ` at x=${bbox.x}, y=${bbox.y}, ${bbox.width}×${bbox.height}`
         : "";
+      const geometry = bbox && [bbox.x, bbox.y, bbox.width, bbox.height].every(Number.isFinite)
+        ? {x: bbox.x as number, y: bbox.y as number, width: bbox.width as number, height: bbox.height as number}
+        : undefined;
       findings.push({
         severity: (finding.severity as Severity) ?? "warning",
         code: finding.code,
+        // Unchanged on purpose: the composers have been repairing against this exact prose,
+        // and the structured fields below are an addition to it, not a replacement for it.
         message: `${group}: ${finding.message}`
           + (Number.isFinite(time) ? ` at ${time.toFixed(2)}s` : "")
           + coordinates,
         selector: finding.selector,
-        fixHint: finding.fixHint,
+        fixHint: sanitizeFixHint(finding.code, finding.fixHint),
         source: "hyperframes",
+        file: compositionFile(finding.sourceFile),
+        elementId: finding.elementId || undefined,
+        snippet: finding.snippet || undefined,
+        dataAttributes: finding.dataAttributes as unknown as Record<string, string> | undefined,
+        bbox: geometry,
+        timeSeconds: Number.isFinite(time) ? time : undefined,
       });
     }
   }
@@ -180,6 +220,31 @@ async function runHyperframesCheck(
     .filter((file): file is string => typeof file === "string")
     .map((file) => path.resolve(dir, file));
   return {findings, evidencePaths};
+}
+
+const COMPOSITION_FILE_NAMES = ["index.html", "styles.css", "animation.js"] as const;
+
+/** Only the three authored files are addressable; anything else is not ours to rewrite. */
+function compositionFile(name: string | undefined): CompositionFile | undefined {
+  if (!name) return undefined;
+  const base = name.split("/").pop() ?? name;
+  return COMPOSITION_FILE_NAMES.find((file) => file === base);
+}
+
+/**
+ * Some upstream fix hints recommend remedies this contract forbids, and they reach the
+ * composer verbatim. The `missing_gsap_script` hint names a CDN URL — a remote fetch, which
+ * §1.4 rules out and which would make the render non-deterministic. GSAP is already vendored
+ * into every authoring directory, so the honest hint is one line away.
+ */
+const FIX_HINT_OVERRIDES: Record<string, string> = {
+  missing_gsap_script:
+    "Link the vendored `./vendor/gsap.min.js` already present in this directory."
+    + " Never load a script from a remote URL; the render must stay offline and deterministic.",
+};
+
+function sanitizeFixHint(code: string | undefined, hint: string | undefined) {
+  return (code && FIX_HINT_OVERRIDES[code]) ?? hint;
 }
 
 function parseJson(stdout: string): unknown {
@@ -207,6 +272,9 @@ async function checkTokens(dir: string, kit: BrandKit): Promise<CheckFinding[]> 
         message: `${label}:${rogue.line} uses \`${rogue.literal}\`, which is not a brand token.`,
         fixHint: "Replace it with the matching var(--brand-*) token, or a neutral rgba(0,0,0,α)/rgba(255,255,255,α) scrim.",
         source: "tokens",
+        file: label,
+        line: rogue.line,
+        snippet: rogue.literal,
       });
     }
   }
@@ -240,6 +308,10 @@ async function checkPlanConformance(dir: string, plan: VideoPlan, fps: number): 
         code: "scene_not_clip",
         message: `scene-${section.id} is missing class="clip"; it will stay visible for the whole video.`,
         source: "plan",
+        file: "index.html",
+        elementId: `scene-${section.id}`,
+        sectionId: section.id,
+        snippet: element.openTag,
       });
     }
 
@@ -376,6 +448,10 @@ export async function checkBannedWords(dir: string, kit: BrandKit): Promise<Chec
       message: "On-screen copy contains an em-dash (—), which the brand guide forbids.",
       fixHint: "Use a comma, a parenthesis or a full stop instead.",
       source: "tokens",
+      file: "index.html",
+      // A spaced en-dash is the one substitution that needs no judgement about the sentence;
+      // choosing a comma or a full stop instead is a copy decision and stays with the model.
+      expected: "–",
     });
   }
 
@@ -390,6 +466,21 @@ export async function checkBannedWords(dir: string, kit: BrandKit): Promise<Chec
  * is positional: the name may appear inside a sentence, but a standalone occurrence —
  * an element whose entire text is the brand name — has to be the image file.
  */
+/**
+ * Names the assets without choosing between them. Which mark is right depends on the field
+ * it sits on, which this gate cannot see — but a hint that names no file at all leaves the
+ * composer guessing at paths, so list what was actually supplied.
+ */
+function wordmarkFixHint(marks: BrandKit["logos"]): string {
+  const wordmarks = marks.filter((logo) => logo.role === "wordmark");
+  const named = (wordmarks.length ? wordmarks : marks)
+    .map((logo) => `media/logo-${logo.id}${path.extname(logo.file)}`)
+    .join(", ");
+  return "Use a field-appropriate supplied wordmark image for ordinary standalone use"
+    + (named ? ` (${named})` : "")
+    + ". Inside #brand-rail or a final signature/CTA, use one supplied full lockup image instead.";
+}
+
 export async function checkWordmark(dir: string, kit: BrandKit): Promise<CheckFinding[]> {
   const marks = kit.logos.filter((logo) => logo.role === "wordmark" || logo.role === "lockup");
   if (!marks.length) return [];
@@ -415,7 +506,7 @@ export async function checkWordmark(dir: string, kit: BrandKit): Promise<CheckFi
         severity: "error",
         code: "typeset_wordmark",
         message: `"${kit.name}" is set as type on its own. Use the supplied wordmark image.`,
-        fixHint: `Place the supplied mark instead: <img src="media/logo-${marks[0]?.id}.png" alt="${kit.name}">.`,
+        fixHint: wordmarkFixHint(marks),
         source: "tokens",
       });
       break;
@@ -431,7 +522,7 @@ export async function checkWordmark(dir: string, kit: BrandKit): Promise<CheckFi
         message:
           `"${kit.name}" is set as type on its own. The wordmark is two typefaces at two `
           + "sizes and cannot be reproduced by hand.",
-        fixHint: `Place the supplied mark instead: <img src="media/logo-${marks[0]?.id}.png" alt="${kit.name}">.`,
+        fixHint: wordmarkFixHint(marks),
         source: "tokens",
       });
     }
@@ -445,6 +536,16 @@ export async function checkWordmark(dir: string, kit: BrandKit): Promise<CheckFi
  * lockup. A seal plus wordmark is made from real files but is still a reconstructed logo,
  * which is exactly the defect this check prevents.
  */
+/**
+ * One source for the rail lockup markup, so the hint the model reads and the literal a
+ * fixer writes cannot drift apart. The extension comes from the kit rather than an assumed
+ * `.png`, because `prepareAuthoringDir` names the copy after the source file's extension.
+ */
+function railLockupTag(kit: BrandKit, logo: BrandKit["logos"][number] | undefined): string {
+  const file = logo ? `media/logo-${logo.id}${path.extname(logo.file)}` : "media/logo-lockup.png";
+  return `<img class="rail-lockup" src="${file}" alt="${kit.name}">`;
+}
+
 export async function checkCanonicalBrandLockups(
   dir: string,
   kit: BrandKit,
@@ -461,15 +562,26 @@ export async function checkCanonicalBrandLockups(
   const findings: CheckFinding[] = [];
   const rail = extractElement(html, "brand-rail");
   if (!rail || !lockupPattern.test(rail.inner)) {
+    // The rail declares the field it sits on, so when that class is present the correct
+    // asset is determined and the tag can be written without a model. Absent it, picking
+    // between the light, dark and plate lockups is a design call and `expected` stays unset.
+    const field = /\bon-(light|dark)\b/.exec(rail?.openTag ?? "")?.[1];
+    const chosen = field
+      ? lockups.find((logo) => logo.theme === field) ?? lockups.find((logo) => logo.theme === "any")
+      : undefined;
     findings.push({
       severity: "error",
       code: "canonical_lockup_missing_rail",
       message: "The persistent brand rail does not use one supplied full lockup image.",
       fixHint:
-        `Place <img class="rail-lockup" src="media/logo-${lockups[0]?.id}.png" alt="${kit.name}"> `
-        + "in #brand-rail. Do not reconstruct it from a seal plus wordmark.",
+        `Place ${railLockupTag(kit, lockups[0])} `
+        + "in #brand-rail, choosing the field-appropriate lockup. "
+        + "Do not reconstruct it from a seal plus wordmark.",
       selector: "#brand-rail",
       source: "tokens",
+      file: "index.html",
+      elementId: "brand-rail",
+      expected: chosen ? railLockupTag(kit, chosen) : undefined,
     });
   }
 
@@ -561,6 +673,16 @@ export async function checkDataBarProportions(dir: string, plan: VideoPlan): Pro
             + "to that declared final fill; never animate every bar to 1.",
           selector: `#scene-${section.id} .data-bar`,
           source: "plan",
+          file: "index.html",
+          sectionId: section.id,
+          // The matched tag identifies *which* bar, which the selector alone cannot when a
+          // scene holds several. `expected` is present only when data-value pinned the bar
+          // to a plan point — without that anchor there is no sound mapping from this bar to
+          // a figure, and writing one would put a wrong number on screen.
+          snippet: tag,
+          expected: expected
+            ? JSON.stringify({value: expected.value, max: expected.max, fill: expected.fill})
+            : undefined,
         });
       }
     }
@@ -575,22 +697,112 @@ export async function checkDataBarProportions(dir: string, plan: VideoPlan): Pro
  * the element is small. Scene-local staged beats use explicit durations and are unaffected.
  */
 export async function checkPerpetualMotionSource(dir: string): Promise<CheckFinding[]> {
-  const source = await fs.readFile(path.join(dir, "animation.js"), "utf8").catch(() => "");
-  const offenders = source
-    .split("\n")
-    .map((line, index) => ({line, number: index + 1}))
-    .filter(({line}) => /duration\s*:\s*TOTAL\b/.test(line))
-    .filter(({line}) => /\b(?:x|y|scale|scaleX|scaleY|rotation)\s*:/.test(line));
+  const sources = [
+    {file: "animation.js", source: await fs.readFile(path.join(dir, "animation.js"), "utf8").catch(() => "")},
+    {file: "index.html", source: await fs.readFile(path.join(dir, "index.html"), "utf8").catch(() => "")},
+  ];
+  const offenders = sources.flatMap(({file, source}) => fullRuntimeSpatialTweens(file, source));
 
-  return offenders.map(({line, number}): CheckFinding => ({
+  return offenders.map(({file, excerpt, number}): CheckFinding => ({
     severity: "error",
     code: "perpetual_motion",
-    message: `animation.js:${number} moves a spatial property for the full video duration: ${line.trim()}`,
+    message: `${file}:${number} moves a spatial property for the full video duration: ${excerpt}`,
     fixHint:
       "Remove the full-runtime tween. Use scene-local meaningful visual beats and readable holds; "
       + "a recurring brand accent may remain static.",
     source: "plan",
+    file: compositionFile(file),
+    line: number,
+    snippet: excerpt,
   }));
+}
+
+function fullRuntimeSpatialTweens(file: string, source: string) {
+  const code = maskNonCode(source);
+  const durationNames = new Set(["TOTAL"]);
+  for (const match of code.matchAll(
+    /\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*(?:(?:Number\.)?parseFloat\s*\(\s*)?[^;\n]*?\.dataset\.duration\b/gi,
+  )) {
+    if (match[1]) durationNames.add(match[1]);
+  }
+
+  const timelineNames = new Set(["timeline"]);
+  for (const match of code.matchAll(
+    /\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*(?:window\.)?gsap\.timeline\s*\(/g,
+  )) {
+    if (match[1]) timelineNames.add(match[1]);
+  }
+
+  const receivers = ["gsap", ...timelineNames].map(escapeRegex).join("|");
+  const calls = new RegExp(`\\b(?:${receivers})\\s*\\.\\s*(?:to|fromTo)\\s*\\(`, "g");
+  const duration = new RegExp(
+    `\\bduration\\s*:\\s*(?:${[...durationNames].map(escapeRegex).join("|")})\\b`,
+  );
+  const spatial = /\b(?:x|y|scale|scaleX|scaleY|rotation)\s*:/;
+  const offenders: {file: string; number: number; excerpt: string}[] = [];
+
+  for (const match of code.matchAll(calls)) {
+    const start = match.index ?? 0;
+    const end = balancedCallEnd(code, code.indexOf("(", start));
+    const call = code.slice(start, end);
+    if (!duration.test(call) || !spatial.test(call)) continue;
+    offenders.push({
+      file,
+      number: source.slice(0, start).split("\n").length,
+      excerpt: source.slice(start, end).replace(/\s+/g, " ").trim().slice(0, 220),
+    });
+  }
+  return offenders;
+}
+
+function balancedCallEnd(source: string, opening: number): number {
+  if (opening < 0) return source.length;
+  let depth = 0;
+  for (let index = opening; index < source.length; index++) {
+    if (source[index] === "(") depth += 1;
+    if (source[index] === ")") {
+      depth -= 1;
+      if (depth === 0) return index + 1;
+    }
+  }
+  return source.length;
+}
+
+/** Preserve offsets and newlines while hiding strings/comments from source-pattern checks. */
+function maskNonCode(source: string): string {
+  const chars = [...source];
+  let state: "code" | "line" | "block" | "single" | "double" | "template" = "code";
+  let escaped = false;
+  for (let index = 0; index < chars.length; index++) {
+    const char = chars[index] ?? "";
+    const next = chars[index + 1] ?? "";
+    if (state === "code") {
+      if (char === "/" && next === "/") state = "line";
+      else if (char === "/" && next === "*") state = "block";
+      else if (char === "'") state = "single";
+      else if (char === '"') state = "double";
+      else if (char === "`") state = "template";
+      else continue;
+    } else if (state === "line" && char === "\n") {
+      state = "code";
+      continue;
+    } else if (state === "block" && char === "*" && next === "/") {
+      chars[index] = " ";
+      chars[index + 1] = " ";
+      index += 1;
+      state = "code";
+      continue;
+    } else if ((state === "single" && char === "'")
+      || (state === "double" && char === '"')
+      || (state === "template" && char === "`")) {
+      if (!escaped) state = "code";
+    }
+
+    if (char !== "\n") chars[index] = " ";
+    escaped = state !== "code" && char === "\\" && !escaped;
+    if (char !== "\\") escaped = false;
+  }
+  return chars.join("");
 }
 
 const escapeRegex = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -612,12 +824,21 @@ function assertTiming(
   expectedMs: number,
   frameMs: number,
 ) {
+  // The plan is the authority for this value, so the correct literal is known here in both
+  // branches. Carrying it as `expected` is what lets a fixer write it without a model.
+  const expected = (expectedMs / 1000).toFixed(3);
+
   if (value === null) {
     findings.push({
       severity: "error",
       code: "missing_timing",
       message: `scene-${sectionId} is missing ${attributeName}.`,
       source: "plan",
+      file: "index.html",
+      elementId: `scene-${sectionId}`,
+      sectionId,
+      attribute: attributeName,
+      expected,
     });
     return;
   }
@@ -631,41 +852,14 @@ function assertTiming(
         + `but the plan says ${(expectedMs / 1000).toFixed(3)}s.`,
       fixHint: "Copy the timings from BRIEF.md exactly — they come from measured narration.",
       source: "plan",
+      file: "index.html",
+      elementId: `scene-${sectionId}`,
+      sectionId,
+      attribute: attributeName,
+      expected,
     });
   }
 }
-
-/** Find an element by id and return its open tag plus inner HTML. */
-function extractElement(html: string, id: string): {openTag: string; inner: string} | null {
-  const idIndex = html.indexOf(`id="${id}"`);
-  if (idIndex < 0) return null;
-
-  const tagStart = html.lastIndexOf("<", idIndex);
-  const openEnd = html.indexOf(">", idIndex);
-  if (tagStart < 0 || openEnd < 0) return null;
-
-  const openTag = html.slice(tagStart, openEnd + 1);
-  const tagName = openTag.slice(1).match(/^[a-zA-Z][\w-]*/)?.[0];
-  if (!tagName) return null;
-
-  // Walk forward balancing same-name tags so nesting cannot confuse the scan.
-  const pattern = new RegExp(`<${tagName}\\b|</${tagName}\\s*>`, "gi");
-  pattern.lastIndex = openEnd + 1;
-  let depth = 1;
-  for (let match = pattern.exec(html); match; match = pattern.exec(html)) {
-    depth += match[0].startsWith("</") ? -1 : 1;
-    if (depth === 0) return {openTag, inner: html.slice(openEnd + 1, match.index)};
-  }
-  return {openTag, inner: html.slice(openEnd + 1)};
-}
-
-const attribute = (tag: string, name: string) =>
-  tag.match(new RegExp(`${name}="([^"]*)"`))?.[1] ?? null;
-
-const openingTagsByClass = (html: string, className: string) =>
-  [...html.matchAll(/<[a-z][^>]*>/gi)]
-    .map((match) => match[0])
-    .filter((tag) => (attribute(tag, "class") ?? "").split(/\s+/).includes(className));
 
 const stripTags = (html: string) =>
   html.replace(/<script[\s\S]*?<\/script>/gi, " ").replace(/<[^>]*>/g, " ");

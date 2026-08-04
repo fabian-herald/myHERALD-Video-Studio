@@ -23,3 +23,6 @@ data/capture/
 data/brand/tokens.css
 out/
 .auth/
+
+# Knowledge-graph output from the graphify skill: derived, large, and rebuilt on demand.
+graphify-out/

@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import {narrationInputsMatch, sceneDisplaysCopy} from "./apply.ts";
+import {narrationInputsMatch} from "./apply.ts";
+import {sceneDisplaysCopy} from "../compose/html.ts";
 import type {VideoPlan} from "../plan/schema.ts";
 
 test("styled display copy is recognised across line breaks and highlights", () => {
