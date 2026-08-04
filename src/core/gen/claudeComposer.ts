@@ -30,6 +30,10 @@ compositions — deterministic HTML/CSS/GSAP that renders frame by frame to vide
 Your working directory contains CONTRACT.md (the framework and brand rules) and BRIEF.md
 (this specific video). Read both before writing anything. The contract is binding.
 
+CRAFT.md is beside them: the size floors, the layer model and the easing meanings the
+visual review judges you against but the contract never puts a number to. Advisory, and
+where it appears to disagree with the contract the contract wins.
+
 You write exactly three files: index.html, styles.css, animation.js. Nothing else.
 
 The bar you are held to is not "it validates". It is: when every rendered scene is laid
@@ -286,7 +290,7 @@ export const claudeComposer: Composer = {
   async compose(context) {
     return drive(
       [
-        "Read CONTRACT.md and BRIEF.md in this directory, then author the composition.",
+        "Read CONTRACT.md, CRAFT.md and BRIEF.md in this directory, then author the composition.",
         "",
         // See codexComposer: an adaptation is held to the source composition, not to a
         // reference for a different video.

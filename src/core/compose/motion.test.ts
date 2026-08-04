@@ -139,3 +139,57 @@ test("the composer is told to read rather than shell out", () => {
   assert.match(prompt, /\\`Read\\` and \\`Glob\\`/, "no alternative to the shell is named");
   assert.match(prompt, /manifest/, "the composer is not pointed at the file list");
 });
+
+// ── CRAFT.md, and the things it must not become ─────────────────────────────────
+
+const craft = () => readFileSync(new URL("./CRAFT.md", import.meta.url), "utf8");
+
+test("CRAFT.md does not restate what the contract already binds", () => {
+  // A third document competing with CONTRACT.md for a finite prompt budget is the risk
+  // this file was written against. Anything duplicated here drifts from the binding copy
+  // the first time one of them is edited, and then two documents disagree.
+  const source = craft();
+  assert.doesNotMatch(source, /paper artefact at an angle|concentric rings/,
+    "the archetype list belongs to CONTRACT section 6");
+  assert.doesNotMatch(source, /var\(--brand-\*\)|rogue colour/i,
+    "the token rule belongs to CONTRACT section 2");
+  assert.doesNotMatch(source, /at most two things move/i,
+    "stated in CONTRACT section 6a; restating it here is where the two copies drift apart");
+  assert.doesNotMatch(source, /data-value|data-max|--fill/,
+    "the figure contract belongs to CONTRACT section 5b");
+});
+
+test("CRAFT.md defers to the contract on motion rather than licensing more of it", () => {
+  // Its source material says every decorative element should breathe, drift or pulse.
+  // CONTRACT section 6a says at most two things move and type never moves while it is
+  // read, and the freeze gate exists to catch what that rule permits. The contract wins,
+  // so the ambient-decorative rule is not imported at all — and the file says so, because
+  // a reader arriving from the same source material will otherwise assume it was an
+  // oversight.
+  const source = craft();
+  assert.match(source, /not about how much moves/i);
+  assert.match(source, /CONTRACT §6a wins/);
+  assert.doesNotMatch(source, /ambient motion|should breathe|feel dead/i);
+});
+
+test("CRAFT.md stays short enough to be read", () => {
+  // 150 lines was the budget. Past that it competes with the contract for attention
+  // instead of supplementing it, and the contract is the one that is binding.
+  assert.ok(craft().split("\n").length <= 150, `${craft().split("\n").length} lines`);
+});
+
+test("CRAFT.md reaches every composer, and no rendered format", () => {
+  const workdir = readFileSync(new URL("./workdir.ts", import.meta.url), "utf8");
+  assert.match(workdir, /copyFile\(path\.join\(COMPOSE_SRC, "CRAFT\.md"\)/);
+  assert.match(workdir, /`CRAFT\.md` — /, "written to the directory but never mentioned in the manifest");
+
+  for (const file of ["../gen/claudeComposer.ts", "../gen/codexComposer.ts"]) {
+    assert.match(readFileSync(new URL(file, import.meta.url), "utf8"), /CRAFT\.md/, file);
+  }
+
+  // The exclusion that is easy to forget: without it every emitted format directory ships
+  // a stray design document beside the composition.
+  const emit = readFileSync(new URL("../render/hyperframes.ts", import.meta.url), "utf8");
+  const from = emit.indexOf("export async function emitFormat");
+  assert.match(emit.slice(from, emit.indexOf("const indexPath", from)), /CRAFT\\\.md/);
+});

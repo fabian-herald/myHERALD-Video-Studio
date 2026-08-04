@@ -91,6 +91,7 @@ export async function prepareAuthoringDir(options: {
     "utf8",
   );
   await fs.copyFile(path.join(COMPOSE_SRC, "CONTRACT.md"), path.join(dir, "CONTRACT.md"));
+  await fs.copyFile(path.join(COMPOSE_SRC, "CRAFT.md"), path.join(dir, "CRAFT.md"));
   await fs.writeFile(
     path.join(dir, "BRIEF.md"),
     renderBrief({
@@ -231,6 +232,7 @@ export function dataBrief(data: DataSeries): string {
 function directoryManifest(kit: BrandKit, mediaFiles: readonly string[]): string {
   const lines = [
     "`CONTRACT.md`, `BRIEF.md` — read both, in that order",
+    "`CRAFT.md` — size floors, layer model and easing meanings. Advisory; the contract wins",
     "`tokens.css` — the generated brand tokens, linked first",
     ...BLOCK_FILES.map((block) => `\`blocks/${block}\``),
     "`exemplar/` — a complete worked composition: `index.html`, `styles.css`, `animation.js`",

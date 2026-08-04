@@ -49,7 +49,7 @@ export async function emitFormat(
   await fs.cp(authoringDir, targetDir, {
     recursive: true,
     filter: (source) =>
-      !/(^|\/)(snapshots|renders|exemplar|\.motion-check|\.visual-review|CONTRACT\.md|BRIEF\.md)$/.test(source),
+      !/(^|\/)(snapshots|renders|exemplar|\.motion-check|\.visual-review|CONTRACT\.md|CRAFT\.md|BRIEF\.md)$/.test(source),
   });
 
   const indexPath = path.join(targetDir, "index.html");
