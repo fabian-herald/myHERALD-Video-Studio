@@ -73,7 +73,10 @@ function rewriteRoot(html: string, spec: (typeof FORMATS)[OutputFormat]): string
   tag = setAttribute(
     tag,
     "style",
-    `--stage-w: ${spec.width}px; --stage-h: ${spec.height}px; --format-unit: ${spec.unit};`,
+    // These two are the whole re-emit. Everything else — `--u`, the gutters, the caption
+    // band — is derived from them in base.css, which is what lets one composition serve
+    // 9:16, 4:5 and 1:1 without being re-authored.
+    `--stage-w: ${spec.width}px; --stage-h: ${spec.height}px;`,
   );
   return html.slice(0, tagStart) + tag + html.slice(openEnd + 1);
 }

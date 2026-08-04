@@ -9,16 +9,23 @@ export interface FormatSpec {
   family: FormatFamily;
   width: number;
   height: number;
-  /** Layout scale relative to the 1080-wide reference the brand type scale assumes. */
-  unit: number;
   label: string;
 }
 
+/**
+ * There used to be a `unit` here, a "layout scale relative to the 1080-wide reference",
+ * emitted as `--format-unit` on the root. No stylesheet ever read it, it was injected by
+ * `emitFormat` and not by `prepareAuthoringDir` — so it was defined in the re-emitted
+ * formats and undefined in the one actually authored against — and its single non-1 value
+ * (1.32 for 16:9) was wrong under both readings of its own comment: 16:9 is 1.78× a
+ * 1080-wide reference, and 1.00× on the short edge the brand type scale is calibrated to.
+ * `--u` in `base.css` is the scale unit, and it needs no per-format number.
+ */
 export const FORMATS: Record<OutputFormat, FormatSpec> = {
-  "9x16": {format: "9x16", family: "portrait", width: 1080, height: 1920, unit: 1, label: "Vertical"},
-  "4x5": {format: "4x5", family: "portrait", width: 1080, height: 1350, unit: 1, label: "Feed portrait"},
-  "1x1": {format: "1x1", family: "portrait", width: 1080, height: 1080, unit: 1, label: "Square"},
-  "16x9": {format: "16x9", family: "landscape", width: 1920, height: 1080, unit: 1.32, label: "Widescreen"},
+  "9x16": {format: "9x16", family: "portrait", width: 1080, height: 1920, label: "Vertical"},
+  "4x5": {format: "4x5", family: "portrait", width: 1080, height: 1350, label: "Feed portrait"},
+  "1x1": {format: "1x1", family: "portrait", width: 1080, height: 1080, label: "Square"},
+  "16x9": {format: "16x9", family: "landscape", width: 1920, height: 1080, label: "Widescreen"},
 };
 
 export const familyOf = (format: OutputFormat): FormatFamily => FORMATS[format].family;

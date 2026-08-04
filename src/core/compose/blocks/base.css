@@ -36,6 +36,21 @@ body {
    * yellow line. The lane is declared first and the content inset is derived from it,
    * so nothing can be positioned into the thread by accident.
    */
+  /*
+   * The one scale unit. 1% of the canvas's short edge, so it is 10.8px in every format
+   * we emit — 9:16, 4:5, 1:1 and 16:9 all have a 1080 short edge, and the brand type
+   * scale is calibrated in absolute px against exactly that edge.
+   *
+   * It exists because the contract already told composers to reach for it and nothing
+   * defined it. Seven compositions duly invented it, with four incompatible definitions;
+   * the popular one, `--stage-h / 100`, is the bug that hides until a re-emit — 19.2px at
+   * 9:16 against 10.8px at 1:1, so the same composition collapses in the square.
+   *
+   * Deliberately not `cqw`/`cqh`. Container queries would need `container-type: size` on
+   * the stage, which changes layout, and with `--u` defined there is nothing left to want.
+   */
+  --u: calc(min(var(--stage-w), var(--stage-h)) / 100);
+
   --spine-x: calc(var(--stage-w) * 0.034);
   --spine-lane: calc(var(--stage-w) * 0.028);
   --gutter: calc(var(--spine-x) + var(--spine-lane));

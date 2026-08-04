@@ -100,8 +100,14 @@ Everything else in the directory is provided and must not be modified.
     other two, where the element travels off the canvas and stays there. This is
     checked, and it is an error.
 
-    Better still, reach for units that need no number at all — `cqw` / `cqh`,
-    percentages, and the `--u` scale variable adapt on their own.
+    Better still, reach for units that need no number at all. `base.css` defines
+    **`--u`** on `#stage` as 1% of the canvas's short edge — 10.8px in every format —
+    so `calc(var(--u) * 6)` is a size you never have to re-check. Percentages and
+    `calc()` off `--stage-w` / `--stage-h` are the other two safe forms.
+
+    `cqw` / `cqh` are **not** available: nothing sets `container-type`, so they silently
+    fall back to the viewport and only appear to work because the renderer sizes the
+    viewport to the stage. Use `--u`.
 
 ## 2. Colour: tokens only
 
