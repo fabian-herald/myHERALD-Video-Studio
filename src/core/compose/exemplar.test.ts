@@ -12,6 +12,7 @@ import {
   checkCanvasLiterals,
   checkPerpetualMotionSource,
   checkStylesheetLinks,
+  checkTransformOrigin,
   checkTokens,
   checkWordmark,
 } from "../render/check.ts";
@@ -99,6 +100,11 @@ test("the exemplar trips none of the Stage 4a rules", async () => {
   const portrait = {...(await plan()), formats: ["9x16", "4x5", "1x1"]} as VideoPlan;
   assert.deepEqual(
     await checkCanvasLiterals(EXEMPLAR, portrait, "portrait"), [], "canvas literals in css and js");
+
+  // All twenty of its single-axis scales name the edge they grow from. That is what the
+  // rule was written against, and what makes it worth having: the Codex composition that
+  // predates this exemplar trips it six times, including on a `.data-bar span`.
+  assert.deepEqual(await checkTransformOrigin(EXEMPLAR), [], "transform origins");
 });
 
 test("the exemplar is dense enough to be the bar the composers are held to", async () => {

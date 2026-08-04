@@ -10,6 +10,7 @@ import {
   checkDataBarProportions,
   checkPerpetualMotionSource,
   checkStylesheetLinks,
+  checkTransformOrigin,
   checkTokens,
   REQUIRED_STYLESHEETS,
   checkWordmark,
@@ -696,4 +697,58 @@ test("the stylesheet link set is required, in order, with styles.css last", asyn
     const findings = await checkStylesheetLinks(dir);
     assert.equal(findings[0]?.code, "stylesheet_link_order");
   });
+});
+
+test("a one-axis scale with no origin grows from the middle, and is flagged", async () => {
+  // The idiom that is correct: origin declared once on the .set that pins the start state.
+  await withAnimation(
+    'timeline.set(".rule", {scaleX: 0, transformOrigin: "left center"}, 0);\n'
+    + 'timeline.to(".rule", {scaleX: 1, duration: .5}, 1);',
+    async (dir) => assert.deepEqual(await checkTransformOrigin(dir), []),
+  );
+
+  await withAnimation(
+    'timeline.to(".data-bar span", {scaleX: 1, duration: .5}, 1);',
+    async (dir) => {
+      const findings = await checkTransformOrigin(dir);
+      assert.equal(findings.length, 1);
+      assert.equal(findings[0]?.code, "missing_transform_origin");
+      assert.equal(findings[0]?.severity, "warning", "scaling from centre is rare, not illegal");
+      assert.equal(findings[0]?.selector, ".data-bar span");
+      assert.equal(findings[0]?.line, 1);
+    },
+  );
+});
+
+test("uniform scale and rotation are left alone — the centre is usually right there", async () => {
+  // The rule is narrow on purpose. A card that pops or a mark that spins about its centre
+  // is correct, and flagging those would fire on most of a good composition.
+  await withAnimation(
+    'timeline.to(".card", {scale: 1.04, duration: .4}, 1);\n'
+    + 'timeline.to(".seal", {rotation: 360, duration: 2}, 1);',
+    async (dir) => assert.deepEqual(await checkTransformOrigin(dir), []),
+  );
+});
+
+test("a transform-origin set in the stylesheet satisfies the rule", async () => {
+  await withAnimation('timeline.to(".rule", {scaleX: 1, duration: .5}, 1);', async (dir) => {
+    await fs.writeFile(
+      path.join(dir, "styles.css"),
+      ".rule { transform-origin: left center; width: 100%; }",
+      "utf8",
+    );
+    assert.deepEqual(await checkTransformOrigin(dir), []);
+  });
+});
+
+test("one target is reported once, however many times it is scaled", async () => {
+  await withAnimation(
+    'timeline.to(".rule", {scaleX: 1, duration: .5}, 1);\n'
+    + 'timeline.to(".rule", {scaleX: 0, duration: .5}, 3);\n'
+    + 'timeline.to(".other", {scaleY: 1, duration: .5}, 4);',
+    async (dir) => {
+      const findings = await checkTransformOrigin(dir);
+      assert.deepEqual(findings.map((finding) => finding.selector), [".rule", ".other"]);
+    },
+  );
 });

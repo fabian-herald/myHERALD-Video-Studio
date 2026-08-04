@@ -103,6 +103,7 @@ export async function checkComposition(options: {
     ...await checkWordmark(dir, kit),
     ...await checkCanonicalBrandLockups(dir, kit, plan),
     ...await checkPerpetualMotionSource(dir),
+    ...await checkTransformOrigin(dir),
     ...motion ? await checkMotion(dir, plan, onLog) : [],
   ];
 
@@ -839,6 +840,79 @@ export async function checkPerpetualMotionSource(dir: string): Promise<CheckFind
     line: number,
     snippet: excerpt,
   }));
+}
+
+/**
+ * A single-axis scale with no transform origin.
+ *
+ * Narrow on purpose. GSAP's default origin is the centre, and for a card that pops or a
+ * mark that spins, the centre is right — flagging those would fire on most of a good
+ * composition. `scaleX` and `scaleY` are different: they are how a bar fills, a rule draws
+ * and a slab wipes, and from the centre such an element grows in both directions at once.
+ * Every one of the twenty single-axis scales in the exemplar names its origin.
+ *
+ * Satisfied per target, not per call, because the correct idiom the exemplar uses is a
+ * `.set(target, {scaleY: 0, transformOrigin: "top center"})` followed by a plain `.to`.
+ * A `transform-origin` in the stylesheet counts too — it is the same declaration.
+ */
+export async function checkTransformOrigin(dir: string): Promise<CheckFinding[]> {
+  const source = await fs.readFile(path.join(dir, "animation.js"), "utf8").catch(() => "");
+  if (!source.trim()) return [];
+  const code = maskNonCode(source);
+  const css = await fs.readFile(path.join(dir, "styles.css"), "utf8").catch(() => "");
+
+  const calls = /\b(?:gsap|[A-Za-z_$][\w$]*)\s*\.\s*(?:to|from|fromTo|set)\s*\(/g;
+  const declared = new Set<string>();
+  const offenders: {target: string; line: number; excerpt: string}[] = [];
+
+  for (const match of code.matchAll(calls)) {
+    const start = match.index ?? 0;
+    const end = balancedCallEnd(code, code.indexOf("(", start));
+    // The target comes from the *unmasked* source — masking blanks string literals, which
+    // is exactly where the selector is.
+    const call = source.slice(start, end);
+    const target = /\(\s*["'`]([^"'`]+)["'`]/.exec(call)?.[1];
+    if (!target) continue;
+
+    if (/\btransformOrigin\s*:/.test(call)) declared.add(target);
+    else if (/\bscale[XY]\s*:/.test(call)) {
+      offenders.push({
+        target,
+        line: source.slice(0, start).split("\n").length,
+        excerpt: call.replace(/\s+/g, " ").trim().slice(0, 180),
+      });
+    }
+  }
+
+  const inCss = (target: string) => {
+    const index = css.indexOf(target);
+    if (index < 0) return false;
+    const block = css.slice(index, css.indexOf("}", index) + 1 || undefined);
+    return /transform-origin\s*:/.test(block);
+  };
+
+  const seen = new Set<string>();
+  return offenders
+    .filter((offender) => !declared.has(offender.target) && !inCss(offender.target))
+    .filter((offender) => !seen.has(offender.target) && seen.add(offender.target))
+    .map((offender): CheckFinding => ({
+      // Warning for its first two compositions. Scaling a shape from its centre is a real
+      // choice, just a rare one on a single axis, and an error here would cost a repair
+      // round every time a composer meant it.
+      severity: "warning",
+      code: "missing_transform_origin",
+      message:
+        `animation.js:${offender.line} scales "${offender.target}" on one axis with no `
+        + "transformOrigin, so it grows from its centre in both directions.",
+      fixHint:
+        "Name the edge it grows from — transformOrigin: \"left center\", \"top center\", "
+        + "\"bottom center\" — in this call or in the .set that establishes its initial state.",
+      source: "plan",
+      file: "animation.js",
+      line: offender.line,
+      selector: offender.target,
+      snippet: offender.excerpt,
+    }));
 }
 
 function fullRuntimeSpatialTweens(file: string, source: string) {
