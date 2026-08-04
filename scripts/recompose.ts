@@ -20,7 +20,8 @@ import {loadBrandKit} from "../src/core/brand/kit.ts";
 import {FPS, prepareAuthoringDir, sectionSnapshotTimes} from "../src/core/compose/workdir.ts";
 import {composeWithRepair} from "../src/core/pipeline/run.ts";
 import {loadPlan, planDurationMs} from "../src/core/plan/schema.ts";
-import {OUT_DIR, videoDir} from "../src/core/paths.ts";
+import {OUT_DIR, rel, videoDir} from "../src/core/paths.ts";
+import {amendLedgerEntry} from "../src/core/ledger.ts";
 import {buildContactSheet, buildCover} from "../src/core/render/artifacts.ts";
 import {emitFormat, renderSnapshots, renderVideo} from "../src/core/render/hyperframes.ts";
 import {runQc, writeQc} from "../src/core/render/qc.ts";
@@ -43,7 +44,9 @@ if (!videoId) {
     + "  --render-only  render an authored composition that already exists, spending no\n"
     + "                 model call. For recovering a run that composed cleanly and then\n"
     + "                 lost its render — a crash, a cancel, or an exhausted usage limit.\n"
-    + "  --from         work/ subdirectory to render (default: portrait)\n",
+    + "  --from         work/ subdirectory to render (default: portrait)\n"
+    + "  --record       promote the result to the run's real output: canonical filename,\n"
+    + "                 provenance corrected, ledger status set from QC\n",
   );
   process.exit(1);
 }
@@ -51,6 +54,7 @@ const suffix = positional[1] ?? "motion";
 const settings = await readSettings();
 const composerId = positional[2] ?? settings.composer;
 const renderOnly = argv.includes("--render-only");
+const record = argv.includes("--record");
 const dir = videoDir(videoId);
 const log = (line: string) => console.log(line);
 
@@ -87,10 +91,16 @@ if (renderOnly) {
   log(`compose       attempts ${composed.attempts} · baseline ${composed.usedBaseline}`);
 }
 
+// `--record` promotes the result to the run's real output rather than a suffixed
+// comparison artifact, so the canonical filename is the one the Studio already expects.
 const format = "9x16" as const;
 const renderDir = path.join(dir, "render", `${format}-${suffix}`);
 await emitFormat(authoring.dir, format, renderDir);
-const outPath = path.join(OUT_DIR, videoId, `master-${format}-${suffix}.mp4`);
+const outPath = path.join(
+  OUT_DIR,
+  videoId,
+  record ? `master-${format}.mp4` : `master-${format}-${suffix}.mp4`,
+);
 await renderVideo({dir: renderDir, outputPath: outPath, quality: "high"});
 
 const frames = await renderSnapshots({
@@ -110,7 +120,32 @@ const qc = await runQc({
   captions: buildCaptions(plan),
   coverPath: cover ?? undefined,
 });
-await writeQc(qc, path.join(OUT_DIR, videoId, `qc-${format}-${suffix}.json`));
+await writeQc(qc, path.join(OUT_DIR, videoId, record ? `qc-${format}.json` : `qc-${format}-${suffix}.json`));
 log(`qc            ${qc.passed ? "passed" : `FAILED — ${(qc.diagnostics.failed as string[]).join(", ")}`}`);
 log(`out           ${outPath}`);
 log(`sheet         ${sheet}`);
+
+if (record) {
+  // The pipeline records a run only after every stage returns, so a run that authored
+  // cleanly and then died still reads as a total failure. Correct the record — without
+  // pretending the stages that never ran did: the reason stays in knownLimitations.
+  const provenancePath = path.join(OUT_DIR, videoId, "provenance.json");
+  const provenance = JSON.parse(await fs.readFile(provenancePath, "utf8")) as {
+    composer?: {provider?: string; model?: string; turns?: number; attempts?: number};
+    knownLimitations?: string[];
+  };
+  provenance.composer = {...provenance.composer, provider: composerId};
+  provenance.knownLimitations = [
+    ...(provenance.knownLimitations ?? []).filter((note) => !/family failed before completion/.test(note)),
+    `Recovered after the run aborted: the composition passed every check and was rendered `
+    + `from work/${path.basename(authoringDir)} without a model call, so any review pass `
+    + `still outstanding when the run stopped did not run.`,
+  ];
+  await fs.writeFile(provenancePath, `${JSON.stringify(provenance, null, 2)}\n`, "utf8");
+
+  await amendLedgerEntry(videoId, {
+    status: qc.passed ? "ready" : "failed",
+    outputs: [{format, path: rel(outPath)}],
+  });
+  log(`recorded      ledger status ${qc.passed ? "ready" : "failed"} · provenance updated`);
+}
