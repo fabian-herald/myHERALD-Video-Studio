@@ -249,6 +249,16 @@ export const geminiTts: TtsProvider = {
       onLog,
       signal,
       {
+        // Temperature stays at 1, and lowering it is not an option worth revisiting.
+        //
+        // It is the obvious lever on voice consistency — the docs describe it only in
+        // generic text terms, but a TTS model samples speaker, prosody and pacing from one
+        // token stream, so temperature moves all three. Tested: 0.25 returned nothing in
+        // five minutes, and a control at 1 immediately afterwards on the same key returned
+        // in well under one. Not the free tier, not a rate limit. AI Studio behaved the
+        // same way for the owner at 0 and 0.2, and aborted mid-take at 0.5.
+        //
+        // `seed` is the lever that works. See `narratorSeed` in the kit.
         ...request.intent && (request.profileId ? request.profileId in NARRATION_PROFILES : true)
           ? {temperature: 1}
           : {},
