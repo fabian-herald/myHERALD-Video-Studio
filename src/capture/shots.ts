@@ -72,6 +72,7 @@ export async function captureShots(
       const item: MediaItem = {
         id,
         kind: "screenshot",
+        variants: [],
         file,
         width: shot.clipTo ? await measure(session, shot.clipTo, "width") : width,
         height: shot.clipTo ? await measure(session, shot.clipTo, "height") : height,
@@ -118,6 +119,7 @@ export async function captureShots(
         item: {
           id,
           kind: "screenshot",
+          variants: [],
           file: "",
           width: 0,
           height: 0,

@@ -5,6 +5,7 @@ import {compatibleNode} from "../render/node.ts";
 import {
   actionableRepairFindings,
   assertCompositionWritten,
+  adaptationFraming,
   EXEMPLAR_FRAMING,
   formatFindingForRepair,
   registerComposer,
@@ -287,12 +288,18 @@ export const claudeComposer: Composer = {
       [
         "Read CONTRACT.md and BRIEF.md in this directory, then author the composition.",
         "",
-        EXEMPLAR_FRAMING,
+        // See codexComposer: an adaptation is held to the source composition, not to a
+        // reference for a different video.
+        context.adaptation ? adaptationFraming(context.adaptation) : EXEMPLAR_FRAMING,
         "",
         "Work through it in this order:",
-        "1. Read both documents and the exemplar under exemplar/.",
-        "2. Decide a distinct spatial archetype for every section, and write them down",
-        "   before you write markup. Two adjacent scenes must never share an archetype.",
+        context.adaptation
+          ? "1. Read both documents and the three existing files you are re-laying."
+          : "1. Read both documents and the exemplar under exemplar/.",
+        context.adaptation
+          ? "2. Note, per scene, what the source does and what the new shape forces to change."
+          : "2. Decide a distinct spatial archetype for every section, and write them down\n"
+            + "   before you write markup. Two adjacent scenes must never share an archetype.",
         "3. Write index.html, styles.css and animation.js.",
         "4. Return immediately. The pipeline runs authoritative checks and supplies the",
         "   rendered frames in a separate visual-review turn.",

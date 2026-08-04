@@ -8,6 +8,7 @@ import {compatibleNode} from "../render/node.ts";
 import {
   actionableRepairFindings,
   assertCompositionWritten,
+  adaptationFraming,
   EXEMPLAR_FRAMING,
   formatFindingForRepair,
   registerComposer,
@@ -221,11 +222,17 @@ export const codexComposer: Composer = {
       [
         PREAMBLE,
         "",
-        EXEMPLAR_FRAMING,
+        // Re-laying an approved composition and designing one from nothing are different
+        // jobs, and the exemplar is only the bar for the second. Pointing an adaptation at
+        // a reference for *another* video invites it to drift away from the piece it is
+        // supposed to be the same as.
+        context.adaptation ? adaptationFraming(context.adaptation) : EXEMPLAR_FRAMING,
         "",
-        "Decide a distinct spatial archetype for every section before writing markup.",
-        "Two adjacent scenes must never share an archetype.",
-        "",
+        ...context.adaptation ? [] : [
+          "Decide a distinct spatial archetype for every section before writing markup.",
+          "Two adjacent scenes must never share an archetype.",
+          "",
+        ],
         "When the files are written, return immediately. The pipeline runs the authoritative",
         "browser, layout, motion and strict checks outside this sandbox and will send concrete",
         "findings back if a repair is needed. Do not run HyperFrames or open a local server here.",

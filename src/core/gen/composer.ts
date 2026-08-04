@@ -13,6 +13,21 @@ export interface ComposeContext {
   signal?: AbortSignal;
   /** Raised for the repair passes so a second attempt thinks harder. */
   effort: "default" | "high";
+  /**
+   * Set when this composition is a re-lay of one that already exists in another shape.
+   *
+   * A video wanted on LinkedIn and on Instagram needs a 16:9 and a 9:16, and the shapes
+   * are different enough that one set of coordinates cannot serve both — a five-row
+   * vertical stack is a squat band at 1920×1080. So the second family is still authored.
+   * What it must not be is *invented*: the piece was already designed, and a second
+   * independent pass produces a different video that happens to share a script, which is
+   * the opposite of "correct it once and publish it everywhere".
+   */
+  adaptation?: {
+    fromFamily: string;
+    fromWidth: number;
+    fromHeight: number;
+  };
 }
 
 export interface ComposeResult {
@@ -60,6 +75,39 @@ export const EXEMPLAR_FRAMING = [
   "already used. Its root element carries that brief's data-composition-id and data-duration;",
   "yours come from BRIEF.md. It is calibration, not a template.",
 ].join("\n");
+
+/**
+ * What a backend is told when it is re-laying an existing composition for another shape.
+ *
+ * The source files are already in the working directory when this is read, so it opens with
+ * "read what is there" rather than "here is a description of it".
+ */
+export function adaptationFraming(adaptation: NonNullable<ComposeContext["adaptation"]>): string {
+  return [
+    `index.html, styles.css and animation.js in this directory are a finished, approved`,
+    `composition for this video at ${adaptation.fromWidth}×${adaptation.fromHeight}`,
+    `(${adaptation.fromFamily}). Read all three before changing anything.`,
+    "",
+    "Your job is to re-lay that composition for this canvas, not to design a new one. The",
+    "same scenes, in the same order, carrying the same on-screen copy, the same media and",
+    "the same timings — every `data-start` and `data-duration` stays exactly as it is, and",
+    "the narration is unchanged, so nothing about the pacing is yours to decide.",
+    "",
+    "What does change is the shape, and it changes more than it looks. A tall frame stacks;",
+    "a wide one places side by side. A five-row vertical rhythm becomes a squat band if you",
+    "only rescale it, so where the source stacks, consider a column beside a column. The",
+    "caption band is a quarter of the height here rather than a third, which gives back",
+    "vertical room the source did not have.",
+    "",
+    "Keep the scene archetypes recognisably the same piece — a scene that was a stack of",
+    "sheets is still a stack of sheets. Keep the motion: the same elements move, in the same",
+    "order, with the same easings. Redirect a movement where the axis no longer makes sense",
+    "and change nothing else about it.",
+    "",
+    "Density must not drop. The source is the bar for how much a scene carries, and a wider",
+    "canvas is more room, not fewer elements.",
+  ].join("\n");
+}
 
 /** The exact same rendered evidence and rubric is given to every composer backend. */
 export interface VisualReviewRequest {

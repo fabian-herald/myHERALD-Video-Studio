@@ -90,6 +90,20 @@ export const mediaItemZ = z.object({
   tags: z.array(z.string()).default([]),
   /** False keeps it out of generation entirely, for anything not safe to show. */
   safeToShow: z.boolean().default(true),
+  /**
+   * The same subject captured for the other shape.
+   *
+   * A screenshot is the one input that cannot be re-laid: a 1920×1080 product shot is a
+   * letterboxed strip in a 9:16 frame however the scene around it is arranged, so a video
+   * wanted on LinkedIn *and* on Instagram needs two captures of it. This is where the second
+   * one lives, so both are one library item with one id — the composition keeps referring to
+   * `media/<id>.png` and the right file is put there for the family being authored.
+   */
+  variants: z.array(z.object({
+    file: z.string(),
+    width: z.number(),
+    height: z.number(),
+  })).default([]),
   state: z.enum(["proposed", "approved", "stale"]).default("approved"),
   source: z.discriminatedUnion("type", [
     z.object({
@@ -138,12 +152,14 @@ export async function addMedia(item: MediaItem): Promise<MediaItem[]> {
  *
  * A landscape screenshot dropped into a 9:16 piece is a letterboxed strip with dead
  * space above and below, so the shape is filtered here rather than left to the
- * composer's judgement. Square reads acceptably either way.
+ * composer's judgement. Square reads acceptably either way, and an item that carries a
+ * capture for this shape qualifies on the strength of that capture.
  */
 export async function mediaForFormat(format: OutputFormat): Promise<MediaItem[]> {
   const family = familyOf(format);
   return (await readMedia()).filter((item) => {
     if (!item.safeToShow || item.state !== "approved") return false;
+    if (variantForFamily(item, family)) return true;
     const aspect = aspectOf(item);
     if (aspect === "square") return true;
     return family === "landscape" ? aspect === "landscape" : aspect === "portrait";
@@ -162,7 +178,8 @@ export const mediaBrief = (item: MediaItem) => ({
   tags: item.tags,
 });
 
-export const mediaPath = (item: MediaItem) => path.join(ROOT, "data", "media", item.file);
+/** Absolute path to a library file — an item’s own, or one of its shape variants. */
+export const mediaPath = (item: {file: string}) => path.join(ROOT, "data", "media", item.file);
 
 /**
  * The real files a plan's `mediaId` and `screen.mediaId` references point at.
@@ -178,6 +195,12 @@ export const mediaPath = (item: MediaItem) => path.join(ROOT, "data", "media", i
 export function bindMedia(
   sections: readonly {mediaId?: string; screen?: {mediaId: string}}[],
   items: readonly MediaItem[],
+  /**
+   * When given, a binding resolves to the capture that suits this shape. The id is
+   * unchanged, so the composition's `media/<id>.png` is right for whichever family is
+   * being authored and neither pass has to know the other exists.
+   */
+  family?: FormatFamily,
 ): {files: {id: string; path: string}[]; missing: string[]} {
   const wanted = [...new Set(
     sections.flatMap((section) => [section.screen?.mediaId, section.mediaId].filter(Boolean) as string[]),
@@ -192,15 +215,40 @@ export function bindMedia(
   const missing: string[] = [];
   for (const id of wanted) {
     const item = usable.get(id);
-    if (item) files.push({id, path: mediaPath(item)});
-    else missing.push(id);
+    if (!item) {
+      missing.push(id);
+      continue;
+    }
+    const variant = family ? variantForFamily(item, family) : null;
+    files.push({id, path: variant ? mediaPath(variant) : mediaPath(item)});
   }
   return {files, missing};
 }
 
 /** `bindMedia` against the library on disk. */
-export const mediaForPlan = async (sections: Parameters<typeof bindMedia>[0]) =>
-  bindMedia(sections, await readMedia());
+export const mediaForPlan = async (
+  sections: Parameters<typeof bindMedia>[0],
+  family?: FormatFamily,
+) => bindMedia(sections, await readMedia(), family);
+
+/**
+ * The file to place for this family: a variant whose shape suits it, or nothing.
+ *
+ * Square never needs one — it reads acceptably either way, which is the same judgement
+ * `checkMediaFit` has always made. Returning `null` means "the primary file is what you
+ * have", and the caller decides whether that is good enough.
+ */
+export function variantForFamily(
+  item: Pick<MediaItem, "width" | "height" | "variants">,
+  family: FormatFamily,
+): {file: string; width: number; height: number} | null {
+  const wanted = family === "landscape" ? "landscape" : "portrait";
+  if (aspectOf(item) === wanted || aspectOf(item) === "square") return null;
+  return item.variants.find((variant) => {
+    const aspect = aspectOf(variant);
+    return aspect === wanted || aspect === "square";
+  }) ?? null;
+}
 
 /**
  * Reject a binding whose shape does not fit the delivery format. This runs in the
@@ -224,13 +272,17 @@ export function checkMediaFit(
       problems.push(`Section ${binding.sectionId} uses "${item.id}", which is marked not safe to show.`);
       continue;
     }
+    const wanted = family === "landscape" ? "landscape" : "portrait";
+    if (variantForFamily(item, family)) continue;
+
     const aspect = aspectOf(item);
     if (aspect === "square") continue;
-    const wanted = family === "landscape" ? "landscape" : "portrait";
     if (aspect !== wanted) {
       problems.push(
         `Section ${binding.sectionId} binds a ${aspect} screenshot (${item.width}×${item.height}) `
-        + `into a ${family} video. Capture it with a ${wanted} preset instead.`,
+        + `into a ${family} video. Capture it with a ${wanted} preset, and keep both: a media `
+        + "item may carry a `variants` entry for the other shape, and the composition still "
+        + `refers to it by id.`,
       );
     }
   }

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import path from "node:path";
 import {test} from "node:test";
-import {bindMedia, type MediaItem} from "./library.ts";
+import {bindMedia, checkMediaFit, type MediaItem} from "./library.ts";
 
 const item = (over: Partial<MediaItem> = {}): MediaItem => ({
   id: "shot",
@@ -10,6 +10,7 @@ const item = (over: Partial<MediaItem> = {}): MediaItem => ({
   width: 1080,
   height: 1920,
   caption: "",
+  variants: [],
   tags: [],
   safeToShow: true,
   state: "approved",
@@ -59,4 +60,40 @@ test("the same id referenced twice is copied once", () => {
 
 test("a plan with no media asks for nothing", () => {
   assert.deepEqual(bindMedia([{}, {}], [item()]), {files: [], missing: []});
+});
+
+test("a second capture of the same subject serves the other shape under one id", () => {
+  // A 1920×1080 product shot is a letterboxed strip in a 9:16 frame however the scene is
+  // arranged around it. The composition still says `media/shot.png`; only the file behind
+  // that name changes, so neither authoring pass has to know the other exists.
+  const wide = item({
+    id: "dashboard",
+    file: "screenshots/dashboard-wide.png",
+    width: 1920,
+    height: 1080,
+    variants: [{file: "screenshots/dashboard-tall.png", width: 1080, height: 1920}],
+  });
+  const sections = [{screen: {mediaId: "dashboard"}}];
+
+  assert.match(bindMedia(sections, [wide], "landscape").files[0]!.path, /dashboard-wide\.png$/);
+  assert.match(bindMedia(sections, [wide], "portrait").files[0]!.path, /dashboard-tall\.png$/);
+  // No family asked for means no substitution — the item's own file, as before.
+  assert.match(bindMedia(sections, [wide]).files[0]!.path, /dashboard-wide\.png$/);
+});
+
+test("a shape check accepts an item that carries the capture it needs", () => {
+  const wide = item({
+    id: "dashboard", file: "screenshots/dashboard-wide.png", width: 1920, height: 1080,
+    variants: [{file: "screenshots/dashboard-tall.png", width: 1080, height: 1920}],
+  });
+  const bindings = [{sectionId: "proof", mediaId: "dashboard"}];
+
+  assert.deepEqual(checkMediaFit([wide], bindings, "9x16"), []);
+  // Without the second capture it is the same defect it always was.
+  assert.equal(checkMediaFit([{...wide, variants: []}], bindings, "9x16").length, 1);
+  assert.match(
+    checkMediaFit([{...wide, variants: []}], bindings, "9x16")[0]!,
+    /variants/,
+    "the message has to name the way out, or it reads as \"recapture and throw one away\"",
+  );
 });

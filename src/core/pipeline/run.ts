@@ -206,7 +206,19 @@ export async function runPipeline(options: RunOptions): Promise<RunResult> {
       + " those sections will have no image");
   }
 
-  for (const [family, formats] of byFamily(plan.formats)) {
+  // Portrait first when both are wanted, so the second family has something to re-lay.
+  //
+  // The two shapes are different enough that one set of coordinates cannot serve both — a
+  // five-row vertical stack is a squat band at 1920×1080 — so landscape is still authored.
+  // What changed is that it is no longer authored *independently*. Two separate passes on
+  // one script produced two different videos that happened to say the same words, and a
+  // visual correction to one did nothing for the other. Now the second pass starts from the
+  // first pass's three files and re-lays them, so the piece is designed once.
+  const families = [...byFamily(plan.formats)]
+    .sort(([a], [b]) => (a === "portrait" ? -1 : 0) - (b === "portrait" ? -1 : 0));
+  let composedReference: {dir: string; family: string; width: number; height: number} | null = null;
+
+  for (const [family, formats] of families) {
     try {
     const authoringDir = path.join(dir, "work", family);
     await fs.mkdir(authoringDir, {recursive: true});
@@ -216,7 +228,10 @@ export async function runPipeline(options: RunOptions): Promise<RunResult> {
       family,
       dir: authoringDir,
       narrationPath: narration.masterPath,
-      mediaFiles: media.files,
+      // Re-resolved per family so a screenshot with a second capture gets the one that
+      // suits this shape. The id does not change, so the composition keeps saying
+      // `media/<id>.png` and the adaptation pass never has to think about it.
+      mediaFiles: (await mediaForPlan(plan.sections, family)).files,
     });
 
     const composed = await timeline.span("compose", () => composeWithRepair({
@@ -229,13 +244,21 @@ export async function runPipeline(options: RunOptions): Promise<RunResult> {
       log,
       signal: options.signal,
       timeline,
+      adaptFrom: composedReference ?? undefined,
     }));
+    composedReference ??= {
+      dir: authoring.dir,
+      family,
+      width: authoring.width,
+      height: authoring.height,
+    };
     if (composed.costUsd > 0) ledger.model(composed.result?.provider ?? options.composerId, "compose", composed.costUsd);
     attemptsUsed = Math.max(attemptsUsed, composed.attempts);
     usedBaseline ||= composed.usedBaseline;
     composeResult = composed.result;
-    // The reference family is the one authored from scratch, so its size is the honest
-    // measure; later families re-emit from it and would only dilute the number.
+    // The reference family is the one authored from scratch. A later family re-lays it, so
+    // its size measures how faithfully the source was carried across rather than how much
+    // the composer decided to write, and averaging the two would dilute both readings.
     authoredSize ??= composed.size;
     finalSize = compositionSize(await readComposition(authoring.dir));
     log(
@@ -448,6 +471,11 @@ export async function composeWithRepair(options: {
   signal?: AbortSignal;
   /** Optional so `recompose` can call this without owning a run-wide timeline. */
   timeline?: Timeline;
+  /**
+   * The already-composed family this one is a re-lay of. Its three files are copied in
+   * before the composer runs, so the pass edits a finished piece rather than starting over.
+   */
+  adaptFrom?: {dir: string; family: string; width: number; height: number};
 }): Promise<{
   result: ComposeResult | null;
   costUsd: number;
@@ -484,7 +512,22 @@ export async function composeWithRepair(options: {
   }
 
   const composer = composerFor(composerId);
-  log(`compose       ${composer.label} · ${family} ${authoring.width}×${authoring.height}`);
+  const adaptFrom = options.adaptFrom;
+  if (adaptFrom) {
+    // Seed before the first attempt, not as a prompt attachment. A composer that can Read
+    // and Edit the actual files makes a smaller, truer change than one working from a
+    // description of them — and if it stops early, what is left on disk is the source
+    // composition at the wrong size rather than nothing at all.
+    for (const file of COMPOSITION_FILES) {
+      await fs.copyFile(path.join(adaptFrom.dir, file), path.join(authoring.dir, file));
+    }
+    log(
+      `compose       ${composer.label} · ${family} ${authoring.width}×${authoring.height}`
+      + ` · re-laying the ${adaptFrom.family} composition`,
+    );
+  } else {
+    log(`compose       ${composer.label} · ${family} ${authoring.width}×${authoring.height}`);
+  }
 
   let result: ComposeResult | null = null;
   let authoredSize: CompositionSize | null = null;
@@ -498,6 +541,13 @@ export async function composeWithRepair(options: {
       onLog: log,
       signal,
       effort: attempt === 1 ? ("default" as const) : ("high" as const),
+      ...adaptFrom
+        ? {adaptation: {
+          fromFamily: adaptFrom.family,
+          fromWidth: adaptFrom.width,
+          fromHeight: adaptFrom.height,
+        }}
+        : {},
     };
 
     // Before spending an attempt, not only after. The budget is three repairs and each one
