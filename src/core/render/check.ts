@@ -1402,6 +1402,39 @@ export async function checkSceneEntrances(dir: string, plan: VideoPlan): Promise
   return findings;
 }
 
+/**
+ * The one full-runtime tween that is a readout rather than drift.
+ *
+ * §5 makes a continuous element mandatory and describes it as "the spine's line grows and
+ * its node travels" — a bar showing how far through the video you are. §6 already carves
+ * out an object that encodes measured progress, but conditioned it on the brief asking for
+ * one, and no brief ever does; this check had no carve-out at all. So the only way to build
+ * the spine that passed was to step it scene by scene, and every composition since has.
+ *
+ * Stepping is worse, and the owner said so on watching one: the continuous version reads as
+ * elapsed time, the stepped one reads as six unrelated animations. It is also a different
+ * kind of motion from the drifting and bobbing this rule exists to stop — which is exactly
+ * what the three conditions below encode.
+ *
+ * All three must hold. **The spine**, because it is the one element the framework declares
+ * continuous. **`ease: "none"`**, because a progress readout that accelerates is not
+ * reporting anything — an eased full-runtime tween is decoration wearing a readout's
+ * clothes. **Along its own axis**, `scaleY` or `y`: a spine that rotates or scales
+ * uniformly for forty-five seconds is drift, whatever it is called.
+ *
+ * The freeze gate is untouched by this. §5 already says a hairline crossing the canvas
+ * alters too few pixels to count as a visual beat, so a continuous spine still cannot be a
+ * scene's motion — it never could.
+ */
+function isProgressReadout(call: string): boolean {
+  const target = /\(\s*["'`]([^"'`]+)["'`]/.exec(call)?.[1] ?? "";
+  const isSpine = /\bsignal-spine\b|\bspine-line\b|\bspine-node\b|#spine\b/.test(target);
+  const linear = /\bease\s*:\s*["'`]none["'`]/.test(call);
+  const alongAxis = /\b(?:scaleY|y)\s*:/.test(call)
+    && !/\b(?:rotation|rotate|scaleX|scale)\s*:/.test(call);
+  return isSpine && linear && alongAxis;
+}
+
 function fullRuntimeSpatialTweens(file: string, source: string) {
   const code = maskNonCode(source);
   const durationNames = new Set(["TOTAL"]);
@@ -1431,6 +1464,9 @@ function fullRuntimeSpatialTweens(file: string, source: string) {
     const end = balancedCallEnd(code, code.indexOf("(", start));
     const call = code.slice(start, end);
     if (!duration.test(call) || !spatial.test(call)) continue;
+    // The unmasked slice, because the readout test reads the target selector — and
+    // `maskNonCode` blanks string literals, which is where a selector lives.
+    if (isProgressReadout(source.slice(start, end))) continue;
     offenders.push({
       file,
       number: source.slice(0, start).split("\n").length,

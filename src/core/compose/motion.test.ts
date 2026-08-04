@@ -114,9 +114,21 @@ test("the contract names the check that catches an opaque overlap", () => {
   assert.match(contract, /rgba\(0,0,0,α\)|translucent/, "no way out is offered, only a prohibition");
 });
 
-test("the contract never recommends a full-runtime spatial tween", () => {
+test("the only full-runtime tween the contract recommends is the spine, unaccelerated", () => {
+  // This guard used to forbid `duration: TOTAL` in the contract outright, and that was
+  // right until the spine turned out to need it. A progress readout is not drift, and
+  // stepping it scene by scene — the only shape that passed while the ban was absolute —
+  // reads as several unrelated animations instead of one clock.
+  //
+  // So the guard now defends the narrower invariant: every example of a full-runtime tween
+  // in the contract is a spine, and every one of them is linear.
   const contract = readFileSync(new URL("./CONTRACT.md", import.meta.url), "utf8");
-  assert.doesNotMatch(contract, /duration\s*:\s*TOTAL\b/);
+  const examples = [...contract.matchAll(/^.*duration:\s*TOTAL.*$/gm)].map((match) => match[0]);
+  assert.ok(examples.length > 0, "the contract stopped showing the one it does allow");
+  for (const example of examples) {
+    assert.match(example, /spine-line|spine-node/, example);
+    assert.match(example, /ease:\s*"none"/, example);
+  }
 });
 
 test("the brief lists the directory instead of making the composer find it", () => {

@@ -37,8 +37,11 @@ async function withAnimation(source: string, run: (dir: string) => Promise<void>
 }
 
 test("a global full-runtime spatial tween is rejected", async () => {
+  // Deliberately not the spine. This fixture used to be `.spine-node`, and that exact line
+  // is now legal — see the progress-readout carve-out below. The rule it tests is unchanged
+  // for everything that is not a clock: an orbit that circles for the whole video is drift.
   await withAnimation(
-    'timeline.to(".spine-node", {y: HEIGHT, duration: TOTAL, ease: "none"}, 0);',
+    'timeline.to(".problem-orbit", {rotation: 360, duration: TOTAL, ease: "none"}, 0);',
     async (dir) => {
       const findings = await checkPerpetualMotionSource(dir);
       assert.equal(findings.length, 1);
@@ -381,12 +384,12 @@ test("a non-bar data treatment is not forced into bar metadata", async () => {
 
 test("perpetual motion carries the file and line it already names in its message", async () => {
   await withAnimation(
-    '\n\ntimeline.to(".spine-node", {y: HEIGHT, duration: TOTAL, ease: "none"}, 0);',
+    '\n\ntimeline.to(".problem-orbit", {rotation: 360, duration: TOTAL, ease: "none"}, 0);',
     async (dir) => {
       const [finding] = await checkPerpetualMotionSource(dir);
       assert.equal(finding?.file, "animation.js");
       assert.equal(finding?.line, 3);
-      assert.match(finding?.snippet ?? "", /spine-node/);
+      assert.match(finding?.snippet ?? "", /problem-orbit/);
       // The message keeps its prose form; the fields are an addition, not a replacement.
       assert.match(finding?.message ?? "", /animation\.js:3/);
     },
@@ -1041,4 +1044,56 @@ test("two scenes entering identically are noted, and only as info", async () => 
     stage,
     async (dir) => assert.deepEqual(await checkSceneEntrances(dir, entrancePlan), []),
   );
+});
+
+// ── the spine is a clock, not drift ─────────────────────────────────────────────
+
+test("a linear full-runtime spine is a progress readout and passes", async () => {
+  // The exact code this rule was originally written against. The owner watched both and
+  // said the continuous version reads as elapsed time where the stepped one reads as six
+  // unrelated animations — and the stepped version is what every composition built,
+  // because it was the only one that passed.
+  await withAnimation(
+    'timeline.to(".spine-line", {scaleY: 1, duration: TOTAL, ease: "none"}, 0);\n'
+    + 'timeline.to(".spine-node", {y: HEIGHT, duration: TOTAL, ease: "none"}, 0);',
+    async (dir) => assert.deepEqual(await checkPerpetualMotionSource(dir), []),
+  );
+});
+
+test("all three conditions are load-bearing", async () => {
+  const rejected = async (source: string, why: string) => {
+    await withAnimation(source, async (dir) => {
+      const findings = await checkPerpetualMotionSource(dir);
+      assert.equal(findings.length, 1, why);
+    });
+  };
+
+  // Eased: a readout that accelerates is not reporting anything, it is decoration wearing
+  // a readout's clothes. This is the condition that stops the exception swallowing the rule.
+  await rejected(
+    'timeline.to(".spine-line", {scaleY: 1, duration: TOTAL, ease: "power2.inOut"}, 0);',
+    "an eased full-runtime spine is not a clock",
+  );
+
+  // Off-axis: a spine that turns for forty-five seconds is drift whatever it is called.
+  await rejected(
+    'timeline.to(".spine-node", {rotation: 360, duration: TOTAL, ease: "none"}, 0);',
+    "the spine may only move along the axis it runs on",
+  );
+
+  // Not the spine: the carve-out is for the one element the framework declares continuous.
+  await rejected(
+    'timeline.to(".ambient-grid", {y: HEIGHT, duration: TOTAL, ease: "none"}, 0);',
+    "any other element moving for the whole runtime is the thing the rule exists to stop",
+  );
+});
+
+test("the contract shows the continuous spine rather than describing it", async () => {
+  const contract = await fs.readFile(
+    new URL("../compose/CONTRACT.md", import.meta.url), "utf8");
+  assert.match(contract, /duration: TOTAL, ease: "none"/, "no copyable example");
+  assert.match(contract, /`ease: "none"` is not optional/);
+  assert.match(contract, /Do not step it scene by scene/);
+  // And it must not read as a way around the freeze gate, which it is not.
+  assert.match(contract, /hairline changes too few pixels/);
 });

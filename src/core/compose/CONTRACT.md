@@ -326,9 +326,25 @@ brand's factual tagline and its website, without imperative language. Give the
 entrance a meaningful staged beat and leave the resolved card readable before the loop.
 
 A continuous brand accent means visual continuity, not continuous animation. A rule,
-colour or motif may recur or remain static across scenes. Never move a global progress
-node, spine, grid or decorative field for the entire runtime unless the brief explicitly
-requires that object to encode measured progress.
+colour or motif may recur or remain static across scenes. Never move a global grid or
+decorative field for the entire runtime.
+
+**The spine is the one exception, and it should take it.** It reports how far through the
+video you are, so it runs unbroken from 0 to the full duration at a constant rate:
+
+```js
+timeline.to(".spine-line", {scaleY: 1, duration: TOTAL, ease: "none"}, 0);
+timeline.to(".spine-node", {y: HEIGHT, duration: TOTAL, ease: "none"}, 0);
+```
+
+`ease: "none"` is not optional. It is what separates a readout from decoration, and it is
+what `checkPerpetualMotionSource` looks for before it lets a full-runtime tween through —
+along with the target being the spine and the property being its own axis (`scaleY`, `y`).
+An eased or stepped spine passes every other check and reads as several unrelated
+animations rather than one clock. Do not step it scene by scene.
+
+This does not help with §1.8: a hairline changes too few pixels to count as a visual beat,
+however far it travels. The spine is the thread; each scene still needs motion with area.
 
 ## 7. Brand
 

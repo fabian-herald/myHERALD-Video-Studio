@@ -13,6 +13,7 @@
 
   const at = (id) => parseFloat(document.querySelector(id).dataset.start);
   const len = (id) => parseFloat(document.querySelector(id).dataset.duration);
+  void len; // kept as the documented way to reach a scene length; see CONTRACT §3.
 
   const timeline = gsap.timeline({paused: true});
 
@@ -72,22 +73,21 @@
     }
   });
 
-  /* ── the continuous accent: one step per scene, then it holds ─────────── */
+  /* ── the continuous accent: elapsed time, read off the edge of the frame ── */
 
-  // Every initial state is pinned to 0. A positionless set() is appended at the
-  // timeline's current end, which lands it after the beats it is meant to precede.
+  // Linear and unbroken across the whole runtime, because that is what it reports: how
+  // far through the video you are. It was written as one eased step per scene, which
+  // passed every check and read as six unrelated animations rather than one clock.
+  //
+  // `ease: "none"` is the part that makes it legal as well as the part that makes it
+  // work. `checkPerpetualMotionSource` rejects a full-runtime spatial tween — that rule
+  // exists to stop things drifting and bobbing for no reason — and admits this one only
+  // as a spine, moving along its own axis, at a constant rate. A progress readout that
+  // accelerates is not reporting anything.
   timeline.set(".spine-line", {scaleY: 0, transformOrigin: "top center"}, 0);
   timeline.set(".spine-node", {y: 0}, 0);
-
-  SCENES.forEach((id) => {
-    const progress = (at(id) + len(id)) / TOTAL;
-    timeline.to(".spine-line", {
-      scaleY: progress, transformOrigin: "top center", duration: 0.5, ease: "power2.inOut",
-    }, at(id) + 0.06);
-    timeline.to(".spine-node", {
-      y: HEIGHT * progress, duration: 0.5, ease: "power2.inOut",
-    }, at(id) + 0.06);
-  });
+  timeline.to(".spine-line", {scaleY: 1, duration: TOTAL, ease: "none"}, 0);
+  timeline.to(".spine-node", {y: HEIGHT, duration: TOTAL, ease: "none"}, 0);
 
   // The thread inverts over the yellow field so it stays legible, then returns.
   timeline.set(".spine-line, .spine-node", {backgroundColor: "var(--brand-purple)"}, S5);
