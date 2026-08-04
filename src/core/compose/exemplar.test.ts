@@ -11,6 +11,8 @@ import {
   checkCanonicalBrandLockups,
   checkCanvasLiterals,
   checkPerpetualMotionSource,
+  checkStylesheetLinks,
+  checkTokens,
   checkWordmark,
 } from "../render/check.ts";
 import {extractElement} from "./html.ts";
@@ -84,6 +86,19 @@ test("the exemplar hardcodes no canvas dimension", async () => {
 
 test("the exemplar animates nothing across the full runtime", async () => {
   assert.deepEqual(await checkPerpetualMotionSource(EXEMPLAR), []);
+});
+
+test("the exemplar trips none of the Stage 4a rules", async () => {
+  // Each of these was a gap a composition could walk straight through, so each is new. A
+  // new rule that fires on the reference every composer is told to copy is worse than no
+  // rule: it teaches the violation and then charges a repair round for it.
+  const kit = await loadBrandKit();
+  assert.deepEqual(await checkStylesheetLinks(EXEMPLAR), [], "stylesheet links");
+  assert.deepEqual(await checkTokens(EXEMPLAR, kit), [], "colour literals, animation.js included");
+
+  const portrait = {...(await plan()), formats: ["9x16", "4x5", "1x1"]} as VideoPlan;
+  assert.deepEqual(
+    await checkCanvasLiterals(EXEMPLAR, portrait, "portrait"), [], "canvas literals in css and js");
 });
 
 test("the exemplar is dense enough to be the bar the composers are held to", async () => {

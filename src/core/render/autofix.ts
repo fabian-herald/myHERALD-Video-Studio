@@ -8,7 +8,7 @@ import {
   setElementAttribute,
 } from "../compose/html.ts";
 import type {AuthoringDir} from "../compose/workdir.ts";
-import type {CheckFinding, CheckReport, CompositionFile} from "./check.ts";
+import {REQUIRED_STYLESHEETS, type CheckFinding, type CheckReport, type CompositionFile} from "./check.ts";
 
 /**
  * Repairs that need a regex, not a model session.
@@ -147,6 +147,12 @@ const FIXERS: Partial<Record<string, Fixer>> = {
     files["index.html"].replace(/(<(?:audio|video)\b[^>]*?)\spreload="none"/gi, '$1 preload="auto"'),
   ),
 
+  // Both link findings have the same remedy and the same determined answer: the canonical
+  // set, in `REQUIRED_STYLESHEETS` order. Nothing here is a design call — which sheets and
+  // in what order is fixed by the framework, not by the composition.
+  missing_stylesheet_link: fixStylesheetLinks,
+  stylesheet_link_order: fixStylesheetLinks,
+
   missing_gsap_script: (files) => {
     const html = files["index.html"];
     if (/vendor\/gsap\.min\.js/.test(html)) return null;
@@ -162,6 +168,36 @@ const FIXERS: Partial<Record<string, Fixer>> = {
     );
   },
 };
+
+/**
+ * Lift out every required stylesheet link and re-lay them as one canonical block.
+ *
+ * Rewriting rather than nudging: a missing sheet and a mis-ordered set are the same defect
+ * seen from two sides, and reconstructing the block answers both without a positional edit
+ * that would have to reason about what is already there. Links the composition added for
+ * itself are left where they are — they are not this fixer's business.
+ */
+function fixStylesheetLinks(files: CompositionFiles): CompositionFiles | null {
+  const html = files["index.html"];
+  const required = new Set<string>(REQUIRED_STYLESHEETS);
+  const links = [...html.matchAll(/[ \t]*<link\b[^>]*\bhref="([^"]+)"[^>]*>\n?/gi)]
+    .filter((match) => required.has(match[1]!));
+
+  // Removed back to front so the earlier offsets stay valid.
+  let stripped = html;
+  for (const link of [...links].reverse()) {
+    stripped = stripped.slice(0, link.index) + stripped.slice(link.index + link[0].length);
+  }
+  // The first removed link's offset survives the strip — everything before it is untouched.
+  // With nothing to remove, the block goes at the end of <head>.
+  const at = links[0]?.index ?? stripped.indexOf("</head>");
+  if (at < 0) return null;
+
+  const block = REQUIRED_STYLESHEETS
+    .map((sheet) => `  <link rel="stylesheet" href="${sheet}" />\n`)
+    .join("");
+  return edit(files, "index.html", stripped.slice(0, at) + block + stripped.slice(at));
+}
 
 /**
  * `./media/x.png` and `media/x.png` resolve identically in a browser, but the checker's

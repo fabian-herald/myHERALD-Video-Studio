@@ -113,7 +113,10 @@ Everything else in the directory is provided and must not be modified.
 
 `tokens.css` is linked first and defines every colour you may use, as `var(--brand-*)`.
 
-- **Never write a hex, `rgb()` or `hsl()` colour literal in `styles.css`.**
+- **Never write a hex, `rgb()` or `hsl()` colour literal — in `styles.css`, in `index.html`,
+  or in `animation.js`.** A tween that animates to an off-palette hex puts that colour on
+  screen exactly as a stylesheet would; it is only harder to see, because it is there for
+  half a second. Tween to `var(--brand-*)` or to a class that carries it.
 - The only exceptions are neutral scrims: `rgba(0,0,0,α)` and `rgba(255,255,255,α)`.
 - A rogue colour literal is a **hard failure** and the composition is rejected.
 - Only use foreground/background combinations listed in the plan's approved contrast

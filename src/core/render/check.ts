@@ -10,6 +10,7 @@ import {compatibleNode} from "./node.ts";
 import {describeFrozen, sampleMotion} from "./motionGate.ts";
 import {ROOT} from "../paths.ts";
 import {attribute, extractElement, openingTagsByClass} from "../compose/html.ts";
+import {BLOCK_FILES} from "../compose/workdir.ts";
 
 export type Severity = "error" | "warning" | "info";
 
@@ -92,6 +93,7 @@ export async function checkComposition(options: {
   const hyperframes = await runHyperframesCheck(dir, family);
   const findings: CheckFinding[] = [
     ...hyperframes.findings,
+    ...await checkStylesheetLinks(dir),
     ...await checkTokens(dir, kit),
     ...await checkBannedWords(dir, kit),
     ...await checkPlanConformance(dir, plan, fps),
@@ -258,16 +260,40 @@ function parseJson(stdout: string): unknown {
   }
 }
 
+/**
+ * Comments out, line numbers intact.
+ *
+ * Blanking whole lines would move every finding below the first comment. Strings are left
+ * alone on purpose: in `animation.js` a colour literal is almost always *inside* a string —
+ * `gsap.to(el, {backgroundColor: "#7B5BF5"})` — so masking non-code would blank precisely
+ * the thing being looked for.
+ */
+const stripJsComments = (source: string) => source
+  .replace(/\/\*[\s\S]*?\*\//g, (block) => block.replace(/[^\n]/g, " "))
+  .replace(/\/\/[^\n]*/g, (line) => " ".repeat(line.length));
+
 /** The rule that makes palette drift impossible rather than merely discouraged. */
-async function checkTokens(dir: string, kit: BrandKit): Promise<CheckFinding[]> {
-  const css = await fs.readFile(path.join(dir, "styles.css"), "utf8").catch(() => "");
-  const html = await fs.readFile(path.join(dir, "index.html"), "utf8").catch(() => "");
+export async function checkTokens(dir: string, kit: BrandKit): Promise<CheckFinding[]> {
+  const read = (file: string) => fs.readFile(path.join(dir, file), "utf8").catch(() => "");
   const findings: CheckFinding[] = [];
 
-  for (const [label, source] of [["styles.css", css], ["index.html", html]] as const) {
+  // animation.js is the third source, and it was the hole. The token rule was enforced on
+  // the two files a designer thinks of as "the design", while a tween is free to animate to
+  // an off-palette hex — which lands on screen exactly as a rogue colour in styles.css would,
+  // and is harder to see because it is only there for part of a second.
+  const sources = [
+    ["styles.css", await read("styles.css")],
+    ["index.html", await read("index.html")],
+    ["animation.js", stripJsComments(await read("animation.js"))],
+  ] as const;
+
+  for (const [label, source] of sources) {
     for (const rogue of findRogueColors(source, kit)) {
       findings.push({
-        severity: "error",
+        // Warning in animation.js until two real compositions have gone through it. The
+        // other two have run as errors for the whole life of the checker; this one has
+        // never fired in anger, and an error-level false positive costs a repair round.
+        severity: label === "animation.js" ? "warning" : "error",
         code: "rogue_color",
         message: `${label}:${rogue.line} uses \`${rogue.literal}\`, which is not a brand token.`,
         fixHint: "Replace it with the matching var(--brand-*) token, or a neutral rgba(0,0,0,α)/rgba(255,255,255,α) scrim.",
@@ -401,11 +427,18 @@ export async function checkCanvasLiterals(
     .filter((entry) => entry.values.length > 1);
   if (!axes.length) return [];
 
-  const source = await fs.readFile(path.join(dir, "animation.js"), "utf8").catch(() => "");
-  const code = source.replace(/\/\*[\s\S]*?\*\//g, " ").replace(/\/\/[^\n]*/g, " ");
+  const js = await fs.readFile(path.join(dir, "animation.js"), "utf8").catch(() => "");
+  const code = js.replace(/\/\*[\s\S]*?\*\//g, " ").replace(/\/\/[^\n]*/g, " ");
 
-  return axes.flatMap(({axis, source: accessor, values}) =>
-    values
+  // The same literal is just as wrong in the stylesheet — `height: 1920px` on a scene is
+  // right at 9:16 and overflows or underfills 4:5 and 1:1 identically to a JS constant. It
+  // needed only a CSS comment stripper and a pattern that admits the `px` suffix, which the
+  // JS pattern rejects because `p` is a word character.
+  const css = (await fs.readFile(path.join(dir, "styles.css"), "utf8").catch(() => ""))
+    .replace(/\/\*[\s\S]*?\*\//g, " ");
+
+  return axes.flatMap(({axis, source: accessor, values}) => [
+    ...values
       .filter((value) => new RegExp(`(?<![\\w.])${value}(?![\\w.])`).test(code))
       .map((value): CheckFinding => ({
         severity: "error",
@@ -415,8 +448,85 @@ export async function checkCanvasLiterals(
           + `of the others in this family (${values.join(", ")}). It will be wrong everywhere else.`,
         fixHint: `Read it once from the stage: parseFloat(stage.${accessor}).`,
         source: "plan",
+        file: "animation.js",
       })),
-  );
+    ...values
+      .filter((value) => new RegExp(`(?<![\\w.#-])${value}(?:px)?(?![\\w.%-])`).test(css))
+      .map((value): CheckFinding => ({
+        // Warning, not error, for its first two compositions. A stylesheet has far more
+        // numbers in it than a timeline does, and one axis value can coincide with an
+        // unrelated size — portrait's varying heights include 1080, which is also its
+        // constant width, so `width: 1080px` reads as a height literal here.
+        severity: "warning",
+        code: "canvas_literal_css",
+        message:
+          `styles.css hardcodes ${value}, which is the canvas ${axis} of one format but not `
+          + `of the others in this family (${values.join(", ")}).`,
+        fixHint:
+          `Size it off the canvas instead: var(--stage-${axis === "height" ? "h" : "w"}), `
+          + "a percentage, or a multiple of var(--u).",
+        source: "plan",
+        file: "styles.css",
+      })),
+  ]);
+}
+
+/** The `<link>` set every composition must carry, in order, with its own styles last. */
+export const REQUIRED_STYLESHEETS = [
+  "./tokens.css",
+  ...BLOCK_FILES.map((file) => `./blocks/${file}`),
+  "./styles.css",
+] as const;
+
+/**
+ * The stylesheets a composition is built on, present and in order.
+ *
+ * Everything downstream assumes them. `var(--brand-*)` resolves only if `tokens.css` is
+ * linked; `.clip`, `--u` and the scene shell come from the blocks; and `styles.css` must
+ * come last or a block primitive overrides the composition that meant to specialise it.
+ * A composition that omits one does not fail loudly — it renders, wrong, and the token
+ * check passes because the literals it would have flagged were never written.
+ *
+ * Order is asserted as a subsequence rather than an exact list: a composition may link an
+ * extra sheet of its own, and that is not this rule's business.
+ */
+export async function checkStylesheetLinks(dir: string): Promise<CheckFinding[]> {
+  const html = await fs.readFile(path.join(dir, "index.html"), "utf8").catch(() => "");
+  if (!html.trim()) return [];
+
+  const hrefs = [...html.matchAll(/<link\b[^>]*\bhref="([^"]+)"/gi)].map((match) => match[1]!);
+  const findings: CheckFinding[] = [];
+
+  const missing = REQUIRED_STYLESHEETS.filter((sheet) => !hrefs.includes(sheet));
+  if (missing.length) {
+    findings.push({
+      severity: "error",
+      code: "missing_stylesheet_link",
+      message: `index.html does not link ${missing.join(", ")}.`,
+      fixHint: `Link all of these in <head>, in this order: ${REQUIRED_STYLESHEETS.join(", ")}.`,
+      source: "plan",
+      file: "index.html",
+      expected: REQUIRED_STYLESHEETS.map((sheet) => `<link rel="stylesheet" href="${sheet}" />`).join("\n  "),
+    });
+    return findings;
+  }
+
+  const positions = REQUIRED_STYLESHEETS.map((sheet) => hrefs.indexOf(sheet));
+  const ordered = positions.every((position, index) => index === 0 || position > positions[index - 1]!);
+  if (!ordered) {
+    findings.push({
+      severity: "error",
+      code: "stylesheet_link_order",
+      message:
+        "The stylesheets are linked out of order. Later sheets override earlier ones, so "
+        + "styles.css last is what lets the composition specialise a block rather than fight it.",
+      fixHint: `Required order: ${REQUIRED_STYLESHEETS.join(", ")}.`,
+      source: "plan",
+      file: "index.html",
+      expected: REQUIRED_STYLESHEETS.map((sheet) => `<link rel="stylesheet" href="${sheet}" />`).join("\n  "),
+    });
+  }
+  return findings;
 }
 
 /**
@@ -586,10 +696,14 @@ export async function checkCanonicalBrandLockups(
   }
 
   const final = [...plan.sections].reverse().find((section) => section.durationMs > 0);
-  const isSilentSignature = final
-    && final.kind === "outro"
+  // The rule used to require silence, and silence has nothing to do with it. A narrated
+  // call to action is the same end card with a voice over it, and it was free to rebuild
+  // the mark out of a seal and a wordmark — the exact failure the rule exists to stop,
+  // in the one frame a viewer is most likely to screenshot.
+  const isSignature = final
+    && (final.kind === "outro" || final.kind === "cta")
     && (final.phrases.length === 0 || /brand|signature|cta/i.test(final.id));
-  if (final && isSilentSignature) {
+  if (final && isSignature) {
     const scene = extractElement(html, `scene-${final.id}`);
     if (!scene || !lockupPattern.test(scene.inner)) {
       findings.push({
@@ -627,7 +741,7 @@ export async function checkCanonicalBrandLockups(
           findings.push({
             severity: "error",
             code: `signature_${field}_missing`,
-            message: `The silent final scene does not show the brand ${field} as readable text.`,
+            message: `The final scene does not show the brand ${field} as readable text.`,
             fixHint:
               `Show "${expected}" beside the canonical lockup. Keep it factual and non-promotional; `
               + "do not add an imperative call to action.",

@@ -9,6 +9,9 @@ import {
   checkCanvasLiterals,
   checkDataBarProportions,
   checkPerpetualMotionSource,
+  checkStylesheetLinks,
+  checkTokens,
+  REQUIRED_STYLESHEETS,
   checkWordmark,
 } from "./check.ts";
 import type {VideoPlan} from "../plan/schema.ts";
@@ -544,4 +547,153 @@ test("the website is never assumed to be in the artwork", async () => {
       assert.ok(codes.includes("signature_website_missing"));
     },
   );
+});
+
+// ── Stage 4a: the gaps a composition could walk through ──────────────────────────
+//
+// Four rules that were being trusted to the prompt. Each ships at the severity it can
+// justify today: the two whose answer is fixed by the framework as errors, the two that
+// have to judge a number or a string as warnings, until two real compositions have run
+// through them without a false positive.
+
+test("a narrated call to action must use the supplied lockup, not a rebuilt one", async () => {
+  // The rule used to require a silent outro. A narrated cta is the same end card with a
+  // voice over it, and it was free to reconstruct the mark from a seal and a wordmark.
+  const ctaPlan = {
+    sections: [{
+      id: "cta", kind: "cta", startMs: 0, durationMs: 4000,
+      phrases: [{id: "p1", text: "Find out how."}],
+    }],
+  } as unknown as VideoPlan;
+
+  await withHtml(
+    '<html><body><header id="brand-rail">'
+    + '<img class="rail-lockup" src="media/logo-lockup-light.png" alt="myHERALD"></header>'
+    + '<section id="scene-cta"><img class="seal" src="media/logo-seal.svg">'
+    + '<img src="media/logo-wordmark-light.png"></section></body></html>',
+    async (dir) => {
+      const codes = (await checkCanonicalBrandLockups(dir, outroKit(true), ctaPlan))
+        .map((finding) => finding.code);
+      assert.ok(codes.includes("canonical_lockup_missing_outro"), codes.join(", "));
+    },
+  );
+
+  await withHtml(
+    '<html><body><header id="brand-rail">'
+    + '<img class="rail-lockup" src="media/logo-lockup-light.png" alt="myHERALD"></header>'
+    + '<section id="scene-cta"><img src="media/logo-lockup-light.png" alt="myHERALD">'
+    // Widening `kind` also brings a narrated cta under the context rule, which is right:
+    // when the plan carries no cta line, this is still the last frame a viewer sees and
+    // it has to say whose work it is. The tagline is already in this lockup's artwork.
+    + '<p class="cta-url">myherald.io</p></section></body></html>',
+    async (dir) => assert.deepEqual(
+      await checkCanonicalBrandLockups(dir, outroKit(true), ctaPlan), []),
+  );
+});
+
+test("a mid-video scene is not held to the signature rule", async () => {
+  // Only the *final* section is a signature. Widening `kind` must not turn a cta at the
+  // three-quarter mark into an end card.
+  const midPlan = {
+    sections: [
+      {id: "cta", kind: "cta", startMs: 0, durationMs: 4000, phrases: []},
+      {id: "payoff", kind: "payoff", startMs: 4000, durationMs: 4000, phrases: []},
+    ],
+  } as unknown as VideoPlan;
+  await withHtml(
+    '<html><body><header id="brand-rail">'
+    + '<img class="rail-lockup" src="media/logo-lockup-light.png" alt="myHERALD"></header>'
+    + '<section id="scene-cta"><h2>Anything</h2></section>'
+    + '<section id="scene-payoff"><h2>The end</h2></section></body></html>',
+    async (dir) => assert.deepEqual(
+      await checkCanonicalBrandLockups(dir, outroKit(true), midPlan), []),
+  );
+});
+
+test("a canvas dimension hardcoded in the stylesheet is flagged too", async () => {
+  const formats = plan(["9x16", "4x5", "1x1"]);
+  const withCss = async (css: string, run: (dir: string) => Promise<void>) => {
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), "studio-css-"));
+    try {
+      await fs.writeFile(path.join(dir, "styles.css"), css, "utf8");
+      await run(dir);
+    } finally {
+      await fs.rm(dir, {recursive: true, force: true});
+    }
+  };
+
+  // 1920 is the 9:16 height and nothing else in the family — right in one format, wrong
+  // in the two it is re-emitted into. The `px` suffix is why the JS pattern missed it.
+  await withCss(".stack { height: 1920px; }", async (dir) => {
+    const findings = await checkCanvasLiterals(dir, formats, "portrait");
+    assert.equal(findings[0]?.code, "canvas_literal_css");
+    assert.equal(findings[0]?.severity, "warning");
+    assert.equal(findings[0]?.file, "styles.css");
+  });
+
+  await withCss(".stack { height: var(--stage-h); }", async (dir) =>
+    assert.deepEqual(await checkCanvasLiterals(dir, formats, "portrait"), []));
+
+  // Comments are not code, and a number that is part of a longer token is not a literal.
+  await withCss("/* was 1920px */ .a { z-index: 11920; }", async (dir) =>
+    assert.deepEqual(await checkCanvasLiterals(dir, formats, "portrait"), []));
+});
+
+test("an off-palette colour in a tween is caught, and a comment about one is not", async () => {
+  const brandKit = {
+    color: {tokens: {deep: "#0B0A1F", paper: "#F5F3FF"}},
+    voice: {bannedWords: []},
+    logos: [],
+  } as unknown as import("../brand/kit.ts").BrandKit;
+
+  const withJs = async (js: string, run: (dir: string) => Promise<void>) => {
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), "studio-js-"));
+    try {
+      await fs.writeFile(path.join(dir, "animation.js"), js, "utf8");
+      await run(dir);
+    } finally {
+      await fs.rm(dir, {recursive: true, force: true});
+    }
+  };
+
+  // The literal lives inside a string, which is exactly why masking non-code would have
+  // blanked it. Line numbers survive the comment strip so the finding points somewhere.
+  await withJs(
+    "// the brand deep is #0B0A1F\n\ngsap.to(el, {backgroundColor: \"#FF00AA\"});",
+    async (dir) => {
+      const findings = await checkTokens(dir, brandKit);
+      assert.equal(findings.length, 1);
+      assert.equal(findings[0]?.file, "animation.js");
+      assert.equal(findings[0]?.line, 3);
+      assert.equal(findings[0]?.severity, "warning", "warning until two clean compositions");
+    },
+  );
+
+  await withJs('gsap.to(el, {backgroundColor: "var(--brand-lilac)"});', async (dir) =>
+    assert.deepEqual(await checkTokens(dir, brandKit), []));
+});
+
+test("the stylesheet link set is required, in order, with styles.css last", async () => {
+  const link = (href: string) => `<link rel="stylesheet" href="${href}" />`;
+  const page = (hrefs: readonly string[]) =>
+    `<html><head>${hrefs.map(link).join("")}</head><body></body></html>`;
+
+  await withHtml(page(REQUIRED_STYLESHEETS), async (dir) =>
+    assert.deepEqual(await checkStylesheetLinks(dir), []));
+
+  // A composition's own extra sheet is not this rule's business.
+  await withHtml(page([...REQUIRED_STYLESHEETS, "./extra.css"]), async (dir) =>
+    assert.deepEqual(await checkStylesheetLinks(dir), []));
+
+  await withHtml(page(REQUIRED_STYLESHEETS.filter((sheet) => sheet !== "./tokens.css")), async (dir) => {
+    const findings = await checkStylesheetLinks(dir);
+    assert.equal(findings[0]?.code, "missing_stylesheet_link");
+    assert.match(findings[0]?.message ?? "", /tokens\.css/);
+  });
+
+  // styles.css first means every block primitive overrides the composition specialising it.
+  await withHtml(page(["./styles.css", ...REQUIRED_STYLESHEETS.slice(0, -1)]), async (dir) => {
+    const findings = await checkStylesheetLinks(dir);
+    assert.equal(findings[0]?.code, "stylesheet_link_order");
+  });
 });

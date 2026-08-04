@@ -4,7 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import {test} from "node:test";
 import {applyFixers, autoFix, type CompositionFiles} from "./autofix.ts";
-import type {CheckFinding, CheckReport} from "./check.ts";
+import {REQUIRED_STYLESHEETS, type CheckFinding, type CheckReport} from "./check.ts";
 import type {AuthoringDir} from "../compose/workdir.ts";
 
 const authoring = {
@@ -317,4 +317,36 @@ test("rounds are capped so two fixers cannot ping-pong", async () => {
     });
     assert.ok(calls <= 2, `expected at most 2 verification passes, got ${calls}`);
   });
+});
+
+test("a missing stylesheet link is inserted into the canonical set, in order", () => {
+  // Missing tokens.css and with styles.css ahead of the blocks — both defects at once,
+  // because both have the same answer and the fixer rebuilds rather than nudges.
+  const html = '<html><head>\n  <title>x</title>\n  <link rel="stylesheet" href="./styles.css" />\n'
+    + '  <link rel="stylesheet" href="./blocks/base.css" />\n</head><body></body></html>';
+  const {files: fixed, applied} = applyFixers(
+    files({"index.html": html}),
+    [error({code: "missing_stylesheet_link"})],
+    {authoring},
+  );
+  assert.deepEqual(applied, ["missing_stylesheet_link"]);
+
+  const hrefs = [...fixed["index.html"].matchAll(/href="([^"]+)"/g)].map((match) => match[1]);
+  assert.deepEqual(hrefs, [...REQUIRED_STYLESHEETS]);
+  // The title was never a stylesheet link and must not have moved.
+  assert.match(fixed["index.html"], /<title>x<\/title>/);
+});
+
+test("a composition's own extra stylesheet survives the rebuild", () => {
+  const html = '<html><head>\n  <link rel="stylesheet" href="./extra.css" />\n'
+    + REQUIRED_STYLESHEETS.map((sheet) => `  <link rel="stylesheet" href="${sheet}" />\n`).join("")
+    + "</head><body></body></html>";
+  const {files: fixed} = applyFixers(
+    files({"index.html": html}),
+    [error({code: "stylesheet_link_order"})],
+    {authoring},
+  );
+  assert.match(fixed["index.html"], /href="\.\/extra\.css"/);
+  const hrefs = [...fixed["index.html"].matchAll(/href="([^"]+)"/g)].map((match) => match[1]);
+  assert.deepEqual(hrefs.filter((href) => href !== "./extra.css"), [...REQUIRED_STYLESHEETS]);
 });
