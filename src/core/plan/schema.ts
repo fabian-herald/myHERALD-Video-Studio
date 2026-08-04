@@ -200,6 +200,15 @@ export const videoPlanZ = z.object({
     /** The brand's narrator register, held constant while `style` varies by section. */
     register: z.string().default(""),
     /**
+     * The seed the take was requested with, copied from the kit at plan time.
+     *
+     * Recorded in the plan because it is the difference between two videos sounding like
+     * one narrator and sounding like two, and because a video is not reproducible without
+     * it — the same script at a different seed is a different performance. Zero means the
+     * model chose, which is every video made before this field existed.
+     */
+    seed: z.number().int().min(0).default(0),
+    /**
      * Where the timestamps in this plan came from. Written by whichever retime ran,
      * never by the planner.
      *

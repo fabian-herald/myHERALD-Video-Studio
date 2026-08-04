@@ -22,7 +22,8 @@
     "narration:bakeoff": "tsx scripts/narration-bakeoff.ts",
     "narration:profiles": "tsx scripts/narration-profile-listening.ts",
     "rename-videos": "tsx scripts/rename-videos.ts",
-    "summaries": "tsx scripts/write-summaries.ts"
+    "summaries": "tsx scripts/write-summaries.ts",
+    "narration:seeds": "tsx scripts/narration-seeds.ts"
   },
   "dependencies": {
     "@anthropic-ai/claude-agent-sdk": "^0.3.220",

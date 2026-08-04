@@ -285,9 +285,14 @@ async function narrateAsTake(
   let best: {result: Take; faults: number; durationMs: number; paceDistance: number} | null = null;
 
   for (let attempt = 1; attempt <= 2; attempt++) {
-    const key = hash({...request, outputPath: undefined, attempt, mastering: AUDIO_MASTERING_VERSION});
+    // The seed moves with the attempt. A fixed seed is the point — it holds one narrator
+    // across videos — but it also makes a retry pointless, because the second request
+    // would return the first take again and the register check would reject it identically.
+    // Offsetting keeps the retry meaningful and the first attempt reproducible.
+    const seed = plan.narration.seed ? plan.narration.seed + attempt - 1 : 0;
+    const key = hash({...request, seed, outputPath: undefined, attempt, mastering: AUDIO_MASTERING_VERSION});
     const outputPath = path.join(workDir, "narration", `take-${key}.wav`);
-    const result = await provider.synthesizeTake!({...request, outputPath}, onLog, signal);
+    const result = await provider.synthesizeTake!({...request, seed, outputPath}, onLog, signal);
     costUsd += result.costUsd;
 
     const off = await registerMiss(result.outputPath, plan.narration.register);

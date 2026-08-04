@@ -440,6 +440,7 @@ function normalise(plan: VideoPlan, request: PlanRequest): VideoPlan {
       // planner free to restate it would be free to drift it.
       style: request.kit.voice.narrationStyle,
       register: request.kit.voice.narratorRegister,
+      seed: request.kit.voice.narratorSeed,
       // Nothing has been synthesised yet, so every timestamp below is still a guess.
       // Whichever retime runs overwrites this with how it actually measured them.
       timing: "planned",

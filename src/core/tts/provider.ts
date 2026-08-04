@@ -20,6 +20,15 @@ export interface SynthesisRequest {
    */
   register: string;
   language: string;
+  /**
+   * Fixes which narrator the model produces, where the provider supports it.
+   *
+   * Stating the register in words narrowed the spread and did not close it — twenty-seven
+   * takes still landed across 4.6 semitones. Measured on Gemini, five takes at one seed
+   * gave 121, 121, 121, 121, 114 Hz against 138, 127, 113, 138, 123 without. Zero or
+   * absent means the provider chooses, as before.
+   */
+  seed?: number;
   /** Absolute path the provider must write a WAV file to. */
   outputPath: string;
 }

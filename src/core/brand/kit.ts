@@ -87,6 +87,23 @@ export const brandKitZ = z.object({
      * ceiling from 205 Hz down to 145. Style may shift between sections; this must not.
      */
     narratorRegister: z.string().default(""),
+    /**
+     * The seed that fixes which narrator the model produces.
+     *
+     * Stating the register narrowed the spread and did not close it: twenty-seven takes
+     * still landed between 118 and 154 Hz, and two videos side by side were four semitones
+     * apart, which reads as two different people reading the same brand.
+     *
+     * `seed` is the documented lever — "the model makes a best effort to provide the same
+     * response for repeated requests" — and measured here it does most of what it says.
+     * Five takes at a fixed seed: 121, 121, 121, 121, 114 Hz. Five without: 138, 127, 113,
+     * 138, 123. Best effort, not a guarantee, so the register check still runs.
+     *
+     * Zero means unset, and the model rolls a fresh narrator per video as before. Choose a
+     * value by listening: `npm run narration:seeds` renders one script across a range of
+     * seeds so the voice is picked rather than accepted.
+     */
+    narratorSeed: z.number().int().min(0).default(0),
   }),
   doDont: z.object({
     do: z.array(z.string()).default([]),

@@ -32,7 +32,7 @@ function plan(onScreen: string): VideoPlan {
       },
     ],
     alternates: [],
-    narration: {provider: "gemini", voice: "Achird", style: "", register: "", timing: "planned"},
+    narration: {provider: "gemini", voice: "Achird", style: "", register: "", seed: 0, timing: "planned"},
   };
 }
 

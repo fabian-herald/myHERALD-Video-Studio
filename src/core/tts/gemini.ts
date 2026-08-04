@@ -194,6 +194,7 @@ async function synthesizePcm(
   onLog?: (line: string) => void,
   signal?: AbortSignal,
   temperature?: number,
+  seed?: number,
 ): Promise<{audio: Buffer; requestId?: string}> {
   const apiKey = process.env.GEMINI_API_KEY?.trim();
   if (!apiKey) throw new Error("GEMINI_API_KEY is not set. Add it to .env.local.");
@@ -208,6 +209,9 @@ async function synthesizePcm(
         contents: [{parts: [{text: prompt}]}],
         config: {
           ...(temperature === undefined ? {} : {temperature}),
+          // Documented as best effort, and measured as most of the way there: it holds the
+          // narrator across videos, which stating the register in words could not.
+          ...(seed ? {seed} : {}),
           responseModalities: ["AUDIO"],
           speechConfig: {voiceConfig: {prebuiltVoiceConfig: {voiceName: voiceId}}},
         },
@@ -244,9 +248,12 @@ export const geminiTts: TtsProvider = {
       request.outputPath,
       onLog,
       signal,
-      request.intent && (request.profileId ? request.profileId in NARRATION_PROFILES : true)
-        ? {temperature: 1}
-        : {},
+      {
+        ...request.intent && (request.profileId ? request.profileId in NARRATION_PROFILES : true)
+          ? {temperature: 1}
+          : {},
+        ...request.seed ? {seed: request.seed} : {},
+      },
     );
   },
 
@@ -262,7 +269,7 @@ export async function renderGeminiPrompt(
   outputPath: string,
   onLog?: (line: string) => void,
   signal?: AbortSignal,
-  options: {temperature?: number} = {},
+  options: {temperature?: number; seed?: number} = {},
 ): Promise<GeminiPromptResult> {
   const result = async (requestId?: string) => ({
     outputPath,
@@ -277,7 +284,7 @@ export async function renderGeminiPrompt(
 
   await fs.mkdir(path.dirname(outputPath), {recursive: true});
   const pcmPath = `${outputPath}.pcm`;
-  const generated = await synthesizePcm(prompt, voiceId, onLog, signal, options.temperature);
+  const generated = await synthesizePcm(prompt, voiceId, onLog, signal, options.temperature, options.seed);
   await fs.writeFile(pcmPath, generated.audio);
   await run("ffmpeg", [
     "-y",
