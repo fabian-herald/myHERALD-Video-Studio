@@ -105,6 +105,9 @@ export async function checkComposition(options: {
     ...await checkPerpetualMotionSource(dir),
     ...await checkTransformOrigin(dir),
     ...await checkLayoutWaivers(dir),
+    ...await checkBrandRailPersistence(dir, plan),
+    ...await checkNumericTiming(dir),
+    ...await checkSceneEntrances(dir, plan),
     ...motion ? await checkMotion(dir, plan, onLog) : [],
   ];
 
@@ -954,6 +957,119 @@ export async function checkPerpetualMotionSource(dir: string): Promise<CheckFind
   }));
 }
 
+/**
+ * The persistent identity strip has to be persistent.
+ *
+ * `brand-rail.css` calls it MANDATORY and the lockup rule checks it holds the right asset,
+ * but nothing checked that it is *on screen* — a rail clipped to the first eight seconds
+ * satisfies every existing gate and then leaves four fifths of the video unbranded.
+ *
+ * Two findings, because they are two different mistakes. Clip attributes that do not span
+ * the runtime are an error: the correct values are the root's own, so a fixer can write
+ * them. A fade to nothing partway through is a warning, and a narrow one — the exemplar
+ * legitimately fades the rail 0.14s before the final section so the outro card can carry
+ * the mark alone, and that is the good version of this. Only a fade whose position can be
+ * read statically and is demonstrably early is reported; a position this cannot evaluate
+ * is left alone rather than guessed at.
+ */
+export async function checkBrandRailPersistence(
+  dir: string,
+  plan: VideoPlan,
+): Promise<CheckFinding[]> {
+  const html = await fs.readFile(path.join(dir, "index.html"), "utf8").catch(() => "");
+  const rail = extractElement(html, "brand-rail");
+  if (!rail) return [];
+
+  const findings: CheckFinding[] = [];
+  const total = Number(/data-duration="([\d.]+)"/.exec(html)?.[1] ?? 0);
+  const start = Number(attribute(rail.openTag, "data-start") ?? "0");
+  const duration = Number(attribute(rail.openTag, "data-duration") ?? "0");
+
+  // One frame of slack: a composition rounding to 3dp against a 30fps grid is not a defect.
+  if (total > 0 && (start > 0.034 || duration <= 0 || start + duration < total - 0.034)) {
+    findings.push({
+      severity: "error",
+      code: "brand_rail_not_persistent",
+      message:
+        `#brand-rail is on screen from ${start}s for ${duration}s, but the video runs `
+        + `${total}s. The identity strip is required for the whole of it.`,
+      fixHint: `Set data-start="0" and data-duration="${total}" on #brand-rail.`,
+      source: "tokens",
+      file: "index.html",
+      elementId: "brand-rail",
+      attribute: "data-duration",
+      expected: String(total),
+      snippet: rail.openTag,
+    });
+  }
+
+  const finalSection = [...plan.sections].reverse().find((section) => section.durationMs > 0);
+  const finalStart = finalSection ? finalSection.startMs / 1000 : total;
+  // Comments stripped, strings kept. `maskNonCode` is wrong here: the things being read —
+  // the "#brand-rail" selector and the scene id inside `at("#scene-payoff")` — are string
+  // literals, and masking blanks exactly those.
+  const source = stripJsComments(
+    await fs.readFile(path.join(dir, "animation.js"), "utf8").catch(() => ""),
+  );
+  const nonFinal = new Set(plan.sections.slice(0, -1).map((section) => section.id));
+
+  for (const match of source.matchAll(/\.\s*(?:to|set|fromTo)\s*\(\s*["'`]#brand-rail["'`]/g)) {
+    const from = match.index ?? 0;
+    // Balanced, not a regex: a position argument is routinely `at("#scene-x") + 0.2`, and
+    // a `[^)]*` group stops at that inner bracket and then fails to match at all.
+    const call = source.slice(from, balancedCallEnd(source, source.indexOf("(", from)));
+    if (!/\b(?:autoAlpha|opacity)\s*:\s*0\b/.test(call)) continue;
+    const position = lastArgument(call);
+
+    // A number, or a reference to a scene that is not the last one. Anything else — a
+    // symbol this cannot resolve — is not reported, because a wrong guess here costs a
+    // repair round spent undoing a deliberate hand-off to the outro card.
+    const numeric = /^\s*[\d.]+\s*$/.test(position) ? Number(position) : null;
+    const named = /at\(\s*["'`]#?(?:scene-)?([\w-]+)/.exec(position)?.[1];
+    const early = numeric !== null
+      ? numeric < finalStart - 0.5
+      : Boolean(named && nonFinal.has(named));
+    if (!early) continue;
+
+    findings.push({
+      severity: "warning",
+      code: "brand_rail_hidden_early",
+      message:
+        `animation.js hides #brand-rail at ${position.trim() || "0"}, before the final `
+        + `section begins at ${finalStart.toFixed(2)}s, so most of the video carries no mark.`,
+      fixHint:
+        "Fade the rail only into the closing card, where the outro lockup takes over. "
+        + "Anywhere earlier and the video is unbranded from that point on.",
+      source: "tokens",
+      file: "animation.js",
+      selector: "#brand-rail",
+      snippet: call.replace(/\s+/g, " ").slice(0, 180),
+    });
+  }
+
+  return findings;
+}
+
+/** The last top-level argument of a call, splitting on commas outside brackets and braces. */
+function lastArgument(call: string): string {
+  const open = call.indexOf("(");
+  const body = call.slice(open + 1, call.lastIndexOf(")"));
+  let depth = 0;
+  let start = 0;
+  const args: string[] = [];
+  for (let index = 0; index < body.length; index++) {
+    const char = body[index];
+    if (char === "(" || char === "[" || char === "{") depth += 1;
+    else if (char === ")" || char === "]" || char === "}") depth -= 1;
+    else if (char === "," && depth === 0) {
+      args.push(body.slice(start, index));
+      start = index + 1;
+    }
+  }
+  args.push(body.slice(start));
+  return args.length > 1 ? args[args.length - 1]!.trim() : "";
+}
+
 const VOID_TAGS = new Set(["br", "img", "input", "meta", "link", "hr", "source", "area", "col"]);
 
 /** `data-layout-allow-overflow` is not here: bleeding off-canvas is a different decision. */
@@ -1131,6 +1247,159 @@ export async function checkTransformOrigin(dir: string): Promise<CheckFinding[]>
       selector: offender.target,
       snippet: offender.excerpt,
     }));
+}
+
+/**
+ * Timings written as numbers instead of read from the DOM.
+ *
+ * Two findings from one walk, because they are two halves of the same mistake: a duration
+ * or a position typed in as a literal is correct only for the runtime it was typed against,
+ * and every retime — a re-narration, a trimmed phrase, a longer end card — moves it silently.
+ * §3 of the contract already says to derive both from `at()` and `len()`; nothing checked.
+ *
+ * `checkPerpetualMotionSource` catches the identifier form (`duration: TOTAL`). This is the
+ * numeric one it cannot see, plus positions, which nothing looked at.
+ *
+ * Warning severity, and gap 1 is the reason. A bare number as a timeline position is
+ * usually a defect and sometimes a deliberate small offset, and no amount of pattern
+ * matching separates those; an error here would cost a repair round on good work.
+ */
+export async function checkNumericTiming(dir: string): Promise<CheckFinding[]> {
+  const raw = await fs.readFile(path.join(dir, "animation.js"), "utf8").catch(() => "");
+  if (!raw.trim()) return [];
+  const html = await fs.readFile(path.join(dir, "index.html"), "utf8").catch(() => "");
+  const total = Number(/data-duration="([\d.]+)"/.exec(html)?.[1] ?? 0);
+  const code = stripJsComments(raw);
+
+  const findings: CheckFinding[] = [];
+  const calls = /\b(?:gsap|[A-Za-z_$][\w$]*)\s*\.\s*(?:to|from|fromTo|set|call|add)\s*\(/g;
+
+  for (const match of code.matchAll(calls)) {
+    const from = match.index ?? 0;
+    const call = code.slice(from, balancedCallEnd(code, code.indexOf("(", from)));
+    const line = code.slice(0, from).split("\n").length;
+    const excerpt = call.replace(/\s+/g, " ").trim().slice(0, 180);
+
+    // Gap 2 — a numeric duration that is effectively the whole video. The identifier form
+    // is already a hard error; writing the same number by hand was a way around it.
+    const duration = /\bduration\s*:\s*([\d.]+)/.exec(call);
+    if (total > 0 && duration && Number(duration[1]) >= total * 0.9) {
+      findings.push({
+        severity: "warning",
+        code: "numeric_full_runtime_tween",
+        message:
+          `animation.js:${line} runs a tween for ${duration[1]}s against a ${total}s video, `
+          + "so it never resolves — the same perpetual motion the TOTAL form is rejected for.",
+        fixHint:
+          "Give it a scene-local duration and a readable hold. If it genuinely spans the "
+          + "piece it is a state change with no state, and CONTRACT §6 rejects it.",
+        source: "plan",
+        file: "animation.js",
+        line,
+        snippet: excerpt,
+      });
+    }
+
+    // Gap 1 — a bare number as the position argument. Zero is the start of the timeline and
+    // means what it says; anything derived from at()/len()/TOTAL is correct by construction.
+    const position = lastArgument(call);
+    if (/^[\d.]+$/.test(position) && Number(position) !== 0) {
+      findings.push({
+        severity: "warning",
+        code: "hardcoded_scene_time",
+        message:
+          `animation.js:${line} places a tween at ${position}s as a literal. Retiming the `
+          + "video — a re-narration, a trimmed phrase — moves the scene and leaves this behind.",
+        fixHint:
+          'Derive it: at("#scene-<id>") for a scene start, plus len("#scene-<id>") for a '
+          + "fraction of its length. See CONTRACT §3.",
+        source: "plan",
+        file: "animation.js",
+        line,
+        snippet: excerpt,
+      });
+    }
+  }
+
+  // A composition that hardcodes one position usually hardcodes all of them — one in the
+  // repo does it 68 times. With no errors in the report, `actionableRepairFindings` hands
+  // the warnings to the composer, and 68 of anything is not a surgical repair brief. Report
+  // enough to establish the pattern and say how many were left out; a silent truncation
+  // would read as "that is all of them".
+  const positions = findings.filter((finding) => finding.code === "hardcoded_scene_time");
+  if (positions.length <= HARDCODED_TIME_REPORT_LIMIT) return findings;
+
+  const shown = positions.slice(0, HARDCODED_TIME_REPORT_LIMIT);
+  shown[shown.length - 1] = {
+    ...shown[shown.length - 1]!,
+    message: `${shown[shown.length - 1]!.message} `
+      + `(${positions.length - HARDCODED_TIME_REPORT_LIMIT} further literal positions not listed; `
+      + "the timing is hardcoded throughout, so derive all of it rather than these alone.)",
+  };
+  return [...findings.filter((finding) => finding.code !== "hardcoded_scene_time"), ...shown];
+}
+
+export const HARDCODED_TIME_REPORT_LIMIT = 5;
+
+/**
+ * Adjacent scenes that arrive the same way.
+ *
+ * `info`, and it stays `info`. This is the only one of the nine gaps that asks the checker
+ * to judge rather than verify: a fingerprint of "the properties the first tween animates"
+ * is either loose enough to fire on deliberate rhyme or tight enough to miss real repetition,
+ * and there is no version that is neither. CONTRACT §6 states the rule and the visual-review
+ * rubric checks it against actual pixels, which is the tool that can see the difference.
+ *
+ * It is here because a cheap signal in the log is worth having when the frames disagree.
+ */
+export async function checkSceneEntrances(dir: string, plan: VideoPlan): Promise<CheckFinding[]> {
+  const raw = await fs.readFile(path.join(dir, "animation.js"), "utf8").catch(() => "");
+  if (!raw.trim()) return [];
+  const code = stripJsComments(raw);
+
+  // Walk the calls, not the scene references. Searching backwards from `at("#scene-x")` for
+  // the enclosing call finds the dot in `duration: .5` long before it finds `.from`.
+  const entrances = new Map<string, string>();
+  for (const match of code.matchAll(/\b(?:gsap|[A-Za-z_$][\w$]*)\s*\.\s*(?:to|from|fromTo|set)\s*\(/g)) {
+    const from = match.index ?? 0;
+    const call = code.slice(from, balancedCallEnd(code, code.indexOf("(", from)));
+    const scene = /at\(\s*["'`]#?(?:scene-)?([\w-]+)/.exec(lastArgument(call))?.[1];
+    // Only the first call at a scene's start is its entrance; later ones are its development.
+    if (!scene || entrances.has(scene)) continue;
+
+    const vars = [...call.matchAll(/\b([a-zA-Z]\w*)\s*:/g)]
+      .map((varMatch) => varMatch[1]!)
+      .filter((name) => name !== "duration" && name !== "ease" && name !== "stagger")
+      .sort();
+    const ease = /\bease\s*:\s*["'`]([^"'`]+)/.exec(call)?.[1] ?? "";
+    if (vars.length) entrances.set(scene, `${vars.join(",")}|${ease}`);
+  }
+
+  const fingerprints = plan.sections.map((section) => ({
+    id: section.id,
+    print: entrances.get(section.id) ?? "",
+  }));
+
+  const findings: CheckFinding[] = [];
+  for (let index = 1; index < fingerprints.length; index++) {
+    const previous = fingerprints[index - 1]!;
+    const current = fingerprints[index]!;
+    if (!current.print || current.print !== previous.print) continue;
+    findings.push({
+      severity: "info",
+      code: "repeated_scene_entrance",
+      message:
+        `scene-${current.id} arrives the same way as scene-${previous.id} `
+        + `(${current.print.replace("|", " with ease ")}).`,
+      fixHint:
+        "Two scenes in a row entering identically reads as one long scene. Vary what moves "
+        + "and from where — CONTRACT §6.",
+      source: "plan",
+      file: "animation.js",
+      sectionId: current.id,
+    });
+  }
+  return findings;
 }
 
 function fullRuntimeSpatialTweens(file: string, source: string) {

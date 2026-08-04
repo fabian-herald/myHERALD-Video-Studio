@@ -5,6 +5,10 @@ import path from "node:path";
 import {test} from "node:test";
 import {
   checkBannedWords,
+  checkBrandRailPersistence,
+  checkNumericTiming,
+  checkSceneEntrances,
+  HARDCODED_TIME_REPORT_LIMIT,
   checkCanonicalBrandLockups,
   checkCanvasLiterals,
   checkDataBarProportions,
@@ -876,5 +880,165 @@ test("a lockup that does not carry the tagline still wants it in type", async ()
         .map((finding) => finding.code);
       assert.equal(codes.includes("tagline_duplicated"), false, "nothing is duplicated here");
     },
+  );
+});
+
+// ── the persistent identity strip ────────────────────────────────────────────────
+
+const railPlan = {
+  sections: [
+    {id: "hook", kind: "hook", startMs: 0, durationMs: 6000, phrases: []},
+    {id: "payoff", kind: "payoff", startMs: 6000, durationMs: 6000, phrases: []},
+    {id: "brand-outro", kind: "outro", startMs: 12000, durationMs: 4000, phrases: []},
+  ],
+} as unknown as VideoPlan;
+
+const railHtml = (railAttrs: string) =>
+  '<html><body><main id="stage" data-duration="16.000">'
+  + `<header id="brand-rail" class="brand-rail clip" ${railAttrs}>`
+  + '<img class="rail-lockup" src="media/logo-lockup-light.png" alt="myHERALD"></header>'
+  + "</main></body></html>";
+
+test("a rail clipped to part of the video leaves the rest unbranded", async () => {
+  await withHtml(railHtml('data-start="0" data-duration="8.000"'), async (dir) => {
+    const findings = await checkBrandRailPersistence(dir, railPlan);
+    assert.equal(findings[0]?.code, "brand_rail_not_persistent");
+    assert.equal(findings[0]?.severity, "error");
+    // Determined, so a fixer can write it without a model.
+    assert.equal(findings[0]?.expected, "16");
+    assert.equal(findings[0]?.attribute, "data-duration");
+  });
+
+  await withHtml(railHtml('data-start="0" data-duration="16.000"'), async (dir) =>
+    assert.deepEqual(await checkBrandRailPersistence(dir, railPlan), []));
+});
+
+test("fading the rail into the closing card is the good version and passes", async () => {
+  // What the exemplar does: `timeline.to("#brand-rail", {autoAlpha: 0, ...}, S6 - 0.14)`,
+  // handing the mark over to the outro lockup. The position is symbolic, and a rule that
+  // cannot evaluate it says nothing rather than guessing.
+  await withHtml(railHtml('data-start="0" data-duration="16.000"'), async (dir) => {
+    await fs.writeFile(
+      path.join(dir, "animation.js"),
+      'timeline.to("#brand-rail", {autoAlpha: 0, duration: 0.16}, S6 - 0.14);',
+      "utf8",
+    );
+    assert.deepEqual(await checkBrandRailPersistence(dir, railPlan), []);
+  });
+});
+
+test("hiding the rail in the first third is reported", async () => {
+  await withHtml(railHtml('data-start="0" data-duration="16.000"'), async (dir) => {
+    await fs.writeFile(
+      path.join(dir, "animation.js"),
+      'timeline.to("#brand-rail", {autoAlpha: 0, duration: 0.3}, 4.5);',
+      "utf8",
+    );
+    const findings = await checkBrandRailPersistence(dir, railPlan);
+    assert.equal(findings[0]?.code, "brand_rail_hidden_early");
+    assert.equal(findings[0]?.severity, "warning");
+  });
+
+  // Named, and named a section that is not the last one.
+  await withHtml(railHtml('data-start="0" data-duration="16.000"'), async (dir) => {
+    await fs.writeFile(
+      path.join(dir, "animation.js"),
+      'timeline.to("#brand-rail", {opacity: 0, duration: 0.3}, at("#scene-payoff"));',
+      "utf8",
+    );
+    assert.equal(
+      (await checkBrandRailPersistence(dir, railPlan))[0]?.code, "brand_rail_hidden_early");
+  });
+});
+
+test("a composition with no rail at all is left to the lockup rule", async () => {
+  // `checkCanonicalBrandLockups` already owns "there is no rail". Reporting it twice sends
+  // a repair pass at one defect with two different remedies.
+  await withHtml("<html><body><main id='stage' data-duration='16.000'></main></body></html>",
+    async (dir) => assert.deepEqual(await checkBrandRailPersistence(dir, railPlan), []));
+});
+
+// ── numbers where derived timings belong ─────────────────────────────────────────
+
+async function withTiming(js: string, html: string, run: (dir: string) => Promise<void>) {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), "studio-timing-"));
+  try {
+    await fs.writeFile(path.join(dir, "animation.js"), js, "utf8");
+    await fs.writeFile(path.join(dir, "index.html"), html, "utf8");
+    await run(dir);
+  } finally {
+    await fs.rm(dir, {recursive: true, force: true});
+  }
+}
+
+const stage = '<main id="stage" data-duration="45.000"></main>';
+
+test("a numeric duration spanning the video is the TOTAL form written by hand", async () => {
+  await withTiming('timeline.to(".node", {y: 200, duration: 44});', stage, async (dir) => {
+    const findings = await checkNumericTiming(dir);
+    assert.equal(findings[0]?.code, "numeric_full_runtime_tween");
+    assert.equal(findings[0]?.severity, "warning");
+  });
+
+  await withTiming('timeline.to(".node", {y: 200, duration: 0.6});', stage, async (dir) =>
+    assert.deepEqual(await checkNumericTiming(dir), []));
+});
+
+test("a literal timeline position is flagged; zero and derived positions are not", async () => {
+  await withTiming('timeline.to(".card", {autoAlpha: 1, duration: .4}, 12.5);', stage, async (dir) => {
+    const findings = await checkNumericTiming(dir);
+    assert.equal(findings[0]?.code, "hardcoded_scene_time");
+    assert.match(findings[0]?.fixHint ?? "", /at\("#scene-<id>"\)/);
+  });
+
+  // Zero is the start of the timeline and means exactly that.
+  await withTiming('timeline.set(".card", {autoAlpha: 0}, 0);', stage, async (dir) =>
+    assert.deepEqual(await checkNumericTiming(dir), []));
+
+  await withTiming(
+    'timeline.to(".card", {autoAlpha: 1, duration: .4}, at("#scene-hook") + len("#scene-hook") * .3);',
+    stage,
+    async (dir) => assert.deepEqual(await checkNumericTiming(dir), []),
+  );
+});
+
+test("a composition that hardcodes everything is not reported line by line", async () => {
+  // 466bde does this 68 times. With no errors in the report those warnings become the
+  // repair brief, and 68 of anything is not a surgical one.
+  const js = Array.from({length: 20}, (_, index) =>
+    `timeline.to(".n${index}", {autoAlpha: 1, duration: .3}, ${index + 1}.5);`).join("\n");
+  await withTiming(js, stage, async (dir) => {
+    const findings = await checkNumericTiming(dir);
+    assert.equal(findings.length, HARDCODED_TIME_REPORT_LIMIT);
+    // Said out loud, not silently truncated.
+    assert.match(findings.at(-1)?.message ?? "", /15 further literal positions not listed/);
+  });
+});
+
+test("two scenes entering identically are noted, and only as info", async () => {
+  const entrancePlan = {
+    sections: [
+      {id: "hook", kind: "hook", startMs: 0, durationMs: 6000, phrases: []},
+      {id: "point", kind: "point", startMs: 6000, durationMs: 6000, phrases: []},
+    ],
+  } as unknown as VideoPlan;
+
+  await withTiming(
+    'timeline.from("#scene-hook h1", {autoAlpha: 0, y: 40, duration: .5, ease: "power2.out"}, at("#scene-hook"));\n'
+    + 'timeline.from("#scene-point h1", {autoAlpha: 0, y: 40, duration: .5, ease: "power2.out"}, at("#scene-point"));',
+    stage,
+    async (dir) => {
+      const findings = await checkSceneEntrances(dir, entrancePlan);
+      assert.equal(findings.length, 1);
+      assert.equal(findings[0]?.severity, "info", "this one judges rather than verifies");
+      assert.equal(findings[0]?.code, "repeated_scene_entrance");
+    },
+  );
+
+  await withTiming(
+    'timeline.from("#scene-hook h1", {autoAlpha: 0, y: 40, duration: .5, ease: "power2.out"}, at("#scene-hook"));\n'
+    + 'timeline.from("#scene-point .slab", {scaleX: 0, duration: .5, ease: "power3.inOut"}, at("#scene-point"));',
+    stage,
+    async (dir) => assert.deepEqual(await checkSceneEntrances(dir, entrancePlan), []),
   );
 });

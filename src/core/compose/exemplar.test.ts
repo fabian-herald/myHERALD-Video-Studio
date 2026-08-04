@@ -8,7 +8,10 @@ import {findRogueColors} from "../brand/tokens.ts";
 import {compositionSize} from "../gen/substance.ts";
 import {videoPlanZ, type VideoPlan} from "../plan/schema.ts";
 import {
+  checkBrandRailPersistence,
   checkCanonicalBrandLockups,
+  checkNumericTiming,
+  checkSceneEntrances,
   checkCanvasLiterals,
   checkPerpetualMotionSource,
   checkStylesheetLinks,
@@ -115,6 +118,21 @@ test("the exemplar trips none of the Stage 4a rules", async () => {
 
   // Nothing in it is invisible, so nothing in it can answer the copy rule invisibly.
   assert.deepEqual([...visuallyHiddenClasses(await read("styles.css"))], [], "hidden classes");
+});
+
+test("the exemplar trips none of the Stage 4b rules either", async () => {
+  const parsed = await plan();
+
+  // Its rail spans 0–45.740 and fades 0.14s before the final section, handing the mark to
+  // the outro card. That is the good version of the thing the rule is looking for, which is
+  // why the rule reads a position it cannot evaluate as silence rather than as a defect.
+  assert.deepEqual(await checkBrandRailPersistence(EXEMPLAR, parsed), [], "brand rail");
+
+  // Every position in it is at()/len(); there is not a literal second anywhere.
+  assert.deepEqual(await checkNumericTiming(EXEMPLAR), [], "numeric timings");
+
+  // Six scenes, six different entrances.
+  assert.deepEqual(await checkSceneEntrances(EXEMPLAR, parsed), [], "scene entrances");
 });
 
 test("the exemplar is dense enough to be the bar the composers are held to", async () => {
