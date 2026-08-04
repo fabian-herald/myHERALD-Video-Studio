@@ -104,6 +104,7 @@ export async function checkComposition(options: {
     ...await checkCanonicalBrandLockups(dir, kit, plan),
     ...await checkPerpetualMotionSource(dir),
     ...await checkTransformOrigin(dir),
+    ...await checkLayoutWaivers(dir),
     ...motion ? await checkMotion(dir, plan, onLog) : [],
   ];
 
@@ -309,11 +310,70 @@ export async function checkTokens(dir: string, kit: BrandKit): Promise<CheckFind
 }
 
 /**
+ * Class names whose rule makes an element invisible without removing it from the DOM.
+ *
+ * The screen-reader clip — `position:absolute; width:1px; height:1px; overflow:hidden;
+ * clip:rect(0 0 0 0)` — is the one that matters here, because it is what a composition
+ * reached for when it could not fit the plan's copy and still had to satisfy the copy rule.
+ * The others are included because they answer the rule the same way for the same reason.
+ *
+ * `aria-hidden` is deliberately *not* treated as hidden: it is the correct marking for a
+ * decorative shape that is very much on screen.
+ */
+export function visuallyHiddenClasses(css: string): Set<string> {
+  const hidden = new Set<string>();
+  const rules = css.replace(/\/\*[\s\S]*?\*\//g, "").matchAll(/([^{}]+)\{([^{}]*)\}/g);
+
+  for (const [, selector = "", body = ""] of rules) {
+    const collapsed = body.replace(/\s+/g, "");
+    const invisible = /display:none/i.test(collapsed)
+      || /visibility:hidden/i.test(collapsed)
+      || /(^|;)opacity:0(;|$)/i.test(collapsed)
+      || /clip:rect\(0[,\s]*0[,\s]*0[,\s]*0\)/i.test(collapsed)
+      || /clip-path:inset\(100%\)/i.test(collapsed)
+      || (/(^|;)width:1px/i.test(collapsed) && /(^|;)height:1px/i.test(collapsed));
+    if (!invisible) continue;
+    for (const match of selector.matchAll(/\.([\w-]+)/g)) hidden.add(match[1]!);
+  }
+  return hidden;
+}
+
+/** Drop every element carrying one of those classes, contents included. */
+export function removeHiddenElements(html: string, hidden: ReadonlySet<string>): string {
+  if (!hidden.size) return html;
+  let out = html;
+
+  for (const className of hidden) {
+    const opener = new RegExp(`<([a-zA-Z][\\w-]*)\\b[^>]*\\bclass="[^"]*\\b${escapeRegex(className)}\\b[^"]*"[^>]*>`);
+    for (let match = opener.exec(out); match; match = opener.exec(out)) {
+      const tag = match[1]!;
+      const from = match.index;
+      // Walk balanced tags of the same name, so a nested one does not close the outer.
+      const nested = new RegExp(`<${escapeRegex(tag)}\\b|</${escapeRegex(tag)}\\s*>`, "gi");
+      nested.lastIndex = from + match[0].length;
+      let depth = 1;
+      let to = out.length;
+      for (let inner = nested.exec(out); inner; inner = nested.exec(out)) {
+        depth += inner[0].startsWith("</") ? -1 : 1;
+        if (depth === 0) {
+          to = inner.index + inner[0].length;
+          break;
+        }
+      }
+      out = `${out.slice(0, from)} ${out.slice(to)}`;
+    }
+  }
+  return out;
+}
+
+/**
  * Ties the composition back to the plan. This is what keeps the video editable:
  * as long as ids and copy line up, a text change can be applied without the model.
  */
 async function checkPlanConformance(dir: string, plan: VideoPlan, fps: number): Promise<CheckFinding[]> {
   const html = await fs.readFile(path.join(dir, "index.html"), "utf8").catch(() => "");
+  const css = await fs.readFile(path.join(dir, "styles.css"), "utf8").catch(() => "");
+  const hidden = visuallyHiddenClasses(css);
   const findings: CheckFinding[] = [];
   const frameMs = 1000 / fps;
 
@@ -355,8 +415,31 @@ async function checkPlanConformance(dir: string, plan: VideoPlan, fps: number): 
         /<img\b[^>]*\balt="([^"]*)"[^>]*>/gi,
         " $1 ",
       );
-      const rendered = normalise(stripTags(withImageLabels));
-      if (!rendered.includes(normalise(section.onScreen))) {
+      // What the viewer can actually read. A composition that could not fit the plan's copy
+      // has been observed satisfying this rule with `position:absolute; width:1px;
+      // height:1px; clip:rect(0 0 0 0)` — the screen-reader idiom, invisible on screen. The
+      // rule exists to guarantee the copy is *rendered*, so hidden text cannot answer it.
+      const expected = normalise(section.onScreen);
+      const inMarkup = normalise(stripTags(withImageLabels)).includes(expected);
+      const onScreen = normalise(stripTags(removeHiddenElements(withImageLabels, hidden)))
+        .includes(expected);
+
+      if (inMarkup && !onScreen) {
+        findings.push({
+          severity: "error",
+          code: "hidden_plan_copy",
+          message:
+            `scene-${section.id} carries its on-screen copy only inside a visually hidden `
+            + "element, so no viewer ever sees it.",
+          fixHint:
+            "Delete the hidden element and set the copy as real type in the composition. "
+            + "If it will not fit, the layout is the thing to change, not the visibility.",
+          source: "plan",
+          file: "index.html",
+          sectionId: section.id,
+          selector: `#scene-${section.id}`,
+        });
+      } else if (!onScreen) {
         findings.push({
           severity: "error",
           code: "copy_drift",
@@ -732,6 +815,35 @@ export async function checkCanonicalBrandLockups(
       logo.includesTagline
       && new RegExp(`logo-${escapeRegex(logo.id)}\\.[a-z0-9]+`, "i").test(scene?.inner ?? ""));
 
+    // The mirror of the rule below, and the one the owner actually noticed: the end card
+    // showing the tagline twice, once as artwork and once as type under it.
+    //
+    // Conditioned on the plan, because the plan is usually to blame. Every plan written so
+    // far put "<name>\n<tagline>\n<website>" in the final section's `onScreen`, which
+    // `copy_drift` then demands verbatim — the composer had no legal alternative. Planner
+    // rule 11 stops new plans doing that; this catches the composer that does it anyway.
+    const tagline = kit.tagline?.trim() ?? "";
+    const planWantsTagline = tagline && normalise(final.onScreen ?? "").includes(normalise(tagline));
+    if (scene && tagline && taglineInLockup && !planWantsTagline) {
+      const asType = normalise(stripTags(scene.inner)).includes(normalise(tagline));
+      if (asType) {
+        findings.push({
+          severity: "warning",
+          code: "tagline_duplicated",
+          message:
+            `scene-${final.id} sets "${tagline}" as type beside a lockup whose artwork `
+            + "already renders it, so the viewer reads the same words twice.",
+          fixHint:
+            "Delete the tagline text. The lockup carries it; give the space to the website "
+            + "or to nothing.",
+          source: "tokens",
+          file: "index.html",
+          sectionId: final.id,
+          selector: `#scene-${final.id}`,
+        });
+      }
+    }
+
     if (scene && !plan.cta) {
       const visible = normalise(stripTags(scene.inner));
       for (const [field, expected] of [
@@ -840,6 +952,112 @@ export async function checkPerpetualMotionSource(dir: string): Promise<CheckFind
     line: number,
     snippet: excerpt,
   }));
+}
+
+const VOID_TAGS = new Set(["br", "img", "input", "meta", "link", "hr", "source", "area", "col"]);
+
+/** `data-layout-allow-overflow` is not here: bleeding off-canvas is a different decision. */
+const WAIVER = /data-layout-allow-(?:overlap|occlusion)\b/;
+
+interface MarkupNode {
+  tag: string;
+  className: string;
+  waived: boolean;
+  text: string;
+  line: number;
+  openTag: string;
+  parent: MarkupNode | null;
+  children: MarkupNode[];
+  /** Offset just past the open tag; `text` is filled in when the close tag is reached. */
+  textFrom: number;
+}
+
+/** A shallow element tree — enough to ask who a node's parent and siblings are. */
+function markupTree(html: string): MarkupNode[] {
+  const nodes: MarkupNode[] = [];
+  const stack: MarkupNode[] = [];
+  const tags = /<(\/?)([a-zA-Z][\w-]*)((?:"[^"]*"|'[^']*'|[^>])*?)(\/?)>/g;
+
+  for (let match = tags.exec(html); match; match = tags.exec(html)) {
+    const [whole, closing, rawTag = "", attrs = "", selfClosing] = match;
+    const tag = rawTag.toLowerCase();
+    if (VOID_TAGS.has(tag)) continue;
+    if (closing) {
+      const open = stack.pop();
+      if (open) open.text = stripTags(html.slice(open.textFrom, match.index));
+      continue;
+    }
+    if (selfClosing) continue;
+
+    const node: MarkupNode = {
+      tag,
+      className: /class="([^"]*)"/.exec(attrs)?.[1] ?? "",
+      waived: WAIVER.test(attrs),
+      text: "",
+      line: html.slice(0, match.index).split("\n").length,
+      openTag: whole,
+      parent: stack[stack.length - 1] ?? null,
+      children: [],
+      textFrom: match.index + whole.length,
+    };
+    node.parent?.children.push(node);
+    nodes.push(node);
+    stack.push(node);
+  }
+  return nodes;
+}
+
+/**
+ * A layout waiver that silences the checker rather than declaring an intention.
+ *
+ * `data-layout-allow-overlap` and `-occlusion` tell the HyperFrames layout pass that an
+ * overlap is deliberate. They are genuinely needed — the approved exemplar's hook is a
+ * stack of five sheets deliberately sitting on top of one another, and without the waivers
+ * that scene could not exist. But nothing checked *how* they were used, and the difference
+ * between the two uses is visible in the markup.
+ *
+ * A deliberate overlap is a relationship, so it is declared on both parties: in the
+ * exemplar, `.sheet-stack` is waived and so is every `.sheet` inside it. A waiver on one
+ * element alone says "let anything overlap me", which is not a design decision. That is
+ * what put a yellow "VOLUME" chip across the "Th" of a headline and an axis label through
+ * the word "measure", with no finding raised, in a composition that passed every gate.
+ *
+ * Measured across every composition in the repo: dba07c 0 of 6, the approved 7e83b7 0 of 3,
+ * and 0 for five more that shipped. The three-of-three composition is the one with the
+ * reported overlaps.
+ */
+export async function checkLayoutWaivers(dir: string): Promise<CheckFinding[]> {
+  const html = await fs.readFile(path.join(dir, "index.html"), "utf8").catch(() => "");
+  if (!html.trim()) return [];
+
+  return markupTree(html)
+    .filter((node) => node.waived)
+    .filter((node) => {
+      const siblings = node.parent?.children ?? [];
+      const grouped = node.parent?.waived
+        || node.children.filter((child) => child.waived).length >= 2
+        || siblings.some((sibling) => sibling !== node && sibling.waived);
+      // A waiver on a purely decorative shape is a design call about shapes. On live type
+      // it is the reader's ability to read that is being waived.
+      return !grouped && node.text.trim().length > 0;
+    })
+    .map((node): CheckFinding => ({
+      severity: "warning",
+      code: "lone_layout_waiver",
+      message:
+        `index.html:${node.line} waives the layout check on <${node.tag}`
+        + `${node.className ? ` class="${node.className}"` : ""}>, which carries text, and `
+        + "nothing it overlaps is waived in return — so this silences the check rather than "
+        + "declaring an intention.",
+      fixHint:
+        "Either move whatever overlaps this text, or declare the overlap on both parties: "
+        + "waive the group they both sit in, the way a deliberately stacked set is waived.",
+      source: "plan",
+      file: "index.html",
+      line: node.line,
+      selector: node.className ? `.${node.className.split(/\s+/)[0]}` : node.tag,
+      snippet: node.openTag.slice(0, 200),
+    }));
 }
 
 /**

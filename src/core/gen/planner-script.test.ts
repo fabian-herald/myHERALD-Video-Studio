@@ -42,3 +42,19 @@ test("the caption caps still reach the planner from their single source", () => 
   assert.equal(CAPTION_MAX_WORDS, 8);
   assert.equal(CAPTION_MAX_CHARS, 52);
 });
+
+test("the planner is told the end card's words are already in the artwork", () => {
+  // Every plan in the repo ended with `onScreen: "<name>\n<tagline>\n<website>"`, and the
+  // composition places a lockup whose artwork renders the name and the tagline. That is the
+  // tagline twice on the frame a viewer is most likely to screenshot — and because
+  // `copy_drift` demands the string verbatim, a composer with no room for it resorted to
+  // hiding a copy in a one-pixel element. Both symptoms, one cause, fixed at the plan.
+  const source = planner();
+  assert.match(source, /final brand card is a supplied image/i);
+  assert.match(source, /The name and the tagline arrive in the artwork/);
+  // Interpolated from the kit, so a brand with a different tagline gets the right sentence
+  // rather than one hard-coded around myHERALD's.
+  assert.match(source, /\$\{request\.kit\.website\}/);
+  assert.match(source, /\$\{request\.kit\.tagline\}/);
+  assert.doesNotMatch(source, /Autonomous AI Content Engine/);
+});

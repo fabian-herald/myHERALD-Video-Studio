@@ -12,7 +12,9 @@ import {
   checkCanvasLiterals,
   checkPerpetualMotionSource,
   checkStylesheetLinks,
+  checkLayoutWaivers,
   checkTransformOrigin,
+  visuallyHiddenClasses,
   checkTokens,
   checkWordmark,
 } from "../render/check.ts";
@@ -105,6 +107,14 @@ test("the exemplar trips none of the Stage 4a rules", async () => {
   // rule was written against, and what makes it worth having: the Codex composition that
   // predates this exemplar trips it six times, including on a `.data-bar span`.
   assert.deepEqual(await checkTransformOrigin(EXEMPLAR), [], "transform origins");
+
+  // Its six waivers are all on the deliberately stacked sheets in the hook, declared on the
+  // stack and on every sheet in it. Measured across thirty compositions: this and every
+  // other one that shipped are clean; the ones with reported overlaps score 1 to 6.
+  assert.deepEqual(await checkLayoutWaivers(EXEMPLAR), [], "layout waivers");
+
+  // Nothing in it is invisible, so nothing in it can answer the copy rule invisibly.
+  assert.deepEqual([...visuallyHiddenClasses(await read("styles.css"))], [], "hidden classes");
 });
 
 test("the exemplar is dense enough to be the bar the composers are held to", async () => {

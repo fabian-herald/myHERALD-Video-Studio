@@ -64,6 +64,14 @@ Everything else in the directory is provided and must not be modified.
    through — an `rgba(0,0,0,α)` or `rgba(255,255,255,α)` scrim at α ≤ 0.5 is not opaque
    and does not trip this. A wipe that reveals type is fine; a wipe that buries it is not.
    If you cannot tell which you have built, you have built the second one.
+
+   **`data-layout-allow-overlap` and `data-layout-allow-occlusion` are not a way to make
+   this finding go away.** A deliberate overlap is a relationship, so declare it on both
+   parties: the exemplar's stack of sheets waives the stack *and* every sheet in it. A
+   waiver on one text element alone says "let anything cross me", which is not a design
+   decision — and it has shipped a yellow chip across the first two letters of a headline
+   and an axis label through the middle of a word, with no finding raised. This is checked.
+   If type is being crossed, move what crosses it.
 9. **Never hardcode a scene's time in `animation.js`. Read it from the DOM.**
 
    ```js

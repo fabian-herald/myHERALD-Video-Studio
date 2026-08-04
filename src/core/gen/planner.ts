@@ -399,7 +399,15 @@ Rules:
    \`factId\` from the figures listed above — the run is refused otherwise, so do not invent
    an id, do not reuse one for a value it does not state, and do not round a figure to look
    neater. \`caption\` is the source note and is rendered on screen, so it must say where
-   the number is from. If no figures are listed above, omit \`data\` entirely.${preset.mediaPolicy === "required" ? "" : "\n   Most videos need no chart at all; one good number beats four."}`;
+   the number is from. If no figures are listed above, omit \`data\` entirely.${preset.mediaPolicy === "required" ? "" : "\n   Most videos need no chart at all; one good number beats four."}
+11. **The final brand card is a supplied image, so do not write its words.** Every plan so
+   far ended with \`onScreen: "${request.kit.name}\\n${request.kit.tagline}\\n${request.kit.website}"\`, and
+   the composition places a lockup asset whose artwork already renders the name and the
+   tagline. The result on screen is the tagline twice, once as artwork and once as type
+   underneath it — and because \`onScreen\` is checked verbatim, a composer with no room for
+   it has been reduced to hiding a copy of the string in a one-pixel element to pass.
+   For the closing section, put \`${request.kit.website}\` in \`onScreen\` and nothing else, or leave it
+   empty. The name and the tagline arrive in the artwork.`;
 }
 
 function parseJson(text: string): unknown {

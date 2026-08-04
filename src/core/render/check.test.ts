@@ -10,7 +10,10 @@ import {
   checkDataBarProportions,
   checkPerpetualMotionSource,
   checkStylesheetLinks,
+  checkLayoutWaivers,
   checkTransformOrigin,
+  removeHiddenElements,
+  visuallyHiddenClasses,
   checkTokens,
   REQUIRED_STYLESHEETS,
   checkWordmark,
@@ -749,6 +752,129 @@ test("one target is reported once, however many times it is scaled", async () =>
     async (dir) => {
       const findings = await checkTransformOrigin(dir);
       assert.deepEqual(findings.map((finding) => finding.selector), [".rule", ".other"]);
+    },
+  );
+});
+
+// ── waivers, hidden copy, and the tagline set twice ──────────────────────────────
+
+test("a waiver declared across a group is a design decision and passes", async () => {
+  // The exemplar's hook: five sheets deliberately stacked on top of one another. Without
+  // these waivers that scene cannot exist, so the rule must not touch it.
+  await withHtml(
+    '<div class="sheet-stack" data-layout-allow-overlap data-layout-allow-occlusion>'
+    + '<article class="sheet" data-layout-allow-overlap data-layout-allow-occlusion><b>POST</b></article>'
+    + '<article class="sheet" data-layout-allow-overlap data-layout-allow-occlusion><b>POST</b></article>'
+    + '<article class="sheet lead" data-layout-allow-overlap data-layout-allow-occlusion><h1>Consistency</h1></article>'
+    + "</div>",
+    async (dir) => assert.deepEqual(await checkLayoutWaivers(dir), []),
+  );
+});
+
+test("a waiver on one text element alone is a mute button and is flagged", async () => {
+  // The real defect: with the headline waived and nothing else, a chip and an axis label
+  // both landed on top of "The wrong measure" and no gate said a word.
+  await withHtml(
+    '<div class="mistake-world"><div class="measure-title" data-layout-allow-overlap>'
+    + "<h1>The wrong measure</h1></div>"
+    + '<div class="mistake-flag">VOLUME</div></div>',
+    async (dir) => {
+      const findings = await checkLayoutWaivers(dir);
+      assert.equal(findings.length, 1);
+      assert.equal(findings[0]?.code, "lone_layout_waiver");
+      assert.equal(findings[0]?.selector, ".measure-title");
+    },
+  );
+});
+
+test("a waiver on a shape with no text is left alone", async () => {
+  // Waiving an overlap between decorative shapes is a decision about shapes. Waiving it on
+  // live type is waiving the reader's ability to read.
+  await withHtml(
+    '<div class="world"><div class="orbit" data-layout-allow-overlap aria-hidden="true"><i></i></div></div>',
+    async (dir) => assert.deepEqual(await checkLayoutWaivers(dir), []),
+  );
+});
+
+test("a visually hidden element cannot answer the on-screen copy rule", () => {
+  const hidden = visuallyHiddenClasses(
+    ".sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }\n"
+    + ".gone { display: none; }\n"
+    + ".masked { clip-path: inset(100%); }\n"
+    + ".visible { width: 1px; }",
+  );
+  assert.deepEqual([...hidden].sort(), ["gone", "masked", "sr-only"]);
+
+  const html = '<p class="sr-only">myHERALD</p><p class="cta-url">myherald.io</p>';
+  assert.equal(removeHiddenElements(html, hidden).includes("myHERALD"), false);
+  assert.equal(removeHiddenElements(html, hidden).includes("myherald.io"), true);
+});
+
+test("aria-hidden is not visually hidden — it is how a visible decoration is marked", () => {
+  assert.equal(visuallyHiddenClasses('.orbit[aria-hidden="true"] { opacity: 1; }').size, 0);
+});
+
+test("the tagline is not set as type beside a lockup that already renders it", async () => {
+  const kitWith = outroKit(true);
+  const planNoTagline = {
+    sections: [{
+      id: "brand-signature", kind: "outro", startMs: 0, durationMs: 4000, phrases: [],
+      onScreen: "myherald.io",
+    }],
+  } as unknown as VideoPlan;
+
+  await withHtml(
+    outroHtml(
+      '<img class="outro-lockup" src="media/logo-lockup-light.png" alt="myHERALD">'
+      + '<p class="outro-context">Autonomous AI Content Engine</p>'
+      + '<div class="cta-url">myherald.io</div>',
+    ),
+    async (dir) => {
+      const codes = (await checkCanonicalBrandLockups(dir, kitWith, planNoTagline))
+        .map((finding) => finding.code);
+      assert.ok(codes.includes("tagline_duplicated"), codes.join(", "));
+    },
+  );
+
+  // The plan asking for it is the usual case, and then the composer had no choice — the
+  // finding belongs on the plan, which is what planner rule 11 addresses.
+  const planWantsTagline = {
+    sections: [{
+      id: "brand-signature", kind: "outro", startMs: 0, durationMs: 4000, phrases: [],
+      onScreen: "myHERALD\nAutonomous AI Content Engine\nmyherald.io",
+    }],
+  } as unknown as VideoPlan;
+  await withHtml(
+    outroHtml(
+      '<img class="outro-lockup" src="media/logo-lockup-light.png" alt="myHERALD">'
+      + '<p class="outro-context">Autonomous AI Content Engine</p>'
+      + '<div class="cta-url">myherald.io</div>',
+    ),
+    async (dir) => {
+      const codes = (await checkCanonicalBrandLockups(dir, kitWith, planWantsTagline))
+        .map((finding) => finding.code);
+      assert.equal(codes.includes("tagline_duplicated"), false);
+    },
+  );
+});
+
+test("a lockup that does not carry the tagline still wants it in type", async () => {
+  const planNoTagline = {
+    sections: [{
+      id: "brand-signature", kind: "outro", startMs: 0, durationMs: 4000, phrases: [],
+      onScreen: "myherald.io",
+    }],
+  } as unknown as VideoPlan;
+  await withHtml(
+    outroHtml(
+      '<img class="outro-lockup" src="media/logo-lockup-light.png" alt="myHERALD">'
+      + '<p class="outro-context">Autonomous AI Content Engine</p>'
+      + '<div class="cta-url">myherald.io</div>',
+    ),
+    async (dir) => {
+      const codes = (await checkCanonicalBrandLockups(dir, outroKit(false), planNoTagline))
+        .map((finding) => finding.code);
+      assert.equal(codes.includes("tagline_duplicated"), false, "nothing is duplicated here");
     },
   );
 });
