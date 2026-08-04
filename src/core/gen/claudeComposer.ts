@@ -5,6 +5,7 @@ import {compatibleNode} from "../render/node.ts";
 import {
   actionableRepairFindings,
   assertCompositionWritten,
+  EXEMPLAR_FRAMING,
   formatFindingForRepair,
   registerComposer,
   type ComposeContext,
@@ -285,6 +286,8 @@ export const claudeComposer: Composer = {
     return drive(
       [
         "Read CONTRACT.md and BRIEF.md in this directory, then author the composition.",
+        "",
+        EXEMPLAR_FRAMING,
         "",
         "Work through it in this order:",
         "1. Read both documents and the exemplar under exemplar/.",

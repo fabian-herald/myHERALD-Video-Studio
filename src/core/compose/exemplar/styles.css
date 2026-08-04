@@ -1,496 +1,570 @@
-:root {
-  --aubergine: #2a1646;
-  --deep: #1c1425;
-  --yellow: #fcd20c;
-  --lilac: #bc8dd9;
-  --paper: #fffefa;
-  --ink: #21172b;
-  --mint: #2cab82;
-  --serif: Georgia, serif;
-  --sans: Arial, sans-serif;
-  --mono: "Courier New", monospace;
-}
+/*
+ * Consistency Is Not a Point of View — 9:16 thought-leadership short.
+ *
+ * Paper carries the frame. The inverse purple field is used once (scene 2) and the
+ * yellow field once (scene 5); everything else sits on cream or white. Every scene is a
+ * different spatial archetype: low-left type + right-edge stack, full-width bands,
+ * asymmetric split with a right-edge card, a held centre card, a right-aligned field,
+ * and a corner-anchored identity card.
+ *
+ * Colour comes only from tokens.css. The two neutral scrims are the single exception
+ * the contract allows.
+ */
 
-* { box-sizing: border-box; }
-html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; }
-body { background: var(--deep); font-family: var(--sans); }
+/* ── global frame ─────────────────────────────────────────────────────────── */
 
 #stage {
-  position: relative;
-  width: 1080px;
-  height: 1920px;
-  overflow: hidden;
-  color: var(--paper);
-  background: var(--deep);
+  background: var(--brand-background);
+  color: var(--brand-near-black);
 }
 
-.clip { position: absolute; }
-.paper-field, .scene { inset: 0; }
-.paper-field { overflow: hidden; background: var(--deep); }
-.editorial-grid {
-  position: absolute;
+.paper-field {
   inset: 0;
-  opacity: .16;
-  background-image:
-    linear-gradient(rgba(255,254,250,.16) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255,254,250,.16) 1px, transparent 1px);
-  background-size: 108px 108px;
+  background: var(--brand-background);
 }
+
+/* The one continuous accent. It advances one step per scene, then holds. */
 .signal-spine {
-  position: absolute;
-  top: 0;
-  left: 67px;
-  width: 3px;
-  height: 100%;
-  background: rgba(255,254,250,.12);
-}
-.spine-line {
-  position: absolute;
-  inset: 0;
-  display: block;
-  transform-origin: top;
-  background: var(--yellow);
-}
-.spine-node {
-  position: absolute;
-  top: 0;
-  left: 50%;
-  width: 21px;
-  height: 21px;
-  border: 5px solid var(--deep);
-  border-radius: 50%;
-  background: var(--yellow);
-  transform: translate(-50%, -50%);
-}
-.folio {
-  position: absolute;
-  bottom: 78px;
-  color: rgba(255,254,250,.46);
-  font: 700 13px var(--mono);
-  letter-spacing: 2.6px;
-}
-.folio-left { left: 92px; }
-.folio-right { right: 74px; }
-
-.brand-rail {
-  z-index: 70;
-  top: 62px;
-  left: 68px;
-  right: 68px;
-  height: 58px;
-  display: flex;
-  align-items: center;
-  gap: 16px;
-}
-.brand-seal, .cta-seal {
-  display: grid;
-  place-items: center;
-  color: var(--aubergine);
-  background: var(--yellow);
-  font-weight: 950;
-}
-.brand-seal { width: 46px; height: 46px; border-radius: 50%; font-size: 19px; }
-.brand-seal img { width: 100%; height: 100%; object-fit: contain; }
-.rail-wordmark { width: auto; height: 34px; object-fit: contain; }
-.rail-rule { height: 1px; flex: 1; background: rgba(255,254,250,.22); }
-.brand-rail small { color: rgba(255,254,250,.68); font: 700 12px var(--mono); letter-spacing: 2px; }
-
-.scene { padding: 182px 70px 370px 100px; overflow: hidden; }
-.section-number {
-  position: absolute;
-  top: 184px;
-  right: 72px;
-  color: rgba(255,254,250,.48);
-  font: 700 72px/1 var(--serif);
-}
-.section-number.dark { color: rgba(33,23,43,.56); }
-.kicker {
-  margin: 0 0 22px;
-  color: var(--yellow);
-  font: 800 16px var(--mono);
-  letter-spacing: 3.1px;
-}
-.kicker.dark { color: var(--aubergine); }
-h1 {
-  margin: 0;
-  font: 500 98px/.91 var(--serif);
-  letter-spacing: -4.7px;
-}
-h1 em { color: var(--lilac); font-style: italic; }
-
-/* Beat 1 — a voice note becomes an editorial emergency. */
-.hook-slug {
-  display: inline-block;
-  margin: 0 0 35px;
-  padding: 12px 17px 10px;
-  color: var(--ink);
-  background: var(--yellow);
-  font: 900 16px var(--mono);
-  letter-spacing: 2px;
-}
-.hook-title {
-  position: relative;
-  z-index: 4;
-  display: grid;
-  font: 500 112px/.86 var(--serif);
-  letter-spacing: -5.8px;
-}
-.hook-title em { color: var(--lilac); font-style: italic; }
-.voice-field {
-  position: absolute;
-  left: 20px;
-  right: -130px;
-  top: 640px;
-  height: 820px;
-}
-.voice-ring {
-  position: absolute;
-  left: 50px;
-  top: 5px;
-  width: 780px;
-  height: 780px;
-  border: 2px solid rgba(188,141,217,.34);
-  border-radius: 50%;
-}
-.voice-ring::before,
-.voice-ring::after {
-  content: "";
-  position: absolute;
-  border: 1px solid rgba(252,210,12,.24);
-  border-radius: 50%;
-}
-.voice-ring::before { inset: 80px; }
-.voice-ring::after { inset: 180px; }
-.voice-note {
-  position: absolute;
-  top: 173px;
-  left: 128px;
-  width: 720px;
-  padding: 34px 36px 38px;
-  color: var(--ink);
-  background: var(--paper);
-  box-shadow: 0 38px 80px rgba(0,0,0,.32);
-  transform: rotate(-2.5deg);
-}
-.note-top { display: flex; justify-content: space-between; align-items: center; }
-.note-top b, .note-top time { font: 800 13px var(--mono); letter-spacing: 1.5px; }
-.note-top time { color: #6e6174; }
-.waveform { height: 138px; margin: 34px 0 26px; display: flex; align-items: center; gap: 10px; }
-.waveform i {
-  width: 8px;
-  height: 24%;
-  border-radius: 10px;
-  background: var(--aubergine);
-  transform-origin: center;
-}
-.waveform i:nth-child(3n) { height: 68%; }
-.waveform i:nth-child(4n) { height: 91%; }
-.waveform i:nth-child(7n) { height: 48%; }
-.voice-note p { margin: 0; font: 600 33px/1.18 var(--serif); letter-spacing: -.7px; }
-.fragment {
-  position: absolute;
-  padding: 13px 18px;
-  border: 1px solid rgba(255,254,250,.32);
-  color: rgba(255,254,250,.78);
-  background: var(--deep);
-  font: 700 13px var(--mono);
-  letter-spacing: 1.3px;
-}
-.fragment-a { top: 86px; left: 580px; transform: rotate(3deg); }
-.fragment-b { top: 565px; left: 52px; transform: rotate(-4deg); }
-.fragment-c { top: 660px; left: 590px; transform: rotate(2deg); }
-
-/* Beat 2 — conceptual input, intentionally not product UI. */
-.scene-thought h1 { margin-top: 30px; }
-.thought-strip {
-  position: absolute;
-  left: 98px;
-  right: 0;
-  top: 720px;
-  min-height: 360px;
-  padding: 76px 62px 70px 100px;
-  color: var(--ink);
-  background: var(--paper);
-  border-left: 20px solid var(--yellow);
-}
-.thought-marker {
-  position: absolute;
-  top: 0;
-  left: 0;
-  padding: 14px 18px;
-  color: var(--paper);
-  background: var(--aubergine);
-  font: 900 13px var(--mono);
-  letter-spacing: 2px;
-}
-.thought-strip p { margin: 0; font: 600 47px/1.08 var(--serif); letter-spacing: -1.7px; }
-.thought-caret {
-  display: inline-block;
-  width: 6px;
-  height: 54px;
-  margin-top: 24px;
-  background: var(--yellow);
-}
-.handoff-arrow {
-  position: absolute;
-  right: 46px;
-  top: 1140px;
-  width: 560px;
-  height: 180px;
-}
-.handoff-arrow path { fill: none; stroke: var(--lilac); stroke-width: 8; }
-.handoff-arrow .arrow-tip { stroke: var(--yellow); }
-
-/* Beat 3 — editorial transformation, not a simulated dashboard. */
-.transform-layout {
-  position: absolute;
-  left: 74px;
-  right: 52px;
-  top: 500px;
-  display: grid;
-  grid-template-columns: 1fr 112px 1fr;
-  align-items: center;
-}
-.editorial-block {
-  position: relative;
-  min-height: 690px;
-  padding: 46px 34px;
-  display: grid;
-  align-content: space-between;
-  border-top: 10px solid currentColor;
-}
-.editorial-block span { font: 900 18px var(--mono); letter-spacing: 3px; }
-.editorial-block strong { font: 600 47px/1.03 var(--serif); letter-spacing: -1.8px; }
-.editorial-block small { font: 900 13px var(--mono); letter-spacing: 2px; }
-.block-angle { color: var(--paper); background: var(--aubergine); }
-.block-draft { color: var(--ink); background: var(--paper); }
-.block-draft small { color: #228565; }
-.transform-mark {
-  z-index: 3;
-  display: grid;
-  place-items: center;
-}
-.transform-mark i {
-  position: absolute;
-  width: 102px;
-  height: 102px;
-  border: 2px solid var(--yellow);
-  border-radius: 50%;
-}
-.transform-mark b { color: var(--yellow); font: 400 64px var(--serif); }
-.proof-rule {
-  position: absolute;
-  left: 94px;
-  right: 62px;
-  bottom: 585px;
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  color: rgba(255,254,250,.68);
-  font: 700 11px var(--mono);
-  letter-spacing: 1.6px;
-}
-.proof-rule i { width: 9px; height: 9px; border-radius: 50%; background: var(--yellow); }
-.proof-rule b { height: 1px; flex: 1; background: rgba(255,254,250,.28); }
-
-/* Beat 4 — one editorial spine, three connected issues. */
-.scene-week h1 { margin-top: 26px; font-size: 90px; }
-.week-spread {
-  position: absolute;
-  left: 94px;
-  right: 40px;
-  top: 700px;
-  height: 680px;
-}
-.week-spine {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  left: 96px;
   width: 4px;
-  background: var(--yellow);
-  transform-origin: top;
+  background: transparent;
 }
-.issue {
-  position: absolute;
-  left: 42px;
-  right: 0;
-  min-height: 164px;
-  padding: 28px 34px 26px 150px;
-  display: grid;
-  grid-template-columns: 170px 1fr;
-  align-items: center;
-  gap: 6px 24px;
-  color: var(--ink);
-  background: var(--paper);
-  box-shadow: 0 20px 50px rgba(0,0,0,.24);
-}
-.issue::before {
-  content: "";
-  position: absolute;
-  left: 45px;
+.signal-spine .spine-node {
   width: 22px;
   height: 22px;
-  border: 6px solid var(--paper);
-  border-radius: 50%;
-  background: var(--yellow);
-  box-shadow: 0 0 0 2px var(--yellow);
+  border-color: var(--brand-background);
 }
-.issue time { grid-row: 1 / span 2; font: 500 42px var(--serif); }
-.issue span { color: #6a5d71; font: 800 11px var(--mono); letter-spacing: 1.8px; }
-.issue strong { font: 600 30px var(--serif); }
-.issue-one { top: 0; }
-.issue-two { top: 218px; left: 88px; }
-.issue-three { top: 436px; left: 134px; }
 
-/* Beat 5 — approval is the emotional center. */
-.scene-approval { color: var(--ink); }
-.approval-field { position: absolute; inset: 0; background: var(--yellow); }
-.approval-copy {
-  position: absolute;
-  left: 92px;
-  right: 50px;
-  top: 310px;
-  display: grid;
+/* The rail is designed around the supplied lockup rather than shrinking it. */
+.brand-rail {
+  height: calc(var(--stage-h) * 0.052);
 }
-.approval-copy span { font: 900 28px var(--mono); letter-spacing: 4px; }
-.approval-copy strong { font: 600 136px/.83 var(--serif); letter-spacing: -7px; }
-.gate-system {
-  position: absolute;
-  left: 82px;
-  right: 70px;
-  top: 720px;
-  height: 510px;
+.rail-lockup {
+  height: calc(var(--stage-h) * 0.05);
+  max-width: 62%;
 }
-.gate-track {
+
+/* Extra masthead room so nothing enters the lockup's clear space. */
+.scene {
+  padding-top: calc(var(--stage-h) * 0.152);
+}
+.scene > .section-number {
+  position: absolute;
+  top: calc(var(--stage-h) * 0.152);
+}
+.scene-head {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--gutter) * 0.5);
+  min-height: calc(var(--stage-h) * 0.022);
+}
+.scene-foot {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: calc(var(--gutter) * 0.6);
+}
+
+.field-purple { background: var(--brand-purple); }
+.field-tint { background: var(--brand-purple50); }
+.field-yellow { background: var(--brand-yellow); }
+.field-paper { background: var(--brand-background); }
+
+/* ── 1 · cheap-consistency ────────────────────────────────────────────────── */
+
+.cheap-body { position: relative; }
+
+.sheet-stack {
+  position: absolute;
+  z-index: 1;
+  top: 0;
+  right: 0;
+  width: 70%;
+  height: 68%;
+}
+
+.sheet {
   position: absolute;
   left: 0;
   right: 0;
-  top: 224px;
-  height: 12px;
-  background: rgba(42,22,70,.18);
-}
-.gate-track i {
-  display: block;
-  width: 74%;
-  height: 100%;
-  background: var(--aubergine);
-  transform-origin: left;
-}
-.gate-stop {
-  position: absolute;
-  left: 74%;
-  top: 40px;
-  width: 360px;
-  height: 360px;
-  transform: translateX(-50%);
-}
-.human-dot {
-  position: absolute;
-  inset: 90px;
-  z-index: 3;
+  top: calc(var(--i) * 16%);
+  height: 34%;
   display: grid;
-  place-items: center;
-  border-radius: 50%;
-  color: var(--paper);
-  background: var(--aubergine);
-  font: 900 19px var(--mono);
-  letter-spacing: 2px;
+  align-content: space-between;
+  padding: calc(var(--gutter) * 0.32) calc(var(--gutter) * 0.4);
+  background: var(--brand-card);
+  border: 1px solid var(--brand-border);
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.1);
 }
-.gate-rings i {
+.sheet b {
+  color: var(--brand-purple);
+  font: 700 var(--brand-size-label) var(--brand-font-mono);
+  letter-spacing: 0.22em;
+}
+.sheet-lines { display: grid; gap: calc(var(--gutter) * 0.28); }
+.sheet-lines i {
+  display: block;
+  height: calc(var(--stage-h) * 0.011);
+  background: var(--brand-border-strong);
+}
+.sheet-lines i:last-child { width: 62%; }
+
+.sheet-lead {
+  background: var(--brand-purple);
+  border-color: var(--brand-purple);
+}
+.sheet-lead b { color: var(--brand-card); }
+.sheet-lead .sheet-lines i { background: var(--brand-light-purple); }
+
+.mark-tag {
   position: absolute;
-  border: 3px solid var(--aubergine);
-  border-radius: 50%;
+  z-index: 3;
+  left: 0;
+  top: 58%;
+  padding: 0.5em 0.7em 0.42em;
+  color: var(--brand-card);
+  background: var(--brand-purple);
+  font: 700 var(--brand-size-label) var(--brand-font-mono);
+  letter-spacing: 0.2em;
 }
-.gate-rings i:nth-child(1) { inset: 52px; opacity: .9; }
-.gate-rings i:nth-child(2) { inset: 18px; opacity: .5; }
-.gate-rings i:nth-child(3) { inset: -24px; opacity: .22; }
-.gate-label {
+
+.cheap-type {
+  position: absolute;
+  z-index: 4;
+  left: 0;
+  bottom: 0;
+  width: 88%;
+}
+.cheap-slab {
+  position: absolute;
+  z-index: 0;
+  left: calc(var(--stage-w) * -0.024);
+  bottom: calc(var(--stage-h) * -0.008);
+  width: 84%;
+  height: 48%;
+  background: var(--brand-yellow);
+  transform-origin: left center;
+}
+.scene-cheap h1 {
+  position: relative;
+  z-index: 1;
+  font-size: calc(var(--brand-size-h1) * 1.42);
+  color: var(--brand-purple);
+}
+.scene-cheap h1 .line-a,
+.scene-cheap h1 .line-b { display: block; }
+.scene-cheap h1 em.line-b { color: var(--brand-near-black); }
+
+/* ── 2 · industry-mistake ─────────────────────────────────────────────────── */
+
+.calendar-body {
+  display: grid;
+  grid-template-rows: repeat(3, 1fr);
+  gap: calc(var(--gutter) * 0.42);
+  align-content: stretch;
+}
+
+.cal-row {
+  position: relative;
+  display: grid;
+  grid-template-columns: calc(var(--stage-w) * 0.13) 1fr calc(var(--stage-w) * 0.21);
+  align-items: center;
+  gap: calc(var(--gutter) * 0.4);
+}
+.cal-day {
+  color: var(--brand-light-purple);
+  font: 700 var(--brand-size-kicker) var(--brand-font-mono);
+  letter-spacing: 0.14em;
+}
+.cal-slab {
+  position: relative;
+  height: 100%;
+  display: grid;
+  align-content: center;
+  gap: calc(var(--gutter) * 0.3);
+  padding: 0 calc(var(--gutter) * 0.45);
+  background: var(--brand-card);
+  /* The slot keeps its outline when it empties, so the row still spans the frame
+     and the day label stays connected to its chip. */
+  border: 2px solid var(--brand-light-purple);
+  transform-origin: left center;
+}
+.cal-slab i {
+  display: block;
+  height: calc(var(--stage-h) * 0.012);
+  background: var(--brand-purple200);
+  transform-origin: left center;
+}
+.cal-slab i:nth-child(2) { width: 84%; }
+.cal-slab i:nth-child(3) { width: 58%; }
+
+.cal-chip {
+  justify-self: end;
+  padding: 0.5em 0.66em 0.42em;
+  color: var(--brand-purple);
+  background: var(--brand-card);
+  border: 2px solid var(--brand-card);
+  font: 700 var(--brand-size-label) var(--brand-font-mono);
+  letter-spacing: 0.16em;
+}
+
+.calendar-foot { align-items: flex-end; }
+.cal-title {
+  color: var(--brand-card);
+  font-size: calc(var(--brand-size-h1) * 1.12);
+}
+.cal-title span { display: block; }
+.cal-verdict {
+  flex: 0 0 auto;
+  padding: 0.62em 0.7em 0.52em;
+  color: var(--brand-near-black);
+  background: var(--brand-yellow);
+  font: 700 var(--brand-size-kicker) var(--brand-font-mono);
+  letter-spacing: 0.16em;
+  transform-origin: right bottom;
+}
+
+/* ── 3 · deadline-receipt ─────────────────────────────────────────────────── */
+
+.receipt-body {
+  grid-auto-flow: column;
+  grid-template-columns: 1fr calc(var(--stage-w) * 0.3);
+  gap: calc(var(--gutter) * 0.8);
+  align-content: stretch;
+}
+
+.receipt-left {
+  display: grid;
+  align-content: start;
+  gap: calc(var(--gutter) * 0.5);
+}
+.receipt-head { color: var(--brand-purple); }
+.receipt-head .data-figure {
+  display: block;
+  font-size: calc(var(--brand-size-display) * 2.1);
+  letter-spacing: -0.06em;
+}
+.receipt-head em {
+  display: block;
+  color: var(--brand-purple);
+  font-size: calc(var(--brand-size-h2) * 1.05);
+}
+.receipt-note {
+  max-width: 22ch;
+  color: var(--brand-near-black);
+  font: 400 var(--brand-size-body) / 1.28 var(--brand-font-body);
+}
+.deadline-band {
+  justify-self: start;
+  padding: 0.66em 0.8em 0.56em;
+  color: var(--brand-card);
+  background: var(--brand-purple);
+  font: 700 var(--brand-size-label) var(--brand-font-mono);
+  letter-spacing: 0.2em;
+}
+.receipt-rule {
+  height: 2px;
+  background: var(--brand-border-strong);
+  transform-origin: left center;
+}
+.scene-receipt .data-source {
+  color: var(--brand-near-black);
+  opacity: 1;
+}
+
+.receipt-card {
+  position: relative;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  gap: calc(var(--gutter) * 0.4);
+  padding-bottom: calc(var(--gutter) * 0.5);
+  background: var(--brand-card);
+  border: 1px solid var(--brand-border);
+  box-shadow: 0 22px 56px rgba(0, 0, 0, 0.12);
+  transform-origin: bottom center;
+}
+.card-head {
+  padding: 0.9em 0.8em 0.8em;
+  color: var(--brand-card);
+  background: var(--brand-purple);
+  font: 700 var(--brand-size-label) var(--brand-font-mono);
+  letter-spacing: 0.12em;
+  text-align: center;
+}
+.gauge {
+  position: relative;
+  margin: 0 auto;
+  width: 62%;
+  height: 100%;
+  background: var(--brand-purple50);
+}
+.gauge-empty {
+  position: absolute;
+  inset: 0 0 25% 0;
+  background: var(--brand-purple100);
+}
+.gauge-bar.data-bar {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: 0;
+  background: none;
+}
+.gauge-bar.data-bar > span {
+  transform-origin: bottom center;
+  transform: scaleY(var(--fill, 0));
+  border-radius: 0;
+  background: var(--brand-purple);
+}
+.gauge-cap {
+  position: absolute;
+  left: calc(var(--stage-w) * -0.03);
+  right: calc(var(--stage-w) * -0.03);
+  bottom: 25%;
+  height: calc(var(--stage-h) * 0.008);
+  background: var(--brand-yellow);
+}
+.gauge-cap b {
+  position: absolute;
+  right: 0;
+  bottom: calc(var(--stage-h) * 0.012);
+  color: var(--brand-purple);
+  font: 700 var(--brand-size-kicker) var(--brand-font-mono);
+  letter-spacing: 0.04em;
+}
+.gauge-foot {
+  color: var(--brand-purple);
+  font: 700 var(--brand-size-label) var(--brand-font-mono);
+  letter-spacing: 0.16em;
+  text-align: center;
+}
+
+/* ── 4 · editorial-turn ───────────────────────────────────────────────────── */
+
+.scene-turn .lane-set {
+  bottom: calc(var(--caption-band) * 0.86);
+  overflow: hidden;
+}
+.lane {
+  position: absolute;
+  left: -26%;
+  width: 152%;
+  height: calc(var(--stage-h) * 0.05);
+  background: var(--brand-purple100);
+}
+.lane-a { top: 24%; transform: rotate(-11deg); }
+.lane-b { top: 55%; height: calc(var(--stage-h) * 0.038); background: var(--brand-yellow); transform: rotate(-11deg); }
+.lane-c { top: 83%; transform: rotate(-11deg); }
+
+.turn-body { align-content: center; }
+
+.turn-card {
+  position: relative;
+  padding: calc(var(--gutter) * 0.85) calc(var(--gutter) * 0.9) calc(var(--gutter) * 0.75);
+  display: grid;
+  gap: calc(var(--gutter) * 0.45);
+  background: var(--brand-card);
+  box-shadow: 0 26px 60px rgba(0, 0, 0, 0.14);
+}
+.turn-rail {
   position: absolute;
   left: 0;
-  top: 285px;
-  padding: 26px 32px;
-  color: var(--paper);
-  background: var(--aubergine);
-  display: grid;
-  gap: 8px;
+  top: 0;
+  bottom: 0;
+  width: calc(var(--stage-w) * 0.018);
+  background: var(--brand-yellow);
+  transform-origin: top center;
 }
-.gate-label small { color: var(--lilac); font: 800 11px var(--mono); letter-spacing: 1.8px; }
-.gate-label b { font: 900 19px var(--sans); }
-.approval-note {
-  position: absolute;
-  left: 92px;
-  bottom: 610px;
-  margin: 0;
-  font: 600 34px/1.15 var(--serif);
-  letter-spacing: -.5px;
+.turn-label {
+  color: var(--brand-purple);
+  font: 700 var(--brand-size-label) var(--brand-font-mono);
+  letter-spacing: 0.22em;
 }
-
-/* Beat 6 — a clean paper CTA. */
-.cta-wipe { position: absolute; inset: 0; background: var(--paper); transform-origin: bottom; }
-.cta-lockup {
-  position: absolute;
-  left: 94px;
-  right: 70px;
-  top: 310px;
-  color: var(--ink);
+.scene-turn h1 {
+  color: var(--brand-purple);
+  font-size: calc(var(--brand-size-h1) * 1.18);
 }
-.cta-seal { width: 100px; height: 100px; margin-bottom: 32px; font-size: 42px; }
-.cta-lockup > p { margin: 0 0 52px; font-size: 29px; font-weight: 900; }
-.cta-lockup h1 { font-size: 101px; }
-.cta-lockup h1 em { color: var(--aubergine); }
-.cta-url {
-  display: inline-flex;
-  align-items: center;
-  gap: 26px;
-  margin-top: 70px;
-  padding: 24px 30px;
-  color: var(--paper);
-  background: var(--aubergine);
-  font: 900 35px var(--sans);
+.scene-turn h1 span { display: block; }
+.turn-band {
+  justify-self: start;
+  padding: 0.66em 0.82em 0.55em;
+  color: var(--brand-card);
+  background: var(--brand-purple);
+  font: 700 var(--brand-size-label) var(--brand-font-mono);
+  letter-spacing: 0.18em;
 }
-.cta-url b { color: var(--yellow); font-size: 39px; }
-.cta-rule {
-  position: absolute;
-  left: 92px;
-  right: 72px;
-  bottom: 188px;
+.turn-panel {
   display: flex;
   align-items: center;
-  gap: 16px;
-  color: #655a6c;
-  font: 800 12px var(--mono);
-  letter-spacing: 1.9px;
+  gap: calc(var(--gutter) * 0.5);
+  margin-top: calc(var(--gutter) * 0.6);
+  padding: calc(var(--gutter) * 0.6) calc(var(--gutter) * 0.7);
+  background: var(--brand-card);
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.1);
 }
-.cta-rule i { height: 1px; flex: 1; background: #bfb8c2; }
+.turn-panel i {
+  flex: 0 0 auto;
+  width: calc(var(--stage-w) * 0.026);
+  height: calc(var(--stage-w) * 0.026);
+  background: var(--brand-yellow);
+}
+.turn-panel span {
+  color: var(--brand-purple);
+  font: 700 var(--brand-size-kicker) var(--brand-font-mono);
+  letter-spacing: 0.16em;
+}
 
-/* Captions — authored and animated directly by HyperFrames/GSAP. */
-.caption-layer {
-  z-index: 90;
-  left: 58px;
-  right: 58px;
-  bottom: 296px;
-  height: 218px;
+/* ── 5 · payoff ───────────────────────────────────────────────────────────── */
+
+/*
+ * The lede and the ledger are the two anchors of this frame, so they take the top
+ * and the bottom of the body rather than sitting as one compact block with four
+ * hundred pixels of empty yellow beneath them. The rule stays welded to the title
+ * inside `.payoff-lede`, so no hairline is ever left stranded between the groups.
+ * The selector is scoped to the scene so it outranks `.scene > .scene-body`.
+ */
+.scene-payoff .scene-body {
+  align-content: space-between;
+  justify-items: end;
+  padding-bottom: calc(var(--stage-h) * 0.035);
+}
+.payoff-lede {
+  justify-self: stretch;
   display: grid;
-  place-items: center;
-  pointer-events: none;
+  gap: calc(var(--gutter) * 0.5);
 }
-.caption-page {
+.payoff-title {
+  color: var(--brand-near-black);
+  font-size: calc(var(--brand-size-h1) * 1.3);
+  text-align: right;
+}
+.payoff-title span { display: block; }
+.payoff-rule {
+  justify-self: stretch;
+  height: calc(var(--stage-h) * 0.004);
+  background: var(--brand-near-black);
+  transform-origin: right center;
+}
+.payoff-panel {
+  justify-self: stretch;
+  display: grid;
+  gap: 0;
+  background: var(--brand-purple);
+}
+.p-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: calc(var(--gutter) * 0.55);
+  padding: calc(var(--gutter) * 0.62) calc(var(--gutter) * 0.6);
+}
+.row-fill {
   position: absolute;
-  max-width: 930px;
-  margin: 0;
-  padding: 24px 34px 27px;
-  border-radius: 25px;
-  color: var(--paper);
-  background: rgba(28,20,37,.92);
-  box-shadow: 0 14px 44px rgba(0,0,0,.24);
-  text-align: center;
-  font: 850 80px/.98 var(--sans);
-  letter-spacing: -3.1px;
+  inset: 0;
+  z-index: 0;
+  transform-origin: left center;
 }
-.caption-page .word { display: inline; color: var(--paper); }
-.caption-page .word + .word::before { content: " "; }
+.row-template .row-fill { background: rgba(255, 255, 255, 0.1); }
+/* The marked row is white, not yellow: a yellow mark on the yellow field would
+   dissolve into the ground and the beat would read as the row disappearing. */
+.row-judgment .row-fill { background: var(--brand-card); }
+.p-row .row-key,
+.p-row .row-name {
+  position: relative;
+  z-index: 1;
+  color: var(--brand-card);
+}
+.p-row .row-key {
+  font: 400 var(--brand-size-h2) / 1 var(--brand-font-display);
+}
+.p-row .row-name {
+  font: 700 var(--brand-size-kicker) var(--brand-font-mono);
+  letter-spacing: 0.16em;
+}
 
-@media (prefers-reduced-motion: reduce) {
-  * { animation: none !important; }
+/* ── 6 · brand-outro ──────────────────────────────────────────────────────── */
+
+/*
+ * The closing frame is a two-part card, not a mark on empty paper: a ruled paper
+ * masthead holding the supplied lockup, and a deep plate that bleeds to the canvas
+ * edges carrying the descriptor and the address. Nothing floats.
+ *
+ * The plate is a bounded band, not a bleeding lower half. A half-and-half split
+ * left the mark stranded in white, the words stranded in purple, and four hundred
+ * pixels of dead field under them. Here the rule, the mark and its underscore
+ * gather at the top as a masthead, the band takes the lower third with the
+ * descriptor and the address centred inside it, and paper closes the frame below,
+ * so the three elements read as one card rather than two disconnected halves.
+ */
+.scene-outro {
+  padding-top: calc(var(--stage-h) * 0.085);
+  padding-bottom: calc(var(--caption-band) * 0.25);
+}
+
+.outro-head { display: block; }
+.outro-topline {
+  width: 100%;
+  height: 4px;
+  background: var(--brand-purple);
+  transform-origin: left center;
+}
+
+/* Scoped so it outranks `.scene > .scene-body`: the mark belongs with the topline. */
+.scene-outro .scene-body { align-content: start; }
+.outro-card {
+  justify-self: stretch;
+  justify-items: start;
+  gap: calc(var(--stage-h) * 0.046);
+}
+/* The mark is given real presence and more clear space, so the masthead reads as
+   the subject of the frame rather than a small island on paper. */
+.outro-lockup {
+  display: block;
+  width: auto;
+  height: calc(var(--stage-h) * 0.082);
+  max-width: 86%;
+  object-fit: contain;
+}
+.outro-rule {
+  justify-self: stretch;
+  height: 4px;
+  background: var(--brand-border-strong);
+  transform-origin: left center;
+}
+
+/* The band is declared as a height, and the two lines sit centred in it, so the
+   plate never resolves with a block of empty purple above or below the type. */
+.outro-foot {
+  position: relative;
+  display: grid;
+  justify-items: start;
+  align-content: center;
+  gap: calc(var(--gutter) * 0.42);
+  min-height: calc(var(--stage-h) * 0.44);
+  padding: 0;
+}
+.outro-base {
+  position: absolute;
+  z-index: 0;
+  left: calc(var(--gutter) * -1);
+  right: calc(var(--gutter) * -0.9);
+  top: 0;
+  bottom: 0;
+  background: var(--brand-purple);
+  transform-origin: bottom center;
+}
+.scene-outro .outro-context {
+  position: relative;
+  z-index: 1;
+  max-width: 18ch;
+  color: var(--brand-card);
+  font: 400 calc(var(--brand-size-h2) * 0.9) / 1.06 var(--brand-font-display);
+  letter-spacing: -0.02em;
+}
+.scene-outro .cta-url {
+  position: relative;
+  z-index: 1;
+  margin-top: 0;
+  color: var(--brand-near-black);
+  background: var(--brand-yellow);
 }

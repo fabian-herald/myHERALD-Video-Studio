@@ -37,6 +37,30 @@ export interface ComposeResult {
   notes: string;
 }
 
+/**
+ * What every backend is told about `exemplar/`, in one place.
+ *
+ * It used to be Codex-only, and it warned that the reference "sets the brand name as live
+ * type, builds a seal by hand, reaches outside the directory with ../media/ paths, and links
+ * neither tokens.css nor the block stylesheets". All four were true of the old exemplar and
+ * none are true of the one that replaced it, so the warning had become a set of false claims
+ * about a file the model can read — worse than no framing at all, which is what Claude had.
+ *
+ * The wording tracks CONTRACT §9 deliberately. A third phrasing of the same rule is how the
+ * two backends drift apart.
+ */
+export const EXEMPLAR_FRAMING = [
+  "Read exemplar/index.html, exemplar/styles.css and exemplar/animation.js before deciding",
+  "anything, and look at exemplar/reference-contact-sheet.png. It is a composition that was",
+  "reviewed and approved, and it is there for one purpose: how much a finished scene carries.",
+  "Count the elements in its thinnest section. That density is the bar, and a sparse scene",
+  "that passes every check is still a failure.",
+  "",
+  "Its scenes, section ids, on-screen copy and timings belong to a different brief and are",
+  "already used. Its root element carries that brief's data-composition-id and data-duration;",
+  "yours come from BRIEF.md. It is calibration, not a template.",
+].join("\n");
+
 /** The exact same rendered evidence and rubric is given to every composer backend. */
 export interface VisualReviewRequest {
   /** Absolute paths. The backend either opens these files or attaches them as images. */

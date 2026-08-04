@@ -349,7 +349,12 @@ structurally different from one another?** If not, rework the layout before fini
 
 ## 9. Reference exemplar
 
-`exemplar/` holds a complete, high-quality composition with its rendered contact sheet.
-Study it for **density, typographic confidence and the variety of its six scenes**.
+`exemplar/` holds a complete, approved composition with its rendered contact sheet.
+Study it for **density, typographic confidence and the variety of its six scenes**, and read
+`animation.js` as well as the markup — how much a scene carries is half structure and half
+motion. It satisfies every rule in this contract, including the §5b data attributes and the
+§3 timing derivation, so where it appears to disagree with a rule, read it again.
 
-Do not copy its scenes. It is calibration, not a template — its layouts are already used.
+Do not copy its scenes. Its section ids, on-screen copy and timings belong to another brief
+and its root element carries that brief's `data-composition-id` and `data-duration`; yours
+come from BRIEF.md. It is calibration, not a template — its layouts are already used.

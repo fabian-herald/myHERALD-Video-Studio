@@ -1,0 +1,215 @@
+{
+  "schemaVersion": 1,
+  "id": "thought-leadership-dba07c",
+  "createdAt": "2026-08-04T00:00:00+02:00",
+  "brief": "Create a calm, editorial English 9:16 thought-leadership short. Thesis: AI has made consistency cheap. The scarce thing now is recognizable conviction: a point of view that stays intact when everyone can publish at speed. Use the approved Optimizely 2026 survey claim narrowly and with attribution: \u201cOptimizely\u2019s 2026 survey found 25% of marketers knowingly publish off-brand AI-generated content under tight deadlines.\u201d State that it surveyed 2,003 marketing leaders across seven markets only if the visual or narration needs the scope. Do not generalize it to all content teams. Frame recognizable conviction as editorial analysis, not a measured statistic. Build the argument from consistent output to an unmistakable point of view, and finish without a promotional CTA. Keep it specific, restrained and non-promotional. No em dashes, no invented product UI, and do not change any provider or marketing settings.",
+  "intent": "thought-leadership",
+  "formats": [
+    "9x16"
+  ],
+  "language": "en",
+  "title": "Consistency Is Not a Point of View",
+  "thesis": "A reliable publishing cadence matters only when it protects a point of view worth recognizing.",
+  "sections": [
+    {
+      "id": "cheap-consistency",
+      "kind": "hook",
+      "intentNote": "Open with the industry mistake: confusing regular output with editorial identity.",
+      "energy": "settled",
+      "onScreen": "Consistency is cheap",
+      "phrases": [
+        {
+          "id": "ai-made-consistency-cheap",
+          "text": "AI made consistency cheap.",
+          "startMs": 300,
+          "durationMs": 3340,
+          "gapAfterMs": 220
+        },
+        {
+          "id": "same-cadence-not-same-voice",
+          "text": "A cadence is not a voice.",
+          "startMs": 3860,
+          "durationMs": 2300,
+          "gapAfterMs": 0
+        }
+      ],
+      "startMs": 0,
+      "durationMs": 6600
+    },
+    {
+      "id": "industry-mistake",
+      "kind": "point",
+      "intentNote": "Name the false measure of success with a concrete publishing example.",
+      "energy": "edge",
+      "onScreen": "The full calendar",
+      "phrases": [
+        {
+          "id": "three-posts-example",
+          "text": "You can publish three posts weekly.",
+          "startMs": 6600,
+          "durationMs": 1880,
+          "gapAfterMs": 0
+        },
+        {
+          "id": "still-say-nothing",
+          "text": "And still say nothing.",
+          "startMs": 8480,
+          "durationMs": 1860,
+          "gapAfterMs": 1020
+        },
+        {
+          "id": "format-over-argument",
+          "text": "The industry mistakes format for argument.",
+          "startMs": 11360,
+          "durationMs": 2580,
+          "gapAfterMs": 0
+        }
+      ],
+      "startMs": 6600,
+      "durationMs": 7990
+    },
+    {
+      "id": "deadline-receipt",
+      "kind": "proof",
+      "intentNote": "Use the Optimizely finding narrowly as evidence of what deadline pressure can produce.",
+      "energy": "quiet",
+      "onScreen": "25% off-brand",
+      "phrases": [
+        {
+          "id": "optimizely-survey",
+          "text": "Optimizely\u2019s 2026 survey found 25%.",
+          "startMs": 14590,
+          "durationMs": 3900,
+          "gapAfterMs": 0
+        },
+        {
+          "id": "tight-deadlines",
+          "text": "Under tight deadlines.",
+          "startMs": 18090,
+          "durationMs": 2720,
+          "gapAfterMs": 0
+        },
+        {
+          "id": "off-brand-ai-content",
+          "text": "Marketers knowingly publish off-brand AI content.",
+          "startMs": 20810,
+          "durationMs": 3180,
+          "gapAfterMs": 0
+        }
+      ],
+      "startMs": 14590,
+      "durationMs": 10050,
+      "data": {
+        "shape": "share",
+        "unit": "%",
+        "caption": "Optimizely 2026 survey, conducted by Savanta.",
+        "points": [
+          {
+            "label": "Off-brand AI content",
+            "value": 25,
+            "factId": "f-msajobqz-0"
+          }
+        ]
+      }
+    },
+    {
+      "id": "editorial-turn",
+      "kind": "turn",
+      "intentNote": "Shift from diagnosis to the editorial standard that should govern fast production.",
+      "energy": "lift",
+      "onScreen": "Hold the thought",
+      "phrases": [
+        {
+          "id": "speed-tests-conviction",
+          "text": "Speed tests what you actually believe.",
+          "startMs": 24640,
+          "durationMs": 2860,
+          "gapAfterMs": 400
+        },
+        {
+          "id": "recognizable-conviction",
+          "text": "Recognizable conviction survives the shortcut.",
+          "startMs": 27900,
+          "durationMs": 2900,
+          "gapAfterMs": 220
+        },
+        {
+          "id": "same-judgment",
+          "text": "It keeps the same judgment intact.",
+          "startMs": 31020,
+          "durationMs": 2900,
+          "gapAfterMs": 0
+        }
+      ],
+      "startMs": 24640,
+      "durationMs": 9280
+    },
+    {
+      "id": "payoff",
+      "kind": "payoff",
+      "intentNote": "Land the practical editorial distinction: repeat the judgment, not merely the content pattern.",
+      "energy": "lift",
+      "onScreen": "Repeat the judgment",
+      "phrases": [
+        {
+          "id": "not-same-template",
+          "text": "Not the same template.",
+          "startMs": 33920,
+          "durationMs": 1360,
+          "gapAfterMs": 520
+        },
+        {
+          "id": "return-to-position",
+          "text": "Return to the position behind every post.",
+          "startMs": 35800,
+          "durationMs": 2880,
+          "gapAfterMs": 140
+        },
+        {
+          "id": "closing-line",
+          "text": "Make your judgment the thing people recognize.",
+          "startMs": 38820,
+          "durationMs": 2920,
+          "gapAfterMs": 0
+        }
+      ],
+      "startMs": 33920,
+      "durationMs": 7820
+    },
+    {
+      "id": "brand-outro",
+      "kind": "outro",
+      "intentNote": "End silently with the canonical brand identification only.",
+      "energy": "lift",
+      "onScreen": "myHERALD\nAutonomous AI Content Engine\nmyherald.io",
+      "phrases": [],
+      "startMs": 41740,
+      "durationMs": 4000
+    }
+  ],
+  "alternates": [
+    {
+      "thesis": "A content calendar proves regularity, not editorial judgment.",
+      "angle": "Contrast a full publishing schedule with the absence of a clear position.",
+      "why": "Sharpens the calendar critique without repeating the broader consistency thesis."
+    },
+    {
+      "thesis": "Fast production makes weak editorial decisions visible sooner.",
+      "angle": "Treat AI speed as a stress test for the standards already inside a team.",
+      "why": "Uses the survey as evidence about deadline pressure rather than as a claim about AI broadly."
+    },
+    {
+      "thesis": "The useful unit of consistency is a repeated judgment, not a repeated format.",
+      "angle": "Focus on the difference between recognizable editorial choices and visual or structural sameness.",
+      "why": "Offers a concrete standard for teams that already publish regularly."
+    }
+  ],
+  "narration": {
+    "provider": "gemini",
+    "voice": "Achird",
+    "profile": "thought-leadership",
+    "style": "Warm, credible, founder-to-founder. Conversational and restrained, crisp articulation, natural micro-pauses. No hype, no radio-announcer tone, no rising sell.",
+    "register": "one man, low-to-mid register, speaking pitch around 140 hertz",
+    "timing": "aligned-take"
+  }
+}
