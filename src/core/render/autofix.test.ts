@@ -86,7 +86,7 @@ test("the real 53e128 repair: an unidentified rail and a ./media prefix", () => 
     })],
     {authoring},
   );
-  assert.deepEqual(applied, ["media_path_prefix", "canonical_lockup_missing_rail"]);
+  assert.deepEqual(applied, ["canonical_lockup_missing_rail", "media_path_prefix"]);
   assert.match(
     fixed["index.html"],
     /<header id="brand-rail" class="brand-rail on-light clip" data-start="0" data-duration="43\.23" data-track-index="70">/,
@@ -121,12 +121,29 @@ test("a lockup finding with no determined asset is declined", () => {
   assert.equal(applied.includes("canonical_lockup_missing_rail"), false);
 });
 
-test("only the media prefix is stripped; contract-mandated ./ paths survive", () => {
+test("a stray ./media prefix alone never triggers a verification pass", () => {
+  // Learned from the first live run: eleven layout errors, none mechanical, no fixer
+  // willing to act — but this normalisation made the batch look non-empty, so the pass
+  // wrote, spent a 63s checker round and reverted. Cosmetic tidying is not worth that.
+  const {applied} = applyFixers(
+    files({"index.html": '<img src="./media/logo-lockup-light.png">'}),
+    [error({code: "text_occluded", selector: ".lead"})],
+    {authoring},
+  );
+  assert.deepEqual(applied, []);
+});
+
+test("the media prefix is stripped alongside a real fix; mandated ./ paths survive", () => {
   const html = '<link href="./tokens.css"><link href="./blocks/base.css">'
     + '<script src="./vendor/gsap.min.js"></script><audio src="./narration.m4a"></audio>'
-    + '<img src="./media/logo-lockup-light.png">';
-  const {files: fixed, applied} = applyFixers(files({"index.html": html}), [], {authoring});
-  assert.deepEqual(applied, ["media_path_prefix"]);
+    + '<img src="./media/logo-lockup-light.png">'
+    + '<section id="scene-a" class="clip"></section>';
+  const {files: fixed, applied} = applyFixers(
+    files({"index.html": html}),
+    [error({code: "missing_timing", elementId: "scene-a", attribute: "data-start", expected: "0.000"})],
+    {authoring},
+  );
+  assert.deepEqual(applied, ["missing_timing", "media_path_prefix"]);
   assert.match(fixed["index.html"], /src="media\/logo-lockup-light\.png"/);
   // BRIEF.md mandates these four; a blanket strip would break them to fix one.
   assert.match(fixed["index.html"], /href="\.\/tokens\.css"/);

@@ -203,12 +203,6 @@ export function applyFixers(
   let current = files;
   const applied: string[] = [];
 
-  const normalised = normaliseMediaPaths(current);
-  if (normalised) {
-    current = normalised;
-    applied.push("media_path_prefix");
-  }
-
   // Sorted by code so a run is reproducible regardless of the order the gates emitted in.
   const ordered = [...findings]
     .filter((finding) => finding.severity === "error" && finding.code)
@@ -221,6 +215,21 @@ export function applyFixers(
     if (!next) continue;
     current = next;
     applied.push(finding.code as string);
+  }
+
+  // Rides along with a real repair; never causes one.
+  //
+  // This used to run first and unconditionally, and the first live run showed the cost:
+  // eleven layout errors, none of them mechanical, no fixer willing to act — but a stray
+  // `./media/` prefix meant the batch looked non-empty, so the pass wrote the files and
+  // spent a full verification check (63s on that run) only to revert everything. A cosmetic
+  // normalisation is not worth a checker pass on its own.
+  if (applied.length) {
+    const normalised = normaliseMediaPaths(current);
+    if (normalised) {
+      current = normalised;
+      applied.push("media_path_prefix");
+    }
   }
 
   return {files: current, applied};
