@@ -147,7 +147,7 @@ export async function applyPlanEdits(options: {
   // cites can have been rejected or had their evidence cleared since the video was made. A
   // stale figure survives a re-render exactly as well as a fresh one.
   const facts = await readFacts();
-  const unsourced = planClaimsViolation(edited, facts, await approvedStatements(facts));
+  const unsourced = planClaimsViolation(edited, facts, await approvedStatements(facts, kit.website), kit.website);
   if (unsourced) {
     throw new Error(
       "The edited plan states a figure no approved fact backs. No narration or render was "

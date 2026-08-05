@@ -77,7 +77,7 @@ test("a chart value must cite a fact that exists and is approved", () => {
 
   const approved = ["Teams cut drafting time by 40%. (evidence: cohort)"];
   assertPlanClaimsAreSourced(withChart("f1"), [fact()], approved);
-  assert.throws(() => assertPlanClaimsAreSourced(withChart("invented"), [fact()], approved), /not an approved fact/);
+  assert.throws(() => assertPlanClaimsAreSourced(withChart("invented"), [fact()], approved), /not a usable fact/);
 });
 
 /** A one-chart plan, so the value-vs-fact cases below differ only in what they chart. */
@@ -179,7 +179,7 @@ test("a fact that is only proposed cannot source a chart", () => {
       {id: "two", kind: "payoff", onScreen: "B", phrases: [{id: "p2", text: "x"}]},
     ],
   } as Partial<VideoPlan>);
-  assert.throws(() => assertPlanClaimsAreSourced(p, [fact({state: "proposed"})], []), /not an approved fact/);
+  assert.throws(() => assertPlanClaimsAreSourced(p, [fact({state: "proposed"})], []), /not a usable fact/);
 });
 
 test("a numeric fact with no evidence note cannot source a chart either", () => {
@@ -192,7 +192,7 @@ test("a numeric fact with no evidence note cannot source a chart either", () => 
       {id: "two", kind: "payoff", onScreen: "B", phrases: [{id: "p2", text: "x"}]},
     ],
   } as Partial<VideoPlan>);
-  assert.throws(() => assertPlanClaimsAreSourced(p, [fact({evidence: ""})], []), /not an approved fact/);
+  assert.throws(() => assertPlanClaimsAreSourced(p, [fact({evidence: ""})], []), /not a usable fact/);
 });
 
 test("figures on screen without a source note are refused", () => {
@@ -242,7 +242,7 @@ test("planClaimsViolation collects every problem instead of throwing on the firs
 
   const violation = planClaimsViolation(p, [fact()], []) ?? "";
   assert.match(violation, /no approved fact states it/, "the invented number");
-  assert.match(violation, /not an approved fact with evidence/, "and the unresolvable factId");
+  assert.match(violation, /not a usable fact with evidence/, "and the unresolvable factId");
   const lines = violation.split("\n");
   assert.ok(lines.length >= 2, "both reported in one pass");
   assert.ok(lines.every((line) => line.startsWith("- ")), "bulleted like copyRulesViolation");

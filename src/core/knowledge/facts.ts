@@ -1,4 +1,5 @@
 import fs from "node:fs/promises";
+import {writeJsonFile} from "../util/writeJson.ts";
 import path from "node:path";
 import {z} from "zod";
 import {KNOWLEDGE_DIR} from "../paths.ts";
@@ -26,25 +27,86 @@ export async function readFacts(): Promise<ProductFact[]> {
 }
 
 export async function writeFacts(facts: readonly ProductFact[]): Promise<void> {
-  await fs.mkdir(path.dirname(FACTS_PATH), {recursive: true});
-  await fs.writeFile(FACTS_PATH, `${JSON.stringify(facts, null, 2)}\n`, "utf8");
+  await writeJsonFile(FACTS_PATH, facts);
 }
 
 export const containsNumericClaim = (statement: string) =>
   /\d/.test(statement) && !/^\s*\D*$/.test(statement);
 
 /**
+ * The two fact kinds that describe the world rather than this product.
+ *
+ * A `problem` or a `proof` is normally somebody else's published research — a survey, an
+ * industry report — and the owner's judgment on it is "is this true and relevant", which is
+ * a judgment the source already carries. `capability`, `audience` and `outcome` are claims
+ * *about myHERALD*, where the owner is the only person who can say whether they are true.
+ * Measured across the first 48 facts in this library: 15 of 32 `capability` facts were
+ * rejected, and **not one** `problem` or `proof` fact ever was. The gate was doing real work
+ * on one side of that line and none at all on the other.
+ */
+const RESEARCH_KINDS: ReadonlySet<ProductFact["kind"]> = new Set(["problem", "proof"]);
+
+/** Host of a URL, lowercased and without `www.`; empty when it is not a URL at all. */
+function hostOf(source: string): string {
+  try {
+    return new URL(source).host.toLowerCase().replace(/^www\./, "");
+  } catch {
+    return "";
+  }
+}
+
+/**
+ * May this fact reach a prompt?
+ *
+ * Approved facts always may. Beyond that, **third-party research is usable without an
+ * explicit approval step**, because the approval loop could not deliver it: `make_video`
+ * requires research to have happened, `propose_facts` writes everything as `proposed`, and
+ * the owner has no moment between those two to approve. Every figure a video's own research
+ * turned up was therefore unavailable to that video by construction — 25 proposals had piled
+ * up unused when this was found.
+ *
+ * The exemption is deliberately narrow, and needs *all* of:
+ *
+ *   - kind is `problem` or `proof` — describing the world, not this product;
+ *   - the source is a real URL on someone else's host, so a product claim cannot be
+ *     relabelled `problem` to slip through — it would have to cite a stranger's page;
+ *   - a verbatim evidence note, the same bar an approved figure has to clear;
+ *   - not `rejected`. Rejection is the owner overruling all of the above, and it is final.
+ *
+ * `brandHost` comes from `kit.website`. Passing it is what makes "someone else's host"
+ * meaningful; without it, only explicitly approved facts qualify, which is the safe default
+ * for any caller that has not thought about this.
+ */
+export function isUsableFact(fact: ProductFact, brandHost?: string): boolean {
+  if (fact.state === "rejected") return false;
+  if (fact.state === "approved") return true;
+  // No brand host, no exemption. "Someone else's host" is meaningless without knowing which
+  // host is ours, and an empty string compares unequal to every host — which would let every
+  // sourced `problem`/`proof` through, including ones on the brand's own domain. Caught by
+  // `claims.test.ts`, which passes no host and expects a proposed fact to stay unusable.
+  if (!brandHost) return false;
+  if (!RESEARCH_KINDS.has(fact.kind)) return false;
+  if (!fact.evidence.trim()) return false;
+  const own = hostOf(brandHost) || brandHost.toLowerCase().replace(/^www\./, "");
+  const host = hostOf(fact.source);
+  return host.length > 0 && own.length > 0 && host !== own;
+}
+
+/**
  * Only approved facts reach a prompt, and an approved fact carrying a number without
  * an evidence note is withheld. The gate lives here, in code — never in a prompt,
  * because a prompt rule is a suggestion and this is not.
  */
-export async function approvedStatements(known?: readonly ProductFact[]): Promise<string[]> {
+export async function approvedStatements(
+  known?: readonly ProductFact[],
+  brandHost?: string,
+): Promise<string[]> {
   // Callers that have already read the file pass it back rather than reading twice. The
   // filter and the `(evidence: …)` shape stay owned here: they decide what a figure may be
   // matched against, and a second copy of that rule elsewhere would drift out of step.
   const facts = known ?? await readFacts();
   return facts
-    .filter((fact) => fact.state === "approved")
+    .filter((fact) => isUsableFact(fact, brandHost))
     .filter((fact) => !containsNumericClaim(fact.statement) || fact.evidence.trim().length > 0)
     .map((fact) => `${fact.statement}${fact.evidence ? ` (evidence: ${fact.evidence})` : ""}`);
 }

@@ -1,4 +1,4 @@
-import {containsNumericClaim, unverifiedNumbers, type ProductFact} from "../knowledge/facts.ts";
+import {containsNumericClaim, isUsableFact, unverifiedNumbers, type ProductFact} from "../knowledge/facts.ts";
 import {valueAppearsIn} from "../knowledge/numbers.ts";
 import type {VideoPlan} from "./schema.ts";
 
@@ -66,6 +66,14 @@ export function planClaimsViolation(
   plan: VideoPlan,
   facts: readonly ProductFact[],
   approved: readonly string[],
+  /**
+   * `kit.website`, so third-party research counts as usable here exactly as it does in
+   * `approvedStatements` and the planner's `citableFacts` — see `isUsableFact`. Omitted, this
+   * falls back to approved-only, which is the safe reading but a *stricter* one than the
+   * planner was given: the planner would be shown a figure and then refused for charting it.
+   * Every production caller passes it.
+   */
+  brandHost?: string,
 ): string | null {
   const problems: string[] = [];
   for (const number of unverifiedNumbers(planClaimText(plan), approved)) {
@@ -74,7 +82,7 @@ export function planClaimsViolation(
 
   const usable = new Map(
     facts
-      .filter((fact) => fact.state === "approved")
+      .filter((fact) => isUsableFact(fact, brandHost))
       .filter((fact) => !containsNumericClaim(fact.statement) || fact.evidence.trim().length > 0)
       .map((fact) => [fact.id, fact]),
   );
@@ -86,7 +94,7 @@ export function planClaimsViolation(
       if (!fact) {
         problems.push(
           `- §${section.id} charts ${point.label} = ${point.value} against fact "${point.factId}", `
-          + "which is not an approved fact with evidence",
+          + "which is not a usable fact with evidence",
         );
         continue;
       }
@@ -118,8 +126,9 @@ export function assertPlanClaimsAreSourced(
   plan: VideoPlan,
   facts: readonly ProductFact[],
   approved: readonly string[],
+  brandHost?: string,
 ): void {
-  const violation = planClaimsViolation(plan, facts, approved);
+  const violation = planClaimsViolation(plan, facts, approved, brandHost);
   if (violation) {
     throw new Error(
       `Plan states figures it cannot source:\n${violation}\n`
@@ -143,7 +152,10 @@ export function factIdsUsedByPlan(
   const copy = normalizeClaimText(planCopy(plan));
 
   for (const fact of facts) {
-    if (fact.state !== "approved") continue;
+    // Not `state === "approved"`: research facts reach a video without that step, and a
+    // ledger that cannot see them under-reports what the archive has already spent — which
+    // is the signal `citableBlock` uses to stop the same figure appearing in nine videos.
+    if (fact.state === "rejected") continue;
     const statement = normalizeClaimText(fact.statement);
     if (statement && copy.includes(statement)) used.add(fact.id);
   }

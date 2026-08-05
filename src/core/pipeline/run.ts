@@ -18,7 +18,7 @@ import {
 } from "../gen/composer.ts";
 import {CostLedger, formatCost, type CostSummary} from "../cost.ts";
 import {planVideo, type PlannerId} from "../gen/planner.ts";
-import {approvedStatements, readFacts} from "../knowledge/facts.ts";
+import {approvedStatements, isUsableFact, readFacts} from "../knowledge/facts.ts";
 import {isCancellation, throwIfCancelled} from "../cancel.ts";
 import {factUsage, upsertLedgerEntry, similarTheses} from "../ledger.ts";
 import {aspectOf, DEVICE_PRESETS, mediaForFormat, mediaForPlan} from "../media/library.ts";
@@ -112,9 +112,11 @@ export async function runPipeline(options: RunOptions): Promise<RunResult> {
   const timeline = new Timeline();
   let usedBaseline = Boolean(options.baselineOnly);
 
-  // 1 — plan, informed by approved facts and what already exists.
+  // 1 — plan, informed by usable facts and what already exists.
   const facts = await readFacts();
-  const knowledge = await approvedStatements();
+  // `kit.website` is what separates third-party research from a claim about this product —
+  // see `isUsableFact`. Without it the exemption collapses to approved-only.
+  const knowledge = await approvedStatements(facts, kit.website);
   const usage = await factUsage();
   const prior = await similarTheses(options.brief);
   if (prior.length) {
@@ -141,7 +143,7 @@ export async function runPipeline(options: RunOptions): Promise<RunResult> {
       // to approved-with-evidence here so the planner is never shown a figure it would
       // then be refused for using.
       citableFacts: facts
-        .filter((fact) => fact.state === "approved" && fact.evidence.trim().length > 0)
+        .filter((fact) => isUsableFact(fact, kit.website) && fact.evidence.trim().length > 0)
         .map((fact) => ({
           id: fact.id,
           statement: fact.statement,
@@ -185,7 +187,7 @@ export async function runPipeline(options: RunOptions): Promise<RunResult> {
   // Fail here, before a narration take and a twenty-minute compose, if the plan states a
   // figure nothing approved backs. The draft is already on disk, so the rejected plan is
   // readable rather than lost — the fix is usually to approve a fact, not to re-plan.
-  assertPlanClaimsAreSourced(planned.plan, facts, knowledge);
+  assertPlanClaimsAreSourced(planned.plan, facts, knowledge, kit.website);
 
   // 2 — narrate, then rebuild every timestamp from the audio that actually exists.
   // Checked between every stage, because each one is minutes long and a cancel that only

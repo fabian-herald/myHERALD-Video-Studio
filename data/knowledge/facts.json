@@ -4,180 +4,180 @@
     "kind": "capability",
     "statement": "A week of content in 20 minutes.",
     "evidence": "",
-    "state": "proposed",
+    "state": "approved",
     "source": "https://myherald.io/",
-    "updatedAt": "2026-07-28T17:11:05.114Z"
+    "updatedAt": "2026-08-05T21:31:06.763Z"
   },
   {
     "id": "f-ms4wwy3e-1",
     "kind": "audience",
     "statement": "myHERALD is the autonomous content engine for solo founders and marketers of one. It researches, writes, fact-checks, and publishes in your voice. You approve. It handles the rest.",
     "evidence": "",
-    "state": "proposed",
+    "state": "approved",
     "source": "https://myherald.io/",
-    "updatedAt": "2026-07-28T17:11:05.114Z"
+    "updatedAt": "2026-08-05T21:31:10.755Z"
   },
   {
     "id": "f-ms4wwy3e-2",
     "kind": "capability",
     "statement": "Heads-down shipping this week. Plan and draft my posts for me.",
     "evidence": "",
-    "state": "proposed",
+    "state": "approved",
     "source": "https://myherald.io/",
-    "updatedAt": "2026-07-28T17:11:05.114Z"
+    "updatedAt": "2026-08-05T21:31:22.919Z"
   },
   {
     "id": "f-ms4wwy3e-3",
     "kind": "capability",
     "statement": "Built for the person doing it all .",
     "evidence": "",
-    "state": "proposed",
+    "state": "approved",
     "source": "https://myherald.io/",
-    "updatedAt": "2026-07-28T17:11:05.114Z"
+    "updatedAt": "2026-08-05T21:31:26.039Z"
   },
   {
     "id": "f-ms4wwy3e-4",
     "kind": "capability",
     "statement": "If content always lands at the bottom of your list, myHERALD was built for you.",
     "evidence": "",
-    "state": "proposed",
+    "state": "approved",
     "source": "https://myherald.io/",
-    "updatedAt": "2026-07-28T17:11:05.114Z"
+    "updatedAt": "2026-08-05T21:31:30.431Z"
   },
   {
     "id": "f-ms4wwy3e-5",
     "kind": "proof",
     "statement": "You're building the product, talking to customers, and somehow also supposed to post every day.",
     "evidence": "",
-    "state": "proposed",
+    "state": "approved",
     "source": "https://myherald.io/",
-    "updatedAt": "2026-07-28T17:11:05.114Z"
+    "updatedAt": "2026-08-05T21:31:34.753Z"
   },
   {
     "id": "f-ms4wwy3e-6",
     "kind": "capability",
     "statement": "myHERALD keeps you visible while you build.",
     "evidence": "",
-    "state": "proposed",
+    "state": "approved",
     "source": "https://myherald.io/",
-    "updatedAt": "2026-07-28T17:11:05.114Z"
+    "updatedAt": "2026-08-05T21:31:38.486Z"
   },
   {
     "id": "f-ms4wwy3e-7",
     "kind": "capability",
     "statement": "You are the whole marketing department. Strategy, writing, publishing, reporting.",
     "evidence": "",
-    "state": "proposed",
+    "state": "approved",
     "source": "https://myherald.io/",
-    "updatedAt": "2026-07-28T17:11:05.114Z"
+    "updatedAt": "2026-08-05T21:31:42.481Z"
   },
   {
     "id": "f-ms4wwy3e-8",
     "kind": "capability",
     "statement": "myHERALD takes research, drafts, and publishing off your desk.",
     "evidence": "",
-    "state": "proposed",
+    "state": "approved",
     "source": "https://myherald.io/",
-    "updatedAt": "2026-07-28T17:11:05.114Z"
+    "updatedAt": "2026-08-05T21:31:46.842Z"
   },
   {
     "id": "f-ms4wwy3e-9",
     "kind": "audience",
     "statement": "No budget for a content team, but the pipeline still needs to fill itself.",
     "evidence": "",
-    "state": "proposed",
+    "state": "approved",
     "source": "https://myherald.io/",
-    "updatedAt": "2026-07-28T17:11:05.114Z"
+    "updatedAt": "2026-08-05T21:31:53.362Z"
   },
   {
     "id": "f-ms4wwy3e-10",
     "kind": "capability",
     "statement": "myHERALD runs founder-quality content on autopilot.",
     "evidence": "",
-    "state": "proposed",
+    "state": "approved",
     "source": "https://myherald.io/",
-    "updatedAt": "2026-07-28T17:11:05.114Z"
+    "updatedAt": "2026-08-05T21:31:57.297Z"
   },
   {
     "id": "f-ms4wwy3e-11",
     "kind": "capability",
     "statement": "Built different, on purpose .",
     "evidence": "",
-    "state": "proposed",
+    "state": "approved",
     "source": "https://myherald.io/",
-    "updatedAt": "2026-07-28T17:11:05.114Z"
+    "updatedAt": "2026-08-05T21:31:59.697Z"
   },
   {
     "id": "f-ms4wwy3e-12",
     "kind": "capability",
     "statement": "Not another writing tool. A full content operations engine.",
     "evidence": "",
-    "state": "proposed",
+    "state": "approved",
     "source": "https://myherald.io/",
-    "updatedAt": "2026-07-28T17:11:05.114Z"
+    "updatedAt": "2026-08-05T21:32:02.148Z"
   },
   {
     "id": "f-ms4wwy3e-13",
     "kind": "problem",
     "statement": "Research to publish. Without you in the middle.",
     "evidence": "",
-    "state": "proposed",
+    "state": "approved",
     "source": "https://myherald.io/",
-    "updatedAt": "2026-07-28T17:11:05.114Z"
+    "updatedAt": "2026-08-05T21:32:04.337Z"
   },
   {
     "id": "f-ms4wwy3e-14",
     "kind": "capability",
     "statement": "myHERALD doesn't wait for prompts. Tell it what you need (a week of LinkedIn posts, a research report, a product launch campaign) and it plans, researches, writes, reviews, and publishes. You set the direction once. myHERALD runs the operation.",
     "evidence": "",
-    "state": "proposed",
+    "state": "approved",
     "source": "https://myherald.io/",
-    "updatedAt": "2026-07-28T17:11:05.114Z"
+    "updatedAt": "2026-08-05T21:32:15.414Z"
   },
   {
     "id": "f-ms4wwy3e-15",
     "kind": "capability",
     "statement": "Sounds like your best marketer. Every day.",
     "evidence": "",
-    "state": "proposed",
+    "state": "approved",
     "source": "https://myherald.io/",
-    "updatedAt": "2026-07-28T17:11:05.114Z"
+    "updatedAt": "2026-08-05T21:32:19.531Z"
   },
   {
     "id": "f-ms4wwy3e-16",
     "kind": "capability",
     "statement": "Every claim verified. Every source cited.",
     "evidence": "",
-    "state": "proposed",
+    "state": "approved",
     "source": "https://myherald.io/",
-    "updatedAt": "2026-07-28T17:11:05.114Z"
+    "updatedAt": "2026-08-05T21:32:22.914Z"
   },
   {
     "id": "f-ms4wwy3e-17",
     "kind": "capability",
     "statement": "myHERALD doesn't just write. It verifies. A dedicated research step checks claims against live sources and your Knowledge Hub before content reaches review. No more crossing your fingers before you hit publish.",
     "evidence": "",
-    "state": "proposed",
+    "state": "approved",
     "source": "https://myherald.io/",
-    "updatedAt": "2026-07-28T17:11:05.114Z"
+    "updatedAt": "2026-08-05T21:32:30.898Z"
   },
   {
     "id": "f-ms4wwy3e-18",
     "kind": "capability",
     "statement": "One request, start to finish. Scroll, or click a step.",
     "evidence": "",
-    "state": "proposed",
+    "state": "approved",
     "source": "https://myherald.io/",
-    "updatedAt": "2026-07-28T17:11:05.114Z"
+    "updatedAt": "2026-08-05T21:32:33.788Z"
   },
   {
     "id": "f-ms4wwy3e-19",
     "kind": "capability",
     "statement": "Tell HERALD what you need. Like you'd tell a colleague.",
     "evidence": "",
-    "state": "proposed",
+    "state": "approved",
     "source": "https://myherald.io/",
-    "updatedAt": "2026-07-28T17:11:05.114Z"
+    "updatedAt": "2026-08-05T21:32:36.882Z"
   },
   {
     "id": "f-ms7jytio-0",
@@ -193,45 +193,45 @@
     "kind": "problem",
     "statement": "A quarter of marketers say that under tight deadlines they publish AI-generated content they already know is off-brand.",
     "evidence": "\"Optimizely has published research showing that 25% of marketers knowingly publish off-brand AI-generated content when facing tight deadlines.\" Reported by CMOtech, 30 June 2026, on an Optimizely global survey of more than 2,000 marketing leaders across seven markets, including the UK. Caveats worth keeping in view: Optimizely is a marketing-platform vendor publishing research about the category it sells into; respondents are marketing leaders rather than the writers doing the drafting; and the question is specifically about AI-generated content that is off-brand, which is narrower than work that is unfinished or unthought. The figure supports 'they can tell, and they ship it anyway under time pressure'. It does not support any claim about the share of all published content that is weak.",
-    "state": "proposed",
+    "state": "approved",
     "source": "https://cmotech.news/story/optimizely-study-finds-marketers-cut-corners-on-ai",
-    "updatedAt": "2026-07-30T19:10:26.112Z"
+    "updatedAt": "2026-08-05T21:32:41.270Z"
   },
   {
     "id": "f-ms7w5g8o-0",
     "kind": "problem",
     "statement": "Publishing more does not separate the winners: the median B2B SaaS company produces 11-20 blog posts a quarter, and high-growth, high-performing teams land in almost exactly the same range.",
     "evidence": "\"The median company produces 11–20 blog posts per quarter, 51–100 social posts per quarter, and 3–5 webinars per quarter. High-growth and high-performing teams land in almost the exact same ranges.\" The same page adds: \"We also found that performance doesn't spike once teams push past these ranges. Blog views, video views, and webinar registrations all cluster tightly around predictable medians.\" From Benchmarker's survey of 321 B2B SaaS content, brand and demand leaders, in partnership with Contentful, published January 2026. Caveat: the sample is B2B SaaS leaders only, it is self-reported, and the research was run in partnership with a CMS vendor.",
-    "state": "proposed",
+    "state": "approved",
     "source": "https://www.contentful.com/blog/content-marketing-benchmarker-report/",
-    "updatedAt": "2026-07-30T19:13:00.792Z"
+    "updatedAt": "2026-08-05T21:32:42.299Z"
   },
   {
     "id": "f-ms7w5g8o-1",
     "kind": "problem",
     "statement": "Content output has risen far faster than content performance: 75% of content professionals say AI increased the volume they produce, while only 6% of B2B marketers report content performance significantly improved from AI tools.",
     "evidence": "\"75% of content professionals say AI increased the volume they produce, and 46% plan to triple to quintuple output this year. (Canto/Ascend2, November 2025; 10Fold AI-First Buyer-Ready report)\" and \"Only 6% of B2B marketers report that content performance significantly improved from AI tools. (MarketingProfs and Storyblok, August 2025)\". IMPORTANT CAVEAT, please weigh before approving: these are two different studies with two different populations, collected at different times, and we read them on a synthesis blog (authoritytech.io) rather than on either primary report. The 75/6 contrast is the blog's framing, not a single study's finding. I did not build the video on this one for that reason.",
-    "state": "proposed",
+    "state": "approved",
     "source": "https://authoritytech.io/curated/ai-content-volume-trap-6-percent-performance-2026",
-    "updatedAt": "2026-07-30T19:13:00.792Z"
+    "updatedAt": "2026-08-05T21:32:43.106Z"
   },
   {
     "id": "f-ms7war0m-0",
     "kind": "problem",
     "statement": "Only 39.2% of brand marketers measure whether their work is delivering business outcomes, so roughly six in ten do not.",
     "evidence": "\"Marketing Week's 2025 Language of Effectiveness survey, in partnership with Kantar and Google, finds just two-fifths (39.2%) of brand marketers measure whether their work is delivering business outcomes.\" The same article notes the survey covered more than 1,000 brand marketers, and that the most-used effectiveness metrics are conversion rates (60.8%), ROI (57.5%) and click-through rates (57.5%). Caveat: respondents are brand marketers, predominantly UK-based per Marketing Week's own description of the Language of Effectiveness sample, not B2B content teams specifically.",
-    "state": "proposed",
+    "state": "approved",
     "source": "https://www.marketingweek.com/marketers-measure-business-outcomes/",
-    "updatedAt": "2026-07-30T19:17:08.038Z"
+    "updatedAt": "2026-08-05T21:32:44.632Z"
   },
   {
     "id": "f-msadtdga-0",
     "kind": "problem",
     "statement": "In Marketing Week’s 2025 Language of Effectiveness survey, 39.2% of brand marketers said they measure whether their work is delivering business outcomes.",
     "evidence": "Marketing Week's 2025 Language of Effectiveness survey, in partnership with Kantar and Google, finds just two-fifths (39.2%) of brand marketers measure whether their work is delivering business outcomes. Caveat: this is outcome measurement, not a direct measure of creative judgment.",
-    "state": "proposed",
+    "state": "approved",
     "source": "https://www.marketingweek.com/marketers-measure-business-outcomes/",
-    "updatedAt": "2026-08-01T13:03:02.746Z"
+    "updatedAt": "2026-08-05T21:32:46.104Z"
   },
   {
     "id": "f-msagdm11-0",
@@ -247,36 +247,36 @@
     "kind": "outcome",
     "statement": "Every extra round of feedback doesn't just frustrate teams – it costs time, money and momentum. The longer work sits in review cycles, the slower campaigns get to market, and the harder it is to keep creative energy high.",
     "evidence": "",
-    "state": "rejected",
+    "state": "approved",
     "source": "https://www.betterbriefs.com/library/the-cost-of-poor-feedback",
-    "updatedAt": "2026-08-01T14:18:03.063Z"
+    "updatedAt": "2026-08-05T21:33:28.531Z"
   },
   {
     "id": "f-msagdm12-2",
     "kind": "capability",
     "statement": "Right now, the norm is five rounds before approval (source: the BetterIdeas Project ). And every one of them chips away at focus, budgets and the quality of the final idea.",
     "evidence": "",
-    "state": "rejected",
+    "state": "approved",
     "source": "https://www.betterbriefs.com/library/the-cost-of-poor-feedback",
-    "updatedAt": "2026-08-01T14:18:04.708Z"
+    "updatedAt": "2026-08-05T21:33:11.703Z"
   },
   {
     "id": "f-msagdm12-3",
     "kind": "problem",
     "statement": "When the starting point is a weak or unclear brief, these feedback rounds multiply quickly. Without clear direction, even the most talented teams end up reworking ideas that were never properly framed from the beginning.",
     "evidence": "",
-    "state": "rejected",
+    "state": "approved",
     "source": "https://www.betterbriefs.com/library/the-cost-of-poor-feedback",
-    "updatedAt": "2026-08-01T14:18:06.354Z"
+    "updatedAt": "2026-08-05T21:33:36.680Z"
   },
   {
     "id": "f-msagdm12-4",
     "kind": "outcome",
     "statement": "If you've ever wondered why creating a strong brief can feel harder with more experience, you're not alone. It's a well-known paradox across the industry, and we explore it in depth in this article 'Why writing briefs doesn't get easier with experience'.",
     "evidence": "",
-    "state": "rejected",
+    "state": "approved",
     "source": "https://www.betterbriefs.com/library/the-cost-of-poor-feedback",
-    "updatedAt": "2026-08-01T14:18:07.992Z"
+    "updatedAt": "2026-08-05T21:34:02.189Z"
   },
   {
     "id": "f-msagdm12-5",
