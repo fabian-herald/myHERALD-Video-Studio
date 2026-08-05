@@ -8,6 +8,22 @@ import {fileHash, run} from "../util/exec.ts";
 export const CAPTION_MAX_WORDS = 8;
 export const CAPTION_MAX_CHARS = 52;
 
+/**
+ * How long a completely static frame may persist before a finished render is **blocked**.
+ *
+ * Deliberately looser than CONTRACT §1.8's 2.5s, and the gap is the point: 2.5s is the craft
+ * target the composer is told to aim at, this is the tolerance at which a rendered video is
+ * refused. Keeping both numbers lets the guidance stay ambitious without a half-second
+ * overrun throwing away a good composition.
+ *
+ * Set from a real case rather than taste. `2026-08-05-brief-boundary-claude-0bb8`
+ * (claude-sonnet-5) held its outro card for 2.93s and was blocked on both formats — after
+ * three clean compose attempts and a repair pass that could not fix it, at a higher
+ * API-equivalent cost than the run that passed. The owner watched it end to end and judged
+ * it good. A gate that rejects a video its owner would ship is measuring the wrong thing.
+ */
+export const FREEZE_BLOCK_SECONDS = 4;
+
 export interface QcReport {
   passed: boolean;
   format: OutputFormat;
@@ -42,7 +58,7 @@ export async function runQc(options: {
   const audio = probe.streams.filter((stream) => stream.codec_type === "audio");
   const durationSeconds = Number(probe.format.duration);
 
-  const freeze = await filterLog(videoPath, "freezedetect=n=0.001:d=2.5");
+  const freeze = await filterLog(videoPath, `freezedetect=n=0.001:d=${FREEZE_BLOCK_SECONDS}`);
   const black = await filterLog(videoPath, "blackdetect=d=0.15:pix_th=0.05");
   const loudness = await filterLog(videoPath, null, ["-af", "ebur128=peak=true"]);
 
@@ -143,7 +159,7 @@ export async function writeQc(report: QcReport, target: string) {
  */
 const COMPOSER_FIXABLE: Record<string, string> = {
   noLongFreeze:
-    "The rendered video holds a completely static frame for over 2.5 seconds. Add a "
+    `The rendered video holds a completely static frame for over ${FREEZE_BLOCK_SECONDS} seconds. Add a `
     + "meaningful visual beat inside that span, then hold the resolved state. Do not add "
     + "perpetual drift solely to satisfy the check.",
   noBlackSection:
