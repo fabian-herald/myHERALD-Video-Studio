@@ -5,7 +5,7 @@
   "composer": "claude",
   "codexModel": "gpt-5.6-luna",
   "codexComposeEffort": "xhigh",
-  "claudeModel": "",
+  "claudeModel": "opus",
   "marketingSkills": {
     "adCreative": true,
     "social": true,
