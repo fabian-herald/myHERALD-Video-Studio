@@ -1,9 +1,9 @@
 {
   "contentLanguage": "en",
-  "agent": "codex",
-  "planner": "codex",
+  "agent": "claude",
+  "planner": "claude",
   "composer": "claude",
-  "codexModel": "gpt-5.6-luna",
+  "codexModel": "gpt-5.6-sol",
   "codexComposeEffort": "xhigh",
   "claudeModel": "opus",
   "marketingSkills": {
