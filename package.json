@@ -15,15 +15,20 @@
     "tokens": "tsx scripts/tokens.ts",
     "build": "tsc --noEmit && vite build",
     "typecheck": "tsc --noEmit",
-    "test": "node --import tsx --test src/core/*.test.ts src/core/*/*.test.ts src/core/*/*/*.test.ts src/server/*.test.ts src/studio/*.test.ts",
+    "test": "STUDIO_SANDBOX=$(mktemp -d ${TMPDIR:-/tmp}/studio-test-XXXXXX) node --import tsx --test src/core/*.test.ts src/core/*/*.test.ts src/core/*/*/*.test.ts src/server/*.test.ts src/studio/*.test.ts",
     "capture": "tsx scripts/capture.ts",
     "research": "tsx scripts/research.ts",
     "wordmark": "tsx scripts/wordmark.ts",
     "narration:bakeoff": "tsx scripts/narration-bakeoff.ts",
     "narration:profiles": "tsx scripts/narration-profile-listening.ts",
     "rename-videos": "tsx scripts/rename-videos.ts",
+    "rebuild-ledger": "tsx scripts/rebuild-ledger.ts",
+    "relink-threads": "tsx scripts/relink-threads.ts",
     "summaries": "tsx scripts/write-summaries.ts",
-    "narration:seeds": "tsx scripts/narration-seeds.ts"
+    "narration:seeds": "tsx scripts/narration-seeds.ts",
+    "regions:evidence": "tsx scripts/region-evidence.ts",
+    "errors:geography": "tsx scripts/error-geography.ts",
+    "errors:baseline": "tsx scripts/error-baseline.ts"
   },
   "dependencies": {
     "@anthropic-ai/claude-agent-sdk": "^0.3.220",

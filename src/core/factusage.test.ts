@@ -1,3 +1,5 @@
+// First, and before anything that reads a path — see the module's own note.
+import "./sandbox.testenv.ts";
 import assert from "node:assert/strict";
 import fs from "node:fs/promises";
 import path from "node:path";
