@@ -44,6 +44,30 @@ sequence was flat. The composer's judgment is not what fails. Its ability to pla
 
 That is the case for constraining geometry and nothing else.
 
+### The harder half: clean is not good
+
+A second observation, from the owner, on a run that passed:
+
+> it still often looks not good/finished — still overlapping items, the animations are often
+> not looking good
+
+This is the fact that matters most to whoever picks this work up, and it cuts two ways.
+
+**It strengthens the plan.** The checker validates geometry *after* the model has guessed at it,
+and a composition can satisfy every rule and still read as unfinished — overlaps the gates score
+as legal, motion that is technically correct and visually wrong. Validation after the fact has a
+ceiling, and this is what the ceiling looks like. Regions make the geometry correct *by
+construction* rather than correct *on inspection*, which is the only structural answer to
+"passes and still looks bad."
+
+**It also warns against over-trusting the plan.** Region maps address placement. They do not
+address whether an animation is any good, and roughly half of what the owner is describing is
+motion, not layout. Nothing in this document improves easing, timing, or whether a transition
+reads as deliberate. Do not let a green gallery imply the problem is solved — §8's sameness
+spread and §10's stacks are the honest evidence, and both are about layout only.
+
+Motion quality is a separate, unstarted piece of work. Say so rather than quietly folding it in.
+
 ## 2. The failure this must not repeat
 
 `src/core/plan/schema.ts` records what happened last time, in the comment on `dataSeriesZ`:
