@@ -74,10 +74,13 @@ did it with eyebrows and chips — `01 / THE MEASURE`, `SPEED / JUDGMENT`, `THE 
 `JUDGE` in one scene — and the first person who watched it called it busy and could not find
 the line that mattered.
 
-Budget **at most seven distinct pieces of text per scene** beyond the copy the plan supplies.
-The approved composition peaks at six. A row of five identical `POST` chips counts as one:
-repeating a label is a set, and sets are free. Five *different* labels is five, and it is the
-one place where more costs you.
+So when a scene looks thin, add a layer, a plate, a rule, a repeated set — not another word.
+A row of five identical `POST` chips is one label, and sets like that are free; five
+*different* labels is five separate things to read.
+
+A ceiling to stay under, not a level to reach. The run that stripped its labels hardest
+stripped its structure with them — a third of its elements, a quarter of its GSAP calls — and
+came out the thinnest in the corpus. Cut words that restate the scene; keep what you draw.
 
 Not every scene has a set in it. In the approved composition the data scene and the payoff
 have none: a receipt is one object and a payoff is one statement. That is the exception,

@@ -62,7 +62,19 @@ import "../gen/claudeComposer.ts";
 import "../gen/codexComposer.ts";
 import "../tts/gemini.ts";
 
-export const MAX_REPAIR_ATTEMPTS = 3;
+/**
+ * Repairs after the authoring pass, so four model sessions per format family, now six.
+ *
+ * Raised because a run died converging rather than stalling. Landscape on 9722 went 14
+ * errors → 4 → 2 → 2 across its three repairs and ran out of budget two errors from a
+ * shippable video; the same run's portrait went 5 → 5 → 4 → 4, which is a genuine stall and
+ * would have failed at any budget. Three repairs cannot tell those two apart, and the one
+ * that was working is the one that got cut off.
+ *
+ * The cost of the extra two is bounded — a repair only opens while errors remain, and the
+ * no-op guard already ends a run whose composition has stopped changing.
+ */
+export const MAX_REPAIR_ATTEMPTS = 5;
 
 export interface RunOptions {
   brief: string;

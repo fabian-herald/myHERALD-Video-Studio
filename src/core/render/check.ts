@@ -1158,12 +1158,18 @@ function markupTree(html: string): MarkupNode[] {
  * and 0 for five more that shipped. The three-of-three composition is the one with the
  * reported overlaps.
  *
- * Promoted from warning to error after its second real composition, which is the bar the
- * plan set for every finding added in that round. It has now earned it twice over: on run
- * 0600 it named `.section-number` — the oversized "02" that the owner photographed sitting
- * across the headline — and the run shipped anyway, because a warning stops nothing. The
- * false-positive risk this severity was hedging against never materialised: every approved
- * composition scores zero, so nothing that has been signed off would fail today.
+ * Promoted to error once and reverted, which is worth recording so it is not promoted again
+ * on the same reasoning. The promotion note claimed every composition that shipped scores
+ * zero. That was asserted from the four compositions in front of me, not measured, and it is
+ * false: run it over all twenty-nine composition families in the repo and eight of them score
+ * 1 to 6, including the accepted Terra landscape, which trips it on `.standard-index`. As an
+ * error it would have blocked 28% of the work that has shipped, some of it approved by the
+ * owner.
+ *
+ * It stays a warning, and it stays worth having — it named the oversized "02" lying across a
+ * headline in a frame the owner rejected on sight. But the distribution says it does not yet
+ * separate broken from merely unusual, and a gate that fails a quarter of approved work is
+ * measuring the wrong thing however good its individual catches are.
  */
 export async function checkLayoutWaivers(dir: string): Promise<CheckFinding[]> {
   const html = await fs.readFile(path.join(dir, "index.html"), "utf8").catch(() => "");
@@ -1181,7 +1187,7 @@ export async function checkLayoutWaivers(dir: string): Promise<CheckFinding[]> {
       return !grouped && node.text.trim().length > 0;
     })
     .map((node): CheckFinding => ({
-      severity: "error",
+      severity: "warning",
       code: "lone_layout_waiver",
       message:
         `index.html:${node.line} waives the layout check on <${node.tag}`
