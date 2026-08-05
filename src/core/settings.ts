@@ -1,4 +1,5 @@
 import fs from "node:fs/promises";
+import {writeJsonFile} from "./util/writeJson.ts";
 import path from "node:path";
 import {z} from "zod";
 import {DATA_DIR} from "./paths.ts";
@@ -39,6 +40,16 @@ export const settingsZ = z.object({
    * gap was measured. Hence the name.
    */
   codexComposeEffort: z.enum(["medium", "high", "xhigh"]).default("xhigh"),
+  /**
+   * Which model the Claude CLI runs, for the same reason and with the same shape.
+   *
+   * A role could be switched between the two providers but only one of them could be
+   * pointed at a model, which made the pair read as if Claude had no model — it has one,
+   * it was simply whatever the SDK picked. An alias (`opus`, `sonnet`, `haiku`) or a full
+   * id both work; empty keeps the SDK's own default rather than pinning a version here
+   * that goes stale. Free-form for the same reason as `codexModel`.
+   */
+  claudeModel: z.string().default(""),
   marketingSkills: z.object({
     adCreative: z.boolean().default(true),
     social: z.boolean().default(true),
@@ -58,7 +69,6 @@ export async function readSettings(): Promise<Settings> {
 
 export async function writeSettings(settings: Settings): Promise<Settings> {
   const validated = settingsZ.parse(settings);
-  await fs.mkdir(DATA_DIR, {recursive: true});
-  await fs.writeFile(SETTINGS_PATH, `${JSON.stringify(validated, null, 2)}\n`, "utf8");
+  await writeJsonFile(SETTINGS_PATH, validated);
   return validated;
 }

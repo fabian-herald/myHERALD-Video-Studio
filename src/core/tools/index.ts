@@ -17,7 +17,7 @@ import {
   configuredSearchProviders,
   searchProviderFor,
 } from "../search/provider.ts";
-import {readLedger, similarTheses} from "../ledger.ts";
+import {activeLedger, similarTheses} from "../ledger.ts";
 import {OUTPUT_FORMATS, type OutputFormat} from "../plan/formats.ts";
 import {CONTENT_LANGUAGES, languageName} from "../plan/language.ts";
 import {readSettings} from "../settings.ts";
@@ -300,7 +300,7 @@ export function studioTools(context: ToolContext) {
         {query: z.string().describe("Topic or thesis to look for")},
         async ({query}) => {
           const matches = await similarTheses(query, 6);
-          const all = await readLedger();
+          const all = await activeLedger();
           context.onLog(`ledger — ${matches.length} related of ${all.length} videos`, "search_videos");
           return ok(matches.length
             ? JSON.stringify(matches.map((entry) => ({
@@ -739,11 +739,16 @@ export function studioTools(context: ToolContext) {
             JSON.stringify({
               sources,
               next: found
-                ? "Tell the owner what you found and what it would let a video claim. To propose"
-                  + " one, call propose_facts with the statement, `evidence` set to the context"
-                  + " sentence and its attribution, and `source` set to the URL. A figure without"
-                  + " an evidence note stays out of every prompt even once approved. Then"
-                  + " save_brief, so the reasoning outlives this conversation."
+                ? "Tell the owner what you found and what it would let a video claim. Then call"
+                  + " propose_facts ONCE with EVERY figure above that is relevant to this brief —"
+                  + " it takes an array, so propose them together rather than picking a favourite."
+                  + " For each: `statement` is the claim, `evidence` is the context sentence and"
+                  + " its attribution, `source` is the URL. A figure without an evidence note stays"
+                  + " out of every prompt even once approved."
+                  + " Proposing is not asserting: the owner approves or rejects each one, and a"
+                  + " figure you never propose cannot be approved later — it is simply lost, along"
+                  + " with the page read that found it. Err toward proposing. Then save_brief, so"
+                  + " the reasoning outlives this conversation."
                 : "No figure survived. Say so plainly rather than reaching for a number from"
                   + " somewhere else — an unsourced figure is the one thing this cannot produce."
                   + " Record it with save_brief as a gap: what you looked for and did not find is"

@@ -2,11 +2,12 @@
   "schemaVersion": 1,
   "id": "t-eaeab68e",
   "kind": "video",
-  "title": "Video 7/30/2026",
-  "videoId": "thought-leadership-ce0ec6",
+  "title": "First Draft With a Deadline",
+  "videoId": "2026-07-30-first-draft-deadline-claude-ce0e",
   "createdAt": "2026-07-30T13:30:29.336Z",
   "updatedAt": "2026-07-30T18:58:58.223Z",
   "sessionId": "193c7a67-dc2b-4970-840a-7900316d5e16",
+  "sessions": {},
   "messages": [
     {
       "id": "d7d14b779e",

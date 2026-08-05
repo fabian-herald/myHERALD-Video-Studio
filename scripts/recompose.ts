@@ -25,6 +25,7 @@ import {amendLedgerEntry} from "../src/core/ledger.ts";
 import {buildContactSheet, buildCover, type Provenance} from "../src/core/render/artifacts.ts";
 import {emitFormat, renderSnapshots, renderVideo} from "../src/core/render/hyperframes.ts";
 import {runQc, writeQc} from "../src/core/render/qc.ts";
+import {billingMode} from "../src/core/cost.ts";
 import {readSettings} from "../src/core/settings.ts";
 import {compositionSize} from "../src/core/gen/substance.ts";
 import {buildCaptions} from "../src/core/tts/captions.ts";
@@ -74,7 +75,9 @@ if (!renderOnly) {
 await fs.mkdir(authoringDir, {recursive: true});
 // Safe either way: the scaffolding this writes is every file *except* the three the
 // composer owns, so refreshing it over an existing composition cannot disturb the work.
-const authoring = await prepareAuthoringDir({plan, kit, family: "portrait", dir: authoringDir, narrationPath});
+const authoring = await prepareAuthoringDir({
+  plan, kit, family: "portrait", dir: authoringDir, narrationPath,
+});
 
 if (renderOnly) {
   for (const file of ["index.html", "styles.css", "animation.js"]) {
@@ -90,6 +93,13 @@ if (renderOnly) {
     authoring, plan, kit, family: "portrait", composerId, baselineOnly: false, log,
   });
   log(`compose       attempts ${composed.attempts} · baseline ${composed.usedBaseline}`);
+  // `composeWithRepair` has always returned this and this script has always thrown it away,
+  // which made the one workflow built for comparing composers the one with no price on it.
+  // Same two-number split `runPipeline` reports: what leaves an account, and what the same
+  // token usage would list at metered API prices (see `src/core/cost.ts`).
+  const charged = billingMode() === "api" ? composed.costUsd : 0;
+  log(`cost          $${charged.toFixed(2)} charged · $${composed.costUsd.toFixed(2)} at API list prices`
+    + ` · ${composerId} · ${(composerId === "codex" ? settings.codexModel : settings.claudeModel) || "default"}`);
 }
 
 // `--record` promotes the result to the run's real output rather than a suffixed

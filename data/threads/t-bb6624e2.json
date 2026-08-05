@@ -2,11 +2,12 @@
   "schemaVersion": 1,
   "id": "t-bb6624e2",
   "kind": "video",
-  "title": "Video 7/29/2026",
-  "videoId": "thought-leadership-63ea13",
+  "title": "The Filter Is Gone",
+  "videoId": "2026-07-29-filter-gone-claude-63ea",
   "createdAt": "2026-07-29T14:55:49.833Z",
   "updatedAt": "2026-07-29T15:28:00.906Z",
   "sessionId": "fd81437b-47b4-4a5b-a8ef-8452bd9b6b49",
+  "sessions": {},
   "messages": [
     {
       "id": "b69e435535",

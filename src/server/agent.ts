@@ -7,6 +7,9 @@ import {billingMode} from "../core/cost.ts";
 import {ROOT} from "../core/paths.ts";
 import {STUDIO_TOOL_NAMES, studioTools} from "../core/tools/index.ts";
 import {appendMessage, conversationOnly, saveThread, type Thread} from "../core/threads.ts";
+import {resolveThreadTitle} from "../core/threadTitle.ts";
+import {readLedger} from "../core/ledger.ts";
+import {claudeModelOption} from "../core/gen/claudeCli.ts";
 import {codexChildEnv, codexModel, requireCodexSubscription} from "../core/gen/codexCli.ts";
 import {registerCodexStudioTools} from "./codexMcp.ts";
 
@@ -116,6 +119,7 @@ export async function* runAgentTurn(options: {
 
   const sdkOptions: Options = {
     cwd: ROOT,
+    ...await claudeModelOption(),
     systemPrompt: kit
       ? `${BASE_PROMPT}\n\nThe brand is ${kit.name} — ${kit.tagline} (${kit.website}).`
       : BASE_PROMPT,
@@ -188,7 +192,13 @@ export async function* runAgentTurn(options: {
     }
   }
 
-  await saveThread({...thread, sessionId, sessions: {...thread.sessions, claude: sessionId}, videoId});
+  await saveThread({
+    ...thread,
+    sessionId,
+    sessions: {...thread.sessions, claude: sessionId},
+    videoId,
+    title: await retitle(thread, videoId, prompt),
+  });
   const mode = billingMode();
   yield {
     type: "done",
@@ -312,7 +322,12 @@ async function* runCodexAgentTurn(options: {
     await registration.close();
   }
 
-  await saveThread({...thread, sessions: {...thread.sessions, codex: sessionId}, videoId});
+  await saveThread({
+    ...thread,
+    sessions: {...thread.sessions, codex: sessionId},
+    videoId,
+    title: await retitle(thread, videoId, options.prompt),
+  });
   yield {
     type: "done",
     text: "",
@@ -356,6 +371,24 @@ function describe(toolName: string): string | null {
 }
 
 /** Persist a completed exchange so the thread survives a restart. */
+/**
+ * What this thread should be called, now that the turn has happened.
+ *
+ * Run at the moment the thread is saved rather than when it is created, because that is the
+ * first moment either answer exists: a video has a title only once it has been made, and
+ * the studio thread is created before anybody has typed anything. The prompt is passed
+ * separately because `recordTurn` appends it *after* this save — for the first turn of a
+ * thread, `thread.messages` is still empty here.
+ */
+async function retitle(thread: Thread, videoId: string | undefined, prompt: string): Promise<string> {
+  const entry = videoId ? (await readLedger()).find((candidate) => candidate.id === videoId) : undefined;
+  return resolveThreadTitle({
+    current: thread.title,
+    videoTitle: entry?.title,
+    firstMessage: thread.messages.find((message) => message.role === "user")?.text ?? prompt,
+  });
+}
+
 export async function recordTurn(
   thread: Thread,
   userText: string,

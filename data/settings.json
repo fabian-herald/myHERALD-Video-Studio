@@ -2,9 +2,10 @@
   "contentLanguage": "en",
   "agent": "codex",
   "planner": "codex",
-  "composer": "codex",
+  "composer": "claude",
   "codexModel": "gpt-5.6-luna",
   "codexComposeEffort": "xhigh",
+  "claudeModel": "",
   "marketingSkills": {
     "adCreative": true,
     "social": true,

@@ -18,7 +18,15 @@ import {loadPlan, ENERGIES} from "../core/plan/schema.ts";
 import {languageName} from "../core/plan/language.ts";
 import {OUT_DIR, ROOT, safeVideoOutDir, videoDir} from "../core/paths.ts";
 import {applyPlanEdits} from "../core/pipeline/apply.ts";
-import {createVideoThread, listThreads, loadThread, studioThread} from "../core/threads.ts";
+import {
+  createVideoThread,
+  deleteThread,
+  listThreads,
+  loadThread,
+  setThreadArchived,
+  studioThread,
+} from "../core/threads.ts";
+import {deleteVideo, setVideoArchived} from "../core/archive.ts";
 import {run} from "../core/util/exec.ts";
 import {runAgentTurn, recordTurn, type AgentEvent} from "./agent.ts";
 import {handleCodexMcp} from "./codexMcp.ts";
@@ -87,6 +95,21 @@ async function route(request: http.IncomingMessage, response: http.ServerRespons
     return json(response, 200, await threadResearch(researchMatch[1]));
   }
 
+  const threadArchiveMatch = pathname.match(/^\/api\/threads\/([\w-]+)\/archive$/);
+  if (threadArchiveMatch?.[1] && method === "POST") {
+    const body = await readJson(request, z.object({archived: z.boolean()}));
+    const thread = await setThreadArchived(threadArchiveMatch[1], body.archived);
+    return thread
+      ? json(response, 200, thread)
+      : json(response, 400, {error: "No such thread, or the studio thread, which stays."});
+  }
+
+  if (threadMatch?.[1] && method === "DELETE") {
+    return (await deleteThread(threadMatch[1]))
+      ? json(response, 200, {deleted: true})
+      : json(response, 400, {error: "No such thread, or the studio thread, which stays."});
+  }
+
   // — videos ——————————————————————————————————————————————
   if (pathname === "/api/videos" && method === "GET") {
     return json(response, 200, await readLedger());
@@ -95,6 +118,22 @@ async function route(request: http.IncomingMessage, response: http.ServerRespons
   const videoMatch = pathname.match(/^\/api\/videos\/([\w-]+)$/);
   if (videoMatch?.[1] && method === "GET") {
     return json(response, 200, await videoDetail(videoMatch[1]));
+  }
+
+  const videoArchiveMatch = pathname.match(/^\/api\/videos\/([\w-]+)\/archive$/);
+  if (videoArchiveMatch?.[1] && method === "POST") {
+    const body = await readJson(request, z.object({archived: z.boolean()}));
+    const entry = await setVideoArchived(videoArchiveMatch[1], body.archived);
+    return entry ? json(response, 200, entry) : json(response, 404, {error: "No such video."});
+  }
+
+  // Removes the ledger entry, the working directory, the rendered files and the thread.
+  // The browser asks twice before it gets here; nothing on this side can undo it.
+  if (videoMatch?.[1] && method === "DELETE") {
+    const result = await deleteVideo(videoMatch[1]);
+    return result.removed
+      ? json(response, 200, result)
+      : json(response, 404, {error: "No such video."});
   }
 
   const revealMatch = pathname.match(/^\/api\/videos\/([\w-]+)\/reveal$/);

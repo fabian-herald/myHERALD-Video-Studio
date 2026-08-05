@@ -1,4 +1,5 @@
 import fs from "node:fs/promises";
+import {writeJsonFile} from "./util/writeJson.ts";
 import path from "node:path";
 import {z} from "zod";
 import {VIDEOS_DIR} from "./paths.ts";
@@ -26,6 +27,17 @@ export const ledgerEntryZ = z.object({
    */
   factIds: z.array(z.string()).default([]),
   outputs: z.array(z.object({format: z.string(), path: z.string()})).default([]),
+  /**
+   * When the owner retired this video, or absent while it counts.
+   *
+   * A separate field rather than a `status`, because it answers a different question:
+   * `status` is what the pipeline made of it, and archiving is what the owner made of it.
+   * A test that rendered perfectly is still `ready` — and still not something the studio
+   * should remember, which is the second half of what this field does. Archived entries
+   * leave `similarTheses` and `factUsage`, so a throwaway test neither blocks the real
+   * video on that thesis nor retires the figures it charted.
+   */
+  archivedAt: z.string().optional(),
 });
 
 export type LedgerEntry = z.infer<typeof ledgerEntryZ>;
@@ -38,9 +50,31 @@ const LEDGER_PATH = path.join(VIDEOS_DIR, "index.json");
  * whereas a structured query does not.
  */
 export async function readLedger(): Promise<LedgerEntry[]> {
-  const raw = await fs.readFile(LEDGER_PATH, "utf8").catch(() => "[]");
-  const parsed = z.array(ledgerEntryZ).safeParse(JSON.parse(raw));
+  const raw = await fs.readFile(LEDGER_PATH, "utf8").catch(() => "");
+  // A missing ledger and an empty one both mean "nothing recorded yet". Only the missing
+  // case was handled, so a zero-byte file threw out of `JSON.parse` instead — and that
+  // throw reaches the route, so the Videos screen answered 500 rather than "nothing yet".
+  // `readSettings` has always read its file this way; this is the same reading.
+  const parsed = z.array(ledgerEntryZ).safeParse(JSON.parse(raw.trim() || "[]"));
   return parsed.success ? parsed.data : [];
+}
+
+/** The ledger as the studio's memory: everything the owner has not retired. */
+export async function activeLedger(): Promise<LedgerEntry[]> {
+  return (await readLedger()).filter((entry) => !entry.archivedAt);
+}
+
+/** Retire a video from the studio's memory, or bring it back. Returns null if unknown. */
+export async function setLedgerArchived(id: string, archived: boolean): Promise<LedgerEntry | null> {
+  return amendLedgerEntry(id, {archivedAt: archived ? new Date().toISOString() : undefined});
+}
+
+export async function removeLedgerEntry(id: string): Promise<boolean> {
+  const entries = await readLedger();
+  const remaining = entries.filter((entry) => entry.id !== id);
+  if (remaining.length === entries.length) return false;
+  await writeLedger(remaining);
+  return true;
 }
 
 export async function upsertLedgerEntry(entry: LedgerEntry): Promise<void> {
@@ -86,8 +120,7 @@ export async function amendLedgerEntry(
 
 /** Exported for the one-off rename migration; the pipeline goes through upsert/amend. */
 export async function writeLedger(entries: readonly LedgerEntry[]): Promise<void> {
-  await fs.mkdir(path.dirname(LEDGER_PATH), {recursive: true});
-  await fs.writeFile(LEDGER_PATH, `${JSON.stringify(entries, null, 2)}\n`, "utf8");
+  await writeJsonFile(LEDGER_PATH, entries);
 }
 
 /** How often a fact has been charted, and when it was last used. */
@@ -110,7 +143,7 @@ export interface FactUse {
  */
 export async function factUsage(): Promise<Map<string, FactUse>> {
   const usage = new Map<string, FactUse>();
-  for (const entry of await readLedger()) {
+  for (const entry of await activeLedger()) {
     // A failed run charted nothing anyone saw. Counting it would retire a figure over a
     // render that never produced a file.
     if (entry.status === "failed") continue;
@@ -130,7 +163,7 @@ const later = (a: string, b: string): string => (a > b ? a : b);
  * made this" before spending a planning call, and it needs no embedding store.
  */
 export async function similarTheses(query: string, limit = 5): Promise<LedgerEntry[]> {
-  const entries = await readLedger();
+  const entries = await activeLedger();
   const terms = tokenise(query);
   if (!terms.size) return [];
 

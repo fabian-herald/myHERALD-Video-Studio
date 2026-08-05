@@ -1,4 +1,5 @@
 import fs from "node:fs/promises";
+import {writeJsonFile} from "./util/writeJson.ts";
 import path from "node:path";
 import {z} from "zod";
 import {DATA_DIR} from "./paths.ts";
@@ -38,6 +39,8 @@ export const threadZ = z.object({
     codex: z.string().optional(),
   }).default({}),
   messages: z.array(threadMessageZ).default([]),
+  /** Set when the owner retires the thread; the rail hides it, nothing deletes it. */
+  archivedAt: z.string().optional(),
 });
 
 export type Thread = z.infer<typeof threadZ>;
@@ -64,8 +67,7 @@ export async function loadThread(id: string): Promise<Thread | null> {
 
 export async function saveThread(thread: Thread): Promise<Thread> {
   const next = {...thread, updatedAt: new Date().toISOString()};
-  await fs.mkdir(THREADS_DIR, {recursive: true});
-  await fs.writeFile(threadPath(next.id), `${JSON.stringify(threadZ.parse(next), null, 2)}\n`, "utf8");
+  await writeJsonFile(threadPath(next.id), threadZ.parse(next));
   return next;
 }
 
@@ -109,6 +111,33 @@ export async function createVideoThread(
     sessions: {},
     messages: [],
   });
+}
+
+/**
+ * Retire a thread from the rail, or bring it back.
+ *
+ * `saveThread` is deliberately not reused: it stamps `updatedAt`, which is what the rail
+ * sorts on, so archiving a year-old thread would shove it to the top of the list on its
+ * way out — and un-archiving it would then lie about when it was last worked on.
+ */
+export async function setThreadArchived(id: string, archived: boolean): Promise<Thread | null> {
+  const thread = await loadThread(id);
+  if (!thread || thread.id === STUDIO_THREAD_ID) return null;
+
+  const next: Thread = {...thread, archivedAt: archived ? new Date().toISOString() : undefined};
+  await writeJsonFile(threadPath(id), threadZ.parse(next));
+  return next;
+}
+
+/** Remove a thread's transcript entirely. The studio thread is not deletable. */
+export async function deleteThread(id: string): Promise<boolean> {
+  if (id === STUDIO_THREAD_ID) return false;
+  return fs.rm(threadPath(id), {force: false}).then(() => true, () => false);
+}
+
+/** The thread a video's history lives in, if one was ever opened for it. */
+export async function threadForVideo(videoId: string): Promise<Thread | null> {
+  return (await listThreads()).find((thread) => thread.videoId === videoId) ?? null;
 }
 
 export function appendMessage(thread: Thread, message: Omit<ThreadMessage, "id" | "at">): Thread {

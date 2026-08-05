@@ -15,6 +15,8 @@ export interface Thread {
   videoId?: string;
   updatedAt: string;
   messages: ThreadMessage[];
+  /** Set once retired: the rail hides it, the transcript stays on disk. */
+  archivedAt?: string;
 }
 
 export interface LedgerEntry {
@@ -26,6 +28,8 @@ export interface LedgerEntry {
   createdAt: string;
   status: string;
   outputs: {format: string; path: string}[];
+  /** Set once retired: out of the list, and out of what the planner counts as covered. */
+  archivedAt?: string;
 }
 
 export interface PlanPhrase {
@@ -158,7 +162,15 @@ export const api = {
   createThread: (title: string, brief = "", videoId?: string) =>
     request<Thread>("/api/threads", {method: "POST", body: JSON.stringify({title, brief, videoId})}),
   threadResearch: (id: string) => request<ThreadResearch>(`/api/threads/${id}/research`),
+  archiveThread: (id: string, archived: boolean) =>
+    request<Thread>(`/api/threads/${id}/archive`, {method: "POST", body: JSON.stringify({archived})}),
+  deleteThread: (id: string) => request<{deleted: boolean}>(`/api/threads/${id}`, {method: "DELETE"}),
   videos: () => request<LedgerEntry[]>("/api/videos"),
+  archiveVideo: (id: string, archived: boolean) =>
+    request<LedgerEntry>(`/api/videos/${id}/archive`, {method: "POST", body: JSON.stringify({archived})}),
+  /** Irreversible: ledger entry, working directory, rendered files and thread. */
+  deleteVideo: (id: string) =>
+    request<{removed: boolean; deleted: Record<string, boolean>}>(`/api/videos/${id}`, {method: "DELETE"}),
   video: (id: string) => request<VideoDetail>(`/api/videos/${id}`),
   revealVideo: (id: string) =>
     request<{ok: boolean; path?: string; error?: string}>(`/api/videos/${id}/reveal`, {method: "POST"}),
@@ -190,6 +202,8 @@ export interface Settings {
   /** Empty means the studio default. Free-form: model ids ship faster than this file. */
   codexModel: string;
   codexComposeEffort: "medium" | "high" | "xhigh";
+  /** Empty means the SDK's own default. An alias (`opus`) or a full id both work. */
+  claudeModel: string;
   marketingSkills: {
     adCreative: boolean;
     social: boolean;

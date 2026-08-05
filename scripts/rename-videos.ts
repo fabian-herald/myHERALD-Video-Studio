@@ -16,6 +16,8 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import {readLedger, writeLedger} from "../src/core/ledger.ts";
 import {OUT_DIR, VIDEOS_DIR} from "../src/core/paths.ts";
+import {THREADS_DIR, listThreads, threadZ} from "../src/core/threads.ts";
+import {writeJsonFile} from "../src/core/util/writeJson.ts";
 import {videoIdFor} from "../src/core/pipeline/videoId.ts";
 
 const apply = process.argv.includes("--apply");
@@ -113,4 +115,22 @@ await writeLedger(ledger.map((entry) => {
   };
 }));
 
-console.log(`\n${renames.length} renamed, ledger rewritten.`);
+/*
+ * The threads that point at these videos, which this script did not touch the first time
+ * it ran — and that is not cosmetic. A thread whose `videoId` names a folder that no longer
+ * exists shows an empty canvas, and opening the video from the Videos screen looks for a
+ * thread by that id, does not find one, and starts a second thread on the same video. Nine
+ * threads were in that state for a week before anyone noticed. `scripts/relink-threads.ts`
+ * repaired them by matching the old code against the new tail; this stops it recurring.
+ */
+let relinked = 0;
+for (const thread of await listThreads()) {
+  const to = thread.videoId ? byOldId.get(thread.videoId) : undefined;
+  if (!to) continue;
+  // Written directly rather than through `saveThread`, which restamps `updatedAt` — the
+  // rail sorts on it, and renaming a folder is not working on the thread.
+  await writeJsonFile(path.join(THREADS_DIR, `${thread.id}.json`), threadZ.parse({...thread, videoId: to}));
+  relinked += 1;
+}
+
+console.log(`\n${renames.length} renamed, ledger rewritten, ${relinked} thread(s) relinked.`);

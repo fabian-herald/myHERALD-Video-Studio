@@ -13,6 +13,7 @@ import {copyRulesViolation} from "../plan/copyRules.ts";
 import {seedGaps} from "../plan/retime.ts";
 import {videoPlanZ, type Intent, type NarrationProfileId, type VideoPlan} from "../plan/schema.ts";
 import {CAPTION_MAX_CHARS, CAPTION_MAX_WORDS} from "../render/qc.ts";
+import {claudeModelOption} from "./claudeCli.ts";
 import {codexChildEnv, codexModel, requireCodexSubscription} from "./codexCli.ts";
 
 export type PlannerId = "claude" | "codex";
@@ -175,7 +176,7 @@ export async function planVideo(
     // Copy rules first: they are cheaper to check and their feedback is more actionable. A
     // figure the model cannot source is still worth another attempt though — `run.ts` used to
     // be the only place this ran, and there it kills the whole run with nothing to retry.
-    const unsourced = planClaimsViolation(result.data, request.facts, request.knowledge);
+    const unsourced = planClaimsViolation(result.data, request.facts, request.knowledge, request.kit.website);
     if (unsourced) {
       lastError = unsourced;
       onLog(`plan          attempt ${attempt} stated a figure it cannot source; retrying.`);
@@ -204,6 +205,7 @@ async function ask(
   for await (const message of query({
     prompt,
     options: {
+      ...await claudeModelOption(),
       systemPrompt: SYSTEM_PROMPT,
       allowedTools: [],
       settingSources: [],

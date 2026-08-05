@@ -10,6 +10,86 @@ const ROLES: {key: "agent" | "planner" | "composer"; title: string; description:
 /** Shown, not defaulted — an empty field means "whatever the studio ships with". */
 const CODEX_MODEL_PLACEHOLDER = "gpt-5.6-terra";
 
+/**
+ * The ids worth one click, per provider. Neither list is exhaustive and neither is a
+ * schema: `Other…` keeps any id typeable, because a new model ships long before this
+ * file is edited, and the whole point of the field is trying the new one.
+ */
+const CLAUDE_MODELS: {value: string; label: string}[] = [
+  {value: "", label: "Studio default"},
+  {value: "opus", label: "Opus — most capable"},
+  {value: "sonnet", label: "Sonnet — faster"},
+  {value: "haiku", label: "Haiku — cheapest"},
+];
+
+const CODEX_MODELS: {value: string; label: string}[] = [
+  {value: "", label: `Studio default (${CODEX_MODEL_PLACEHOLDER})`},
+  {value: "gpt-5.6-terra", label: "gpt-5.6-terra"},
+  {value: "gpt-5.6-luna", label: "gpt-5.6-luna"},
+];
+
+const OTHER_MODEL = "__other__";
+
+/**
+ * A short list plus an escape hatch.
+ *
+ * The dropdown is the answer to "which models are there" — a bare text field answered
+ * that with nothing, so the field only worked for someone who already knew an id. The
+ * text input stays for the id that is not on the list yet.
+ */
+function ModelPicker({choices, value, placeholder, onChange}: {
+  choices: {value: string; label: string}[];
+  value: string;
+  placeholder: string;
+  onChange: (next: string) => void;
+}) {
+  const listed = choices.some((choice) => choice.value === value);
+  /*
+   * What is in the text box, or null while the dropdown is doing the choosing. A saved id
+   * that is not on the list opens the box already holding it, so `Other…` shows what is
+   * actually set rather than an empty field next to a live setting.
+   */
+  const [draft, setDraft] = useState<string | null>(listed ? null : value);
+  const showCustom = draft !== null;
+
+  return (
+    <div className="model-picker">
+      <select
+        value={showCustom ? OTHER_MODEL : value}
+        onChange={(event) => {
+          const next = event.target.value;
+          if (next === OTHER_MODEL) return setDraft(listed ? "" : value);
+          setDraft(null);
+          onChange(next);
+        }}
+      >
+        {choices.map((choice) => (
+          <option value={choice.value} key={choice.value || "default"}>{choice.label}</option>
+        ))}
+        <option value={OTHER_MODEL}>Other…</option>
+      </select>
+      {showCustom ? (
+        <input
+          type="text"
+          placeholder={placeholder}
+          value={draft}
+          onChange={(event) => setDraft(event.target.value)}
+          /*
+           * An empty box saves nothing. It reads as "I have not typed the id yet", and the
+           * alternative is worse than it sounds: opening `Other…` and clicking away would
+           * clear whichever model was set, silently, from a control the owner only looked at.
+           * Choosing the studio default is what the first entry in the list is for.
+           */
+          onBlur={() => {
+            const next = draft.trim();
+            if (next && next !== value) onChange(next);
+          }}
+        />
+      ) : null}
+    </div>
+  );
+}
+
 const GUIDANCE: {
   key: keyof Settings["marketingSkills"];
   title: string;
@@ -96,24 +176,39 @@ export function SettingsPage() {
             {!providers.codex.available ? (
               <div className="banner">Codex is unavailable: {providers.codex.reason}</div>
             ) : (
-              <>
-                <p className="settings-note">Codex is signed in through your ChatGPT subscription. No OpenAI API billing is used.</p>
-                <div className="settings-grid">
-                  <label className="settings-card">
+              <p className="settings-note">Codex is signed in through your ChatGPT subscription. No OpenAI API billing is used.</p>
+            )}
+
+            <div className="settings-heading">
+              <span className="field-label">Models</span>
+            </div>
+            <div className="settings-grid">
+              <div className="settings-card">
+                <span>
+                  <b>Claude model</b>
+                  <small>Runs every role set to Claude. The default is whatever your Claude subscription serves.</small>
+                </span>
+                <ModelPicker
+                  choices={CLAUDE_MODELS}
+                  value={settings.claudeModel}
+                  placeholder="claude-opus-5"
+                  onChange={(claudeModel) => void save({...settings, claudeModel})}
+                />
+              </div>
+              {providers.codex.available ? (
+                <>
+                  <div className="settings-card">
                     <span>
                       <b>Codex model</b>
-                      <small>Blank uses the studio default. Enter a model id to try a different one.</small>
+                      <small>Runs every role set to Codex.</small>
                     </span>
-                    <input
-                      type="text"
+                    <ModelPicker
+                      choices={CODEX_MODELS}
+                      value={settings.codexModel}
                       placeholder={CODEX_MODEL_PLACEHOLDER}
-                      defaultValue={settings.codexModel}
-                      onBlur={(event) => {
-                        const value = event.target.value.trim();
-                        if (value !== settings.codexModel) void save({...settings, codexModel: value});
-                      }}
+                      onChange={(codexModel) => void save({...settings, codexModel})}
                     />
-                  </label>
+                  </div>
                   <label className="settings-card">
                     <span>
                       <b>Composing effort</b>
@@ -134,9 +229,9 @@ export function SettingsPage() {
                       <option value="medium">medium — fastest</option>
                     </select>
                   </label>
-                </div>
-              </>
-            )}
+                </>
+              ) : null}
+            </div>
 
             <div className="settings-heading guidance-heading">
               <span className="field-label">Creative guidance</span>

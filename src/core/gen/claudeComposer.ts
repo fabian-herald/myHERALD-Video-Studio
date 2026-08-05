@@ -2,6 +2,7 @@ import {query, type HookInput, type Options, type PermissionResult} from "@anthr
 import path from "node:path";
 import type {CheckReport} from "../render/check.ts";
 import {compatibleNode} from "../render/node.ts";
+import {claudeModelOption} from "./claudeCli.ts";
 import {
   actionableRepairFindings,
   assertCompositionWritten,
@@ -204,6 +205,7 @@ async function composerEnv(): Promise<Record<string, string>> {
 async function baseOptions(context: ComposeContext): Promise<Options> {
   return {
     cwd: context.authoring.dir,
+    ...await claudeModelOption(),
     systemPrompt: SYSTEM_PROMPT,
     allowedTools: ALLOWED_TOOLS,
     // Load the user scope so the installed HyperFrames skills are available.
