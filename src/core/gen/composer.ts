@@ -214,8 +214,28 @@ export function formatFindingForRepair(finding: CheckFinding): string {
     : "";
   return `- [${finding.severity}] ${finding.code ?? "issue"}${at}: ${finding.message}`
     + (finding.selector ? ` (selector: ${finding.selector})` : "")
+    + (finding.containerSelector ? `\n  ${otherParty(finding.code)}: ${finding.containerSelector}` : "")
     + (finding.expected ? `\n  expected: ${finding.expected}` : "")
     + (finding.fixHint ? `\n  hint: ${finding.fixHint}` : "");
+}
+
+/**
+ * What the second party to a two-element finding *is*, in the words of that finding.
+ *
+ * "Text is hidden beneath an opaque element" names no element, and until now nothing
+ * downstream named one either — the composer was handed a collision and one of its two
+ * halves. Labelling it per code rather than generically matters: "hidden by" tells the
+ * composer to move or re-track that element, "overlapping" tells it the two are peers and
+ * either may move, and "inside" tells it the box is a container to fit within, not something
+ * to push away.
+ */
+function otherParty(code: string | undefined): string {
+  if (code === "text_occluded") return "hidden by";
+  if (code === "content_overlap") return "overlapping";
+  if (code === "text_box_overflow" || code === "container_overflow" || code === "escaped_container") {
+    return "inside";
+  }
+  return "other element";
 }
 
 const registry = new Map<string, Composer>();

@@ -48,6 +48,20 @@ export interface CheckFinding {
   expected?: string;
   /** The offending open tag or source excerpt, verbatim. */
   snippet?: string;
+  /**
+   * The **second party** to a two-element finding, as a CSS selector.
+   *
+   * `text_occluded` and `content_overlap` are collisions: something hid the text, something
+   * else overlapped it. The HyperFrames CLI knows both — it emits `containerSelector` as the
+   * occluder, the other text block, or the container that was escaped, depending on the code —
+   * and this field was being dropped at the CLI boundary, so every repair prompt said what
+   * broke without saying what broke it. Across the corpus that is 68 of 77 layout errors, each
+   * one leaving the composer to find the collision partner by reading coordinates.
+   *
+   * Per code, this holds: `text_occluded` → the occluder; `content_overlap` → the other text
+   * block; `text_box_overflow` / `container_overflow` / `escaped_container` → the container.
+   */
+  containerSelector?: string;
   dataAttributes?: Record<string, string>;
   bbox?: {x: number; y: number; width: number; height: number};
   timeSeconds?: number;
@@ -213,6 +227,7 @@ async function runHyperframesCheck(
           + (Number.isFinite(time) ? ` at ${time.toFixed(2)}s` : "")
           + coordinates,
         selector: finding.selector,
+        containerSelector: finding.containerSelector || undefined,
         fixHint: sanitizeFixHint(finding.code, finding.fixHint),
         source: "hyperframes",
         file: compositionFile(finding.sourceFile),
