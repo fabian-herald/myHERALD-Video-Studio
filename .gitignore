@@ -26,3 +26,4 @@ out/
 
 # Knowledge-graph output from the graphify skill: derived, large, and rebuilt on demand.
 graphify-out/
+docs/region-evidence.json
