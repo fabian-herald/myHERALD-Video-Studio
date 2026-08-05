@@ -5,6 +5,29 @@ subagents to build it, reviewed afterwards by Opus 5, then checked by the owner 
 
 ---
 
+## 0. This is optional, and it is off until it earns being on
+
+Read this before anything else, because it constrains every other decision here.
+
+**Nothing in this plan may become load-bearing.** With templates disabled the studio must
+behave exactly as it does today — same prompt, same freedom, same output quality — and that is
+a property to be tested, not assumed. Concretely:
+
+- The setting is `templates` in `data/settings.json`, resolved per format family, and it
+  **defaults to `off`**. Templates are unproven; today's path is not. The default flips only
+  after the reproduction proof in §8 passes and the owner has looked at the gallery.
+- When off, the region CSS is not linked, no layer item is mentioned in the prompt, and the
+  authoring directory is byte-identical to what `prepareAuthoringDir` writes today. A test must
+  assert that directory equality — it is the only way to know the escape hatch still works.
+- No checker rule may depend on a region map existing. Every gate added by this work is skipped
+  when templates are off, and no existing gate changes behaviour.
+- Nothing here edits `CONTRACT.md`, the exemplar, or the supplied blocks.
+
+If any deliverable cannot satisfy that, it is out of scope. The freedom to turn this off is
+worth more than anything it buys.
+
+---
+
 ## 1. Why, in one measurement
 
 Every blocking error across the two Luna runs of 2026-08-05, categorised:
@@ -168,6 +191,50 @@ docs/template-gallery.html    generated; the owner's check
 `rect` is `[x, y, width, height]` as fractions of the stage. `reserved` belongs to the supplied
 blocks; no layer item may place there. Roles are advisory labels, not selectors.
 
+### Platform safe areas
+
+A region map answers "do these boxes collide with each other." It says nothing about the app
+chrome painted **on top of** the finished video — Instagram's action rail and caption block,
+TikTok's right-hand column, Shorts' title bar. A headline placed perfectly inside its region
+can still sit under a share button, and no gate in this repo would notice.
+
+Safe areas are the third rectangle set, beside `regions` and `reserved`, and they live outside
+the maps because they belong to a platform rather than to a layout:
+
+```
+data/platform-safe-areas.json
+{
+  "instagram-reels": {
+    "9x16": {"top": 0.00, "right": 0.00, "bottom": 0.00, "left": 0.00, "verified": false},
+    "note": "action rail right, caption and username bottom, status bar top"
+  },
+  "tiktok":          {"9x16": {…, "verified": false}},
+  "youtube-shorts":  {"9x16": {…, "verified": false}},
+  "linkedin-feed":   {"1x1": {…}, "4x5": {…}, "verified": false}
+}
+```
+
+**Do not invent these numbers.** Every inset ships `verified: false` and a zero until someone
+measures it from a current screenshot of the app at a known device size — the overlays move
+between app versions, and a confidently wrong safe area is worse than none because it silently
+pushes every composition inward for nothing. Phase 1's agent produces the file with the
+structure, the platform list and honest zeroes; a separate task fills it in from screenshots
+and flips `verified`.
+
+Wiring, once values exist:
+
+- The plan (or settings) names the target platforms for a video. The check evaluates region maps
+  against the **union** of their safe areas, since one render is usually posted several places.
+- A region carrying live type that intersects a verified safe area is a **warning**, naming the
+  platform and the overlap. Not an error: a decorative field bleeding under the caption block is
+  correct and common, and only text and data figures genuinely have to clear it.
+- A region may declare `"decorativeOnly": true` to opt out, which is the honest way to say
+  "this one is a background and may sit under the chrome."
+- The gallery (§10) draws safe areas as hatched overlays per platform, toggleable. That is the
+  fastest way for the owner to judge, and it works whether or not the numbers are verified yet.
+
+Safe areas are inert while templates are off, per §0.
+
 ### Layer item schema
 
 ```json
@@ -199,7 +266,7 @@ Run phases in order; agents **within** a phase run in parallel.
 | phase | agents | deliverable |
 |---|---|---|
 | 0 | 1 | `docs/region-evidence.md` + candidate maps. **Blocking gate.** |
-| 1 | 2 (portrait, landscape) | final region maps + `schema.ts` + `css.ts` + tests |
+| 1 | 2 (portrait, landscape) | region maps + `schema.ts` + `css.ts` + `platform-safe-areas.json` (structure, honest zeroes) + the off-path directory-equality test from §0 + tests |
 | 2 | 4 (one per layer) | 6–8 items each, with meta, files and tests |
 | 3 | 1 | gallery generator + integration smoke test |
 | 4 | 1 | reproduction proof (see §8) |
@@ -252,6 +319,7 @@ An item is done when all of these pass. No item ships on judgment alone.
 □ checkLayoutWaivers         → []      or waivers declared on both parties
 □ no ../ in any file
 □ every element carries data-region naming a region in the map
+□ live type clears every verified platform safe area, or its region is decorativeOnly
 □ no two elements of the same layer declare the same region
 □ every region it names exists in every map it claims compatibility with
 □ declared ink matches an approved kit.color.pairs combination
@@ -336,6 +404,8 @@ The page needs no server and no build. Open it, scroll, and disagree.
 
 ## 12. Off switch
 
-A `templates` setting in `data/settings.json`, default on, per format family rather than global
-— so screens and avatars can be templated while ordinary narrated scenes stay free. When off,
-the composer works exactly as it does today; the region CSS is simply not linked.
+Specified in §0, which is binding. Restated here so it is not missed: `templates` in
+`data/settings.json`, resolved **per format family** rather than globally — so screens and
+avatars can be templated later while ordinary narrated scenes stay free — and **defaulting to
+off** until §8's reproduction proof passes. The directory-equality test in §0 is the deliverable
+that proves the off path is really untouched.
