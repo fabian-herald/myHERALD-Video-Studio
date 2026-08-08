@@ -1,71 +1,52 @@
 {
   "schemaVersion": 1,
   "name": "myHERALD",
-  "tagline": "Autonomous AI Content Engine",
+  "tagline": "AI Content Operations",
   "website": "myherald.io",
   "logos": [
     {
-      "id": "seal",
+      "id": "herald-icon-1024",
       "role": "seal",
       "theme": "any",
-      "file": "logos/seal.png",
-      "safeAreaPct": 0.3,
+      "file": "logos/herald-icon-1024.png",
+      "safeAreaPct": 0.25,
+      "includesTagline": false,
       "width": 1024,
       "height": 1024,
-      "label": "The mark alone: yellow square, serif H."
+      "label": "The mark alone: yellow rounded square, serif H."
     },
     {
-      "id": "wordmark-light",
-      "role": "wordmark",
-      "theme": "light",
-      "file": "logos/wordmark-light.png",
-      "safeAreaPct": 0.25,
-      "width": 1964,
-      "height": 588,
-      "label": "myHERALD in ink, for light fields."
-    },
-    {
-      "id": "wordmark-dark",
-      "role": "wordmark",
-      "theme": "dark",
-      "file": "logos/wordmark-dark.png",
-      "safeAreaPct": 0.25,
-      "width": 1964,
-      "height": 588,
-      "label": "myHERALD in cream, for the deep purple field."
-    },
-    {
-      "id": "lockup-light",
-      "role": "lockup",
-      "theme": "light",
-      "file": "logos/lockup-light.png",
-      "safeAreaPct": 0.25,
-      "width": 1040,
-      "height": 192,
-      "label": "Seal, wordmark and tagline, for light fields.",
-      "includesTagline": true
-    },
-    {
-      "id": "lockup-dark",
-      "role": "lockup",
-      "theme": "dark",
-      "file": "logos/lockup-dark.png",
-      "safeAreaPct": 0.25,
-      "width": 1040,
-      "height": 192,
-      "label": "Seal, wordmark and tagline, for dark fields.",
-      "includesTagline": true
-    },
-    {
-      "id": "lockup-plate",
+      "id": "herald-logo-badge",
       "role": "lockup",
       "theme": "any",
-      "file": "logos/lockup-plate.png",
+      "file": "logos/herald-logo-badge.png",
       "safeAreaPct": 0.25,
+      "includesTagline": true,
       "width": 1013,
       "height": 280,
-      "label": "Lockup on its own white plate. Carries its own background, so it reads on any field.",
-      "includesTagline": true
+      "label": "Seal, wordmark and tagline on transparency, for any field."
+    },
+    {
+      "id": "herald-logo-white",
+      "role": "lockup",
+      "theme": "dark",
+      "file": "logos/herald-logo-white.svg",
+      "safeAreaPct": 0.25,
+      "includesTagline": true,
+      "width": 260,
+      "height": 48,
+      "label": "Seal, wordmark and tagline in white, for the deep purple field."
+    },
+    {
+      "id": "herald-logo",
+      "role": "lockup",
+      "theme": "light",
+      "file": "logos/herald-logo.svg",
+      "safeAreaPct": 0.25,
+      "includesTagline": true,
+      "width": 260,
+      "height": 48,
+      "label": "Seal, wordmark and tagline in ink, for light fields."
     }
   ],
   "color": {
