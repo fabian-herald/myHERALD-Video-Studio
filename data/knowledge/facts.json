@@ -3,10 +3,10 @@
     "id": "f-ms4wwy3e-0",
     "kind": "capability",
     "statement": "A week of content in 20 minutes.",
-    "evidence": "",
+    "evidence": "First-party claim, on two bases. (1) It is myHERALD's own published headline on https://myherald.io/ — the hero reads \"A week of content in 20 minutes.\" (2) The founder's own measured working time in the product: 20 minutes is how long he needs to produce a week of content. Caveat, weigh before putting it on screen: this is a vendor claim about its own product plus one user's measured time, not a multi-user study or an independently verified benchmark. It describes the founder's own run, so it is fair as a statement of what the product does for him and is not evidence of an average across users.",
     "state": "approved",
     "source": "https://myherald.io/",
-    "updatedAt": "2026-08-05T21:31:06.763Z"
+    "updatedAt": "2026-08-07T00:00:00.000Z"
   },
   {
     "id": "f-ms4wwy3e-1",
